@@ -1,2 +1,16 @@
 .wrangler/
 node_modules/
+
+# Python / Django
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/db.sqlite3
+backend/staticfiles/
+backend/.env
+
+# Frontend build output
+frontend/dist/
+
+# Backups (never commit real dumps)
+infra/backups/

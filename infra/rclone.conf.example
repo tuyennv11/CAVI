@@ -1,0 +1,20 @@
+# Mẫu cấu hình rclone cho 2 nơi sao lưu (nơi 2 và nơi 3).
+# Cách dùng: chạy `rclone config` trên VPS và điền thông tin bên dưới theo hướng dẫn từng bước
+# (rclone hỏi từng dòng), hoặc copy nội dung này vào ~/.config/rclone/rclone.conf rồi sửa lại
+# các giá trị <...> bằng key thật lấy từ Cloudflare / Backblaze.
+
+[r2]
+type = s3
+provider = Cloudflare
+access_key_id = <R2_ACCESS_KEY_ID>
+secret_access_key = <R2_SECRET_ACCESS_KEY>
+endpoint = https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com
+# Lấy access key: dash.cloudflare.com -> R2 -> Manage API Tokens -> Create API Token
+# Tạo bucket tên "crm-backups" trước khi chạy backup.sh lần đầu.
+
+[b2]
+type = b2
+account = <B2_KEY_ID>
+key = <B2_APPLICATION_KEY>
+# Lấy key: backblaze.com -> Application Keys -> Add a New Application Key
+# Tạo bucket tên "crm-backups" (Private) trước khi chạy backup.sh lần đầu.
