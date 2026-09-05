@@ -16,7 +16,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(username, password);
-      navigate("/customers");
+      navigate("/");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -27,7 +27,10 @@ export default function Login() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>CRM — Đăng nhập</h1>
+        <div className="brand-row">
+          <span className="mark">V</span>
+          <h1>Đăng nhập</h1>
+        </div>
         <label>
           Tên đăng nhập
           <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />

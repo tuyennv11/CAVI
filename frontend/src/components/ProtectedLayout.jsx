@@ -1,32 +1,23 @@
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 
 export default function ProtectedLayout() {
-  const { user, loading, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   if (loading) return <p className="center-msg">Đang tải...</p>;
   if (!user) return <Navigate to="/login" replace />;
 
-  function handleLogout() {
-    logout();
-    navigate("/login");
-  }
-
   return (
-    <div>
-      <header className="topbar">
-        <span className="brand">CRM</span>
-        <span className="user-info">
-          {user.full_name} · {user.role_label}
-        </span>
-        <button className="link-btn" onClick={handleLogout}>
-          Đăng xuất
-        </button>
-      </header>
-      <main>
-        <Outlet />
-      </main>
+    <div className="app-shell">
+      <Sidebar user={user} />
+      <div className="app-main">
+        <Topbar />
+        <main className="app-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
