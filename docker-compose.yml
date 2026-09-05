@@ -26,14 +26,17 @@ services:
       - static:/app/staticfiles
 
   nginx:
-    image: nginx:1.27-alpine
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.nginx
+      args:
+        VITE_API_URL: https://app.vantaiduongbo.net
     restart: unless-stopped
     depends_on:
       - backend
     ports:
       - "80:80"
     volumes:
-      - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static:/app/staticfiles:ro
 
 volumes:
