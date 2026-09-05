@@ -38,7 +38,7 @@ Dùng Docker Compose (`docker-compose.yml` ở gốc repo) chạy 3 dịch vụ:
 1. Tạo VPS (khuyến nghị DigitalOcean, Ubuntu, cài sẵn Docker)
 2. Clone repo này vào VPS, tạo file `backend/.env` từ `backend/.env.example`, điền mật khẩu Postgres thật
 3. `docker compose up -d --build`
-4. Trong Cloudflare: thêm DNS record `crm.vantaiduongbo.net` (CNAME hoặc A) trỏ vào IP VPS, bật Proxy (mây cam)
+4. Trong Cloudflare: thêm DNS record `app.vantaiduongbo.net` (CNAME hoặc A) trỏ vào IP VPS, bật Proxy (mây cam)
 5. Để mỗi lần push code lên `main` tự động deploy: vào GitHub repo → Settings → Secrets and variables → Actions, thêm 4 secret:
    - `SSH_HOST` — IP của VPS
    - `SSH_USER` — user SSH (vd. `root`)

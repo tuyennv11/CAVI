@@ -121,7 +121,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.environ.get(
-        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,https://crm.vantaiduongbo.net"
+        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,https://app.vantaiduongbo.net"
     ).split(",")
     if o.strip()
 ]
