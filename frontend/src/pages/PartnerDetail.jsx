@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../api";
 import Avatar from "../components/Avatar";
+import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
-import { formatMoney, OUTCOME_LABEL, PARTNER_TYPE_LABEL, TIER_LABEL } from "../constants";
+import { formatMoney, OUTCOME_LABEL, PARTNER_TYPE_LABEL, TIER_LABEL, TIER_REQUEST_STATUS_LABEL } from "../constants";
 
 function timeAgo(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -16,12 +17,14 @@ function timeAgo(iso) {
 }
 
 const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 };
+const TIER_ORDER = ["standard", "vip", "super_vip"];
 
 export default function PartnerDetail() {
   const { id } = useParams();
   const [partner, setPartner] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [tierRequests, setTierRequests] = useState([]);
   const [note, setNote] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [outcome, setOutcome] = useState("pending");
@@ -31,17 +34,22 @@ export default function PartnerDetail() {
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
   const [paid, setPaid] = useState(false);
   const [onPlatform, setOnPlatform] = useState(false);
+  const [showTierRequest, setShowTierRequest] = useState(false);
+  const [requestedTier, setRequestedTier] = useState("vip");
+  const [requestReason, setRequestReason] = useState("");
 
   async function loadAll() {
     try {
-      const [p, contactList, orderList] = await Promise.all([
+      const [p, contactList, orderList, requestList] = await Promise.all([
         apiFetch(`/api/partners/${id}/`),
         apiFetch(`/api/partners/${id}/contacts/`),
         apiFetch(`/api/orders/?customer=${id}`),
+        apiFetch(`/api/tier-requests/?partner=${id}`),
       ]);
       setPartner(p);
       setContacts(contactList);
       setOrders(orderList.results ?? orderList);
+      setTierRequests(requestList.results ?? requestList);
     } catch (err) {
       setError(err.message);
     }
@@ -91,11 +99,28 @@ export default function PartnerDetail() {
     }
   }
 
+  async function handleRequestTier(e) {
+    e.preventDefault();
+    try {
+      await apiFetch("/api/tier-requests/", {
+        method: "POST",
+        body: JSON.stringify({ partner: Number(id), requested_tier: requestedTier, reason: requestReason }),
+      });
+      setShowTierRequest(false);
+      setRequestReason("");
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (error) return <p className="error">{error}</p>;
   if (!partner) return <p className="muted">Đang tải...</p>;
 
   const overLimit = Number(partner.debt) > Number(partner.credit_limit);
   const debtRatio = partner.credit_limit > 0 ? Math.min(100, (partner.debt / partner.credit_limit) * 100) : 0;
+  const pendingRequest = tierRequests.find((r) => r.status === "pending");
+  const higherTiers = TIER_ORDER.slice(TIER_ORDER.indexOf(partner.tier) + 1);
 
   const timeline = [
     ...contacts.map((c) => ({
@@ -129,17 +154,45 @@ export default function PartnerDetail() {
         <Avatar name={partner.name} size="lg" />
         <div style={{ flex: 1 }}>
           <h1>{partner.name}</h1>
-          {partner.company && <div className="company">{partner.company}</div>}
+          {partner.note && <div className="company">{partner.note}</div>}
           <div className="profile-pills">
             <span className="badge badge-neutral">{PARTNER_TYPE_LABEL[partner.partner_type]}</span>
-            <span className={`badge badge-tier-${partner.tier}`}>{TIER_LABEL[partner.tier]}</span>
+            <span className={`badge badge-tier-${partner.tier}`}>
+              {TIER_LABEL[partner.tier]}
+              {partner.tier_source === "approved" ? " · đã duyệt" : " · tự động"}
+            </span>
+            {partner.contact_person && <span className="profile-pill">👤 {partner.contact_person}</span>}
             {partner.phone && <span className="profile-pill">📞 {partner.phone}</span>}
-            {partner.email && <span className="profile-pill">✉️ {partner.email}</span>}
-            {partner.address && <span className="profile-pill">📍 {partner.address}</span>}
             {partner.assigned_to_detail && (
-              <span className="profile-pill">👤 Phụ trách: {partner.assigned_to_detail.username}</span>
+              <span className="profile-pill">Phụ trách: {partner.assigned_to_detail.username}</span>
             )}
           </div>
+          <div className="profile-pills" style={{ marginTop: 6 }}>
+            <span className="muted" style={{ fontSize: 12 }}>
+              Gắn bó {partner.tenure_months} tháng · Doanh thu tích luỹ {formatMoney(partner.total_revenue)}
+            </span>
+          </div>
+
+          {higherTiers.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              {pendingRequest ? (
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  Đang chờ duyệt lên <b>{TIER_LABEL[pendingRequest.requested_tier]}</b>
+                </span>
+              ) : (
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    setRequestedTier(higherTiers[0]);
+                    setShowTierRequest(true);
+                  }}
+                >
+                  Xin nâng hạng
+                </button>
+              )}
+            </div>
+          )}
+
           {partner.partner_type !== "supplier" && (
             <div style={{ marginTop: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
@@ -316,6 +369,40 @@ export default function PartnerDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {showTierRequest && (
+        <Modal title="Xin nâng hạng" onClose={() => setShowTierRequest(false)}>
+          <form className="field-grid" onSubmit={handleRequestTier}>
+            <label>
+              Xin lên hạng
+              <select value={requestedTier} onChange={(e) => setRequestedTier(e.target.value)}>
+                {higherTiers.map((t) => (
+                  <option key={t} value={t}>
+                    {TIER_LABEL[t]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Lý do *
+              <textarea
+                rows={3}
+                required
+                placeholder="Vì sao đối tác này nên được nâng hạng sớm..."
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <div className="modal-actions">
+              <button type="button" className="secondary" onClick={() => setShowTierRequest(false)}>
+                Huỷ
+              </button>
+              <button type="submit">Gửi yêu cầu</button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

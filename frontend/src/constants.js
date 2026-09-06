@@ -17,6 +17,12 @@ export const OUTCOME_LABEL = {
   received: "Đã nhận",
 };
 
+export const TIER_REQUEST_STATUS_LABEL = {
+  pending: "Đang chờ",
+  approved: "Đã duyệt",
+  rejected: "Từ chối",
+};
+
 export function formatMoney(v) {
   return Number(v).toLocaleString("vi-VN") + " đ";
 }

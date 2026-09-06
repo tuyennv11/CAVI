@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Partner(models.Model):
@@ -14,14 +15,16 @@ class Partner(models.Model):
         SUPER_VIP = "super_vip", "Siêu VIP"
 
     name = models.CharField("Tên", max_length=255)
-    company = models.CharField("Công ty", max_length=255, blank=True)
+    contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
-    email = models.EmailField("Email", blank=True)
-    address = models.CharField("Địa chỉ", max_length=500, blank=True)
+    note = models.TextField("Mô tả thêm", blank=True)
     partner_type = models.CharField(
         "Loại đối tác", max_length=20, choices=PartnerType.choices, default=PartnerType.CUSTOMER
     )
-    tier = models.CharField("Hạng", max_length=20, choices=Tier.choices, default=Tier.STANDARD)
+    # Hạng do hệ thống tự tính (xem computed_tier) — chỉ bị ghi đè khi có yêu cầu nâng hạng được duyệt.
+    tier_override = models.CharField(
+        "Hạng đã duyệt vượt bậc", max_length=20, choices=Tier.choices, null=True, blank=True
+    )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Nhân viên phụ trách",
@@ -39,6 +42,34 @@ class Partner(models.Model):
         return self.name
 
     @property
+    def tenure_months(self):
+        delta = timezone.now() - self.created_at
+        return delta.days // 30
+
+    @property
+    def total_revenue(self):
+        orders = self.orders.exclude(status="cancelled").prefetch_related("items")
+        return sum((o.total for o in orders), start=0)
+
+    @property
+    def computed_tier(self):
+        months = self.tenure_months
+        revenue = self.total_revenue
+        if months >= settings.TIER_TENURE_MONTHS["super_vip"] and revenue >= settings.TIER_REVENUE_THRESHOLDS["super_vip"]:
+            return self.Tier.SUPER_VIP
+        if months >= settings.TIER_TENURE_MONTHS["vip"] and revenue >= settings.TIER_REVENUE_THRESHOLDS["vip"]:
+            return self.Tier.VIP
+        return self.Tier.STANDARD
+
+    @property
+    def tier(self):
+        return self.tier_override or self.computed_tier
+
+    @property
+    def tier_source(self):
+        return "approved" if self.tier_override else "auto"
+
+    @property
     def credit_limit(self):
         return settings.TIER_CREDIT_LIMITS.get(self.tier, 0)
 
@@ -48,6 +79,30 @@ class Partner(models.Model):
             return 0
         unpaid = self.orders.filter(paid=False).prefetch_related("items")
         return sum((o.total for o in unpaid), start=0)
+
+
+class TierUpgradeRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Đang chờ"
+        APPROVED = "approved", "Đã duyệt"
+        REJECTED = "rejected", "Từ chối"
+
+    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="tier_requests")
+    requested_tier = models.CharField("Hạng xin lên", max_length=20, choices=Partner.Tier.choices)
+    reason = models.TextField("Lý do")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.partner} → {self.get_requested_tier_display()} ({self.status})"
 
 
 class ContactLog(models.Model):

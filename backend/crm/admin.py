@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ContactLog, Order, OrderItem, Partner
+from .models import ContactLog, Order, OrderItem, Partner, TierUpgradeRequest
 
 
 class ContactLogInline(admin.TabularInline):
@@ -16,9 +16,9 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Partner)
 class PartnerAdmin(admin.ModelAdmin):
-    list_display = ("name", "partner_type", "tier", "company", "phone", "assigned_to", "created_at")
-    list_filter = ("partner_type", "tier", "assigned_to")
-    search_fields = ("name", "company", "phone", "email")
+    list_display = ("name", "partner_type", "tier", "contact_person", "phone", "assigned_to", "created_at")
+    list_filter = ("partner_type", "assigned_to")
+    search_fields = ("name", "contact_person", "phone")
     inlines = [ContactLogInline]
 
 
@@ -27,3 +27,9 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ("id", "customer", "status", "paid", "on_platform", "total", "gross_profit", "created_at")
     list_filter = ("status", "paid", "on_platform")
     inlines = [OrderItemInline]
+
+
+@admin.register(TierUpgradeRequest)
+class TierUpgradeRequestAdmin(admin.ModelAdmin):
+    list_display = ("partner", "requested_tier", "status", "requested_by", "reviewed_by", "created_at")
+    list_filter = ("status", "requested_tier")

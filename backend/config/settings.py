@@ -136,3 +136,13 @@ TIER_CREDIT_LIMITS = {
     "vip": 200_000_000,
     "super_vip": 500_000_000,
 }
+
+# --- Điều kiện tự động lên hạng: phải đạt CẢ HAI (đủ thời gian gắn bó VÀ đủ doanh thu tích luỹ) ---
+TIER_TENURE_MONTHS = {
+    "vip": 6,
+    "super_vip": 12,
+}
+TIER_REVENUE_THRESHOLDS = {
+    "vip": 500_000_000,
+    "super_vip": 2_000_000_000,
+}

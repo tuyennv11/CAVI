@@ -13,5 +13,10 @@ class IsManagerOrAssignedSales(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if is_manager(request.user):
             return True
-        customer = obj if hasattr(obj, "assigned_to") else obj.customer
-        return customer.assigned_to_id == request.user.id
+        if hasattr(obj, "assigned_to"):
+            partner = obj
+        elif hasattr(obj, "customer"):
+            partner = obj.customer
+        else:
+            partner = obj.partner
+        return partner.assigned_to_id == request.user.id

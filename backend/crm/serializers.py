@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import ContactLog, Order, OrderItem, Partner
+from .models import ContactLog, Order, OrderItem, Partner, TierUpgradeRequest
 
 User = get_user_model()
 
@@ -36,18 +36,24 @@ class PartnerSerializer(serializers.ModelSerializer):
     order_count = serializers.IntegerField(source="orders.count", read_only=True)
     credit_limit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     debt = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    total_revenue = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    tenure_months = serializers.IntegerField(read_only=True)
+    tier = serializers.ChoiceField(choices=Partner.Tier.choices, read_only=True)
+    tier_source = serializers.ChoiceField(choices=["auto", "approved"], read_only=True)
 
     class Meta:
         model = Partner
         fields = [
             "id",
             "name",
-            "company",
+            "contact_person",
             "phone",
-            "email",
-            "address",
+            "note",
             "partner_type",
             "tier",
+            "tier_source",
+            "tenure_months",
+            "total_revenue",
             "credit_limit",
             "debt",
             "assigned_to",
@@ -56,6 +62,30 @@ class PartnerSerializer(serializers.ModelSerializer):
             "order_count",
             "created_at",
         ]
+
+
+class TierUpgradeRequestSerializer(serializers.ModelSerializer):
+    requested_by_name = serializers.CharField(source="requested_by.username", read_only=True)
+    reviewed_by_name = serializers.CharField(source="reviewed_by.username", read_only=True)
+    partner_name = serializers.CharField(source="partner.name", read_only=True)
+
+    class Meta:
+        model = TierUpgradeRequest
+        fields = [
+            "id",
+            "partner",
+            "partner_name",
+            "requested_tier",
+            "reason",
+            "requested_by",
+            "requested_by_name",
+            "status",
+            "reviewed_by",
+            "reviewed_by_name",
+            "reviewed_at",
+            "created_at",
+        ]
+        read_only_fields = ["requested_by", "status", "reviewed_by", "reviewed_at", "created_at"]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

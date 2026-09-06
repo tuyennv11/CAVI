@@ -11,9 +11,11 @@ from rest_framework.views import APIView
 
 from accounts.roles import is_manager
 
-from .models import ContactLog, Order, Partner
+from rest_framework.exceptions import PermissionDenied
+
+from .models import ContactLog, Order, Partner, TierUpgradeRequest
 from .permissions import IsManagerOrAssignedSales
-from .serializers import ContactLogSerializer, OrderSerializer, PartnerSerializer
+from .serializers import ContactLogSerializer, OrderSerializer, PartnerSerializer, TierUpgradeRequestSerializer
 
 MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
 
@@ -42,8 +44,8 @@ def _sum_gross_profit(queryset):
 class PartnerViewSet(viewsets.ModelViewSet):
     serializer_class = PartnerSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
-    search_fields = ["name", "company", "phone", "email"]
-    filterset_fields = ["assigned_to", "partner_type", "tier"]
+    search_fields = ["name", "contact_person", "phone"]
+    filterset_fields = ["assigned_to", "partner_type"]
 
     def get_queryset(self):
         qs = Partner.objects.select_related("assigned_to").all()
@@ -69,6 +71,45 @@ class PartnerViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(customer=partner, created_by=request.user)
         return Response(serializer.data, status=201)
+
+
+class TierUpgradeRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = TierUpgradeRequestSerializer
+    permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
+    filterset_fields = ["status", "partner"]
+
+    def get_queryset(self):
+        qs = TierUpgradeRequest.objects.select_related("partner", "requested_by", "reviewed_by").all()
+        if is_manager(self.request.user):
+            return qs
+        return qs.filter(partner__assigned_to=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(requested_by=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        if not is_manager(request.user):
+            raise PermissionDenied("Chỉ Quản lý mới duyệt được yêu cầu nâng hạng.")
+        tier_request = self.get_object()
+        tier_request.status = TierUpgradeRequest.Status.APPROVED
+        tier_request.reviewed_by = request.user
+        tier_request.reviewed_at = timezone.now()
+        tier_request.save()
+        tier_request.partner.tier_override = tier_request.requested_tier
+        tier_request.partner.save(update_fields=["tier_override"])
+        return Response(TierUpgradeRequestSerializer(tier_request).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        if not is_manager(request.user):
+            raise PermissionDenied("Chỉ Quản lý mới từ chối được yêu cầu nâng hạng.")
+        tier_request = self.get_object()
+        tier_request.status = TierUpgradeRequest.Status.REJECTED
+        tier_request.reviewed_by = request.user
+        tier_request.reviewed_at = timezone.now()
+        tier_request.save()
+        return Response(TierUpgradeRequestSerializer(tier_request).data)
 
 
 class OrderViewSet(viewsets.ModelViewSet):

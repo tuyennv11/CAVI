@@ -23,6 +23,11 @@ const ICONS = {
       <path d="M3 4h14l-5 6.5V16l-4 1.5v-7z" strokeLinejoin="round" />
     </svg>
   ),
+  tierRequests: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M10 3l2 4 4.4.6-3.2 3 .8 4.4L10 13l-4 2 .8-4.4-3.2-3L8 7z" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 export default function Sidebar({ user }) {
@@ -44,6 +49,10 @@ export default function Sidebar({ user }) {
         <NavLink to="/pipeline" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
           {ICONS.pipeline}
           Pipeline bán hàng
+        </NavLink>
+        <NavLink to="/tier-requests" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
+          {ICONS.tierRequests}
+          Yêu cầu nâng hạng
         </NavLink>
       </nav>
       {user && (

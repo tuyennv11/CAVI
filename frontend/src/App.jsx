@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import PartnerDetail from "./pages/PartnerDetail";
 import PartnerList from "./pages/PartnerList";
 import Pipeline from "./pages/Pipeline";
+import TierRequests from "./pages/TierRequests";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/partners" element={<PartnerList />} />
           <Route path="/partners/:id" element={<PartnerDetail />} />
           <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/tier-requests" element={<TierRequests />} />
         </Route>
       </Routes>
     </AuthProvider>

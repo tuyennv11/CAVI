@@ -7,12 +7,10 @@ import { formatMoney, PARTNER_TYPE_LABEL, TIER_LABEL } from "../constants";
 
 const EMPTY_FORM = {
   name: "",
-  company: "",
+  contact_person: "",
   phone: "",
-  email: "",
-  address: "",
+  note: "",
   partner_type: "customer",
-  tier: "standard",
 };
 
 export default function PartnerList() {
@@ -77,7 +75,7 @@ export default function PartnerList() {
         <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: 8, flex: 1 }}>
           <input
             className="search-input"
-            placeholder="Tìm theo tên, công ty, SĐT, email..."
+            placeholder="Tìm theo tên, người liên hệ, SĐT..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -117,9 +115,9 @@ export default function PartnerList() {
                         <Avatar name={p.name} />
                         <div>
                           <div>{p.name}</div>
-                          {p.company && (
+                          {p.contact_person && (
                             <div className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>
-                              {p.company}
+                              {p.contact_person}
                             </div>
                           )}
                         </div>
@@ -159,30 +157,20 @@ export default function PartnerList() {
               </select>
             </label>
             <label>
-              Hạng
-              <select value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })}>
-                {Object.entries(TIER_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Công ty
-              <input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+              Người liên hệ
+              <input
+                placeholder="vd: Anh Nam"
+                value={form.contact_person}
+                onChange={(e) => setForm({ ...form, contact_person: e.target.value })}
+              />
             </label>
             <label>
               Số điện thoại
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </label>
             <label>
-              Email
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </label>
-            <label>
-              Địa chỉ
-              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              Mô tả thêm
+              <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </label>
             {error && <p className="error">{error}</p>}
             <div className="modal-actions">
