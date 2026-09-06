@@ -131,7 +131,11 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 
-.sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; min-height: 0; }
+.sidebar-section {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
+  color: var(--sidebar-ink); opacity: 0.6; padding: 14px 12px 4px;
+}
 .sidebar-link {
   display: flex; align-items: center; gap: 11px;
   padding: 9px 12px; border-radius: 7px;

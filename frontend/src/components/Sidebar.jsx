@@ -34,7 +34,47 @@ const ICONS = {
       <path d="M6 11v3.5a1.5 1.5 0 0 0 3 0V12" strokeLinecap="round" />
     </svg>
   ),
+  approvals: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 3.5h9l3 3V17H4z" strokeLinejoin="round" />
+      <path d="M7 9.5l2 2 4-4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  shipments: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M2.5 6.5L10 3l7.5 3.5L10 10z" strokeLinejoin="round" />
+      <path d="M2.5 6.5V14L10 17.5V10M17.5 6.5V14L10 17.5" strokeLinejoin="round" />
+    </svg>
+  ),
+  batches: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="2.5" y="5" width="6" height="6" rx="1" />
+      <rect x="11.5" y="5" width="6" height="6" rx="1" />
+      <rect x="7" y="11.5" width="6" height="4" rx="1" />
+    </svg>
+  ),
+  attendance: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="10" cy="10.5" r="7" />
+      <path d="M10 6.5v4l2.5 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  profile: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="10" cy="6.8" r="3" />
+      <path d="M3.5 17c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" strokeLinecap="round" />
+    </svg>
+  ),
 };
+
+function NavItem({ to, icon, children, end }) {
+  return (
+    <NavLink to={to} end={end} className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
+      {icon}
+      {children}
+    </NavLink>
+  );
+}
 
 export default function Sidebar({ user }) {
   return (
@@ -44,26 +84,42 @@ export default function Sidebar({ user }) {
         Vận Tải CRM
       </div>
       <nav className="sidebar-nav">
-        <NavLink to="/" end className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
-          {ICONS.dashboard}
+        <NavItem to="/" end icon={ICONS.dashboard}>
           Dashboard
-        </NavLink>
-        <NavLink to="/notices" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
-          {ICONS.notices}
+        </NavItem>
+        <NavItem to="/notices" icon={ICONS.notices}>
           Thông báo nội bộ
-        </NavLink>
-        <NavLink to="/partners" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
-          {ICONS.customers}
+        </NavItem>
+        <NavItem to="/approvals" icon={ICONS.approvals}>
+          Ký duyệt
+        </NavItem>
+
+        <div className="sidebar-section">Kinh doanh</div>
+        <NavItem to="/partners" icon={ICONS.customers}>
           Đối tác
-        </NavLink>
-        <NavLink to="/pipeline" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
-          {ICONS.pipeline}
+        </NavItem>
+        <NavItem to="/pipeline" icon={ICONS.pipeline}>
           Pipeline bán hàng
-        </NavLink>
-        <NavLink to="/tier-requests" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
-          {ICONS.tierRequests}
+        </NavItem>
+        <NavItem to="/tier-requests" icon={ICONS.tierRequests}>
           Yêu cầu nâng hạng
-        </NavLink>
+        </NavItem>
+
+        <div className="sidebar-section">Vận hành</div>
+        <NavItem to="/shipments" icon={ICONS.shipments}>
+          Kiện hàng
+        </NavItem>
+        <NavItem to="/shipment-batches" icon={ICONS.batches}>
+          Quản lý vận hành
+        </NavItem>
+
+        <div className="sidebar-section">Cá nhân</div>
+        <NavItem to="/attendance" icon={ICONS.attendance}>
+          Chấm công
+        </NavItem>
+        <NavItem to="/profile" icon={ICONS.profile}>
+          Hồ sơ cá nhân
+        </NavItem>
       </nav>
       {user && (
         <div className="sidebar-foot">

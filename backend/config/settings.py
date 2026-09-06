@@ -24,6 +24,9 @@ INSTALLED_APPS = [
     "django_filters",
     "accounts",
     "crm",
+    "approvals",
+    "hr",
+    "ops",
 ]
 
 MIDDLEWARE = [

@@ -8,6 +8,11 @@ function titleFor(pathname) {
   if (pathname.startsWith("/partners/")) return "Chi tiết đối tác";
   if (pathname === "/pipeline") return "Pipeline bán hàng";
   if (pathname === "/tier-requests") return "Yêu cầu nâng hạng";
+  if (pathname === "/approvals") return "Ký duyệt";
+  if (pathname === "/shipments") return "Kiện hàng";
+  if (pathname === "/shipment-batches") return "Quản lý vận hành";
+  if (pathname === "/attendance") return "Chấm công";
+  if (pathname === "/profile") return "Cá nhân";
   return "";
 }
 
