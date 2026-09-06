@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import ContactLog, Customer, Order, OrderItem
+from .models import ContactLog, Order, OrderItem, Partner
 
 User = get_user_model()
 
@@ -17,17 +17,28 @@ class ContactLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ContactLog
-        fields = ["id", "customer", "note", "created_by", "created_by_name", "created_at"]
+        fields = [
+            "id",
+            "customer",
+            "contact_person",
+            "outcome",
+            "note",
+            "created_by",
+            "created_by_name",
+            "created_at",
+        ]
         read_only_fields = ["created_by", "created_at"]
 
 
-class CustomerSerializer(serializers.ModelSerializer):
+class PartnerSerializer(serializers.ModelSerializer):
     assigned_to_detail = AssignedToSerializer(source="assigned_to", read_only=True)
     contact_count = serializers.IntegerField(source="contact_logs.count", read_only=True)
     order_count = serializers.IntegerField(source="orders.count", read_only=True)
+    credit_limit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    debt = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
 
     class Meta:
-        model = Customer
+        model = Partner
         fields = [
             "id",
             "name",
@@ -35,6 +46,10 @@ class CustomerSerializer(serializers.ModelSerializer):
             "phone",
             "email",
             "address",
+            "partner_type",
+            "tier",
+            "credit_limit",
+            "debt",
             "assigned_to",
             "assigned_to_detail",
             "contact_count",
@@ -45,15 +60,17 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     line_total = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    line_profit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
 
     class Meta:
         model = OrderItem
-        fields = ["id", "description", "quantity", "unit_price", "line_total"]
+        fields = ["id", "description", "quantity", "unit_price", "unit_cost", "line_total", "line_profit"]
 
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     total = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    gross_profit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
 
@@ -65,8 +82,11 @@ class OrderSerializer(serializers.ModelSerializer):
             "customer_name",
             "status",
             "note",
+            "paid",
+            "on_platform",
             "items",
             "total",
+            "gross_profit",
             "created_by",
             "created_by_name",
             "created_at",

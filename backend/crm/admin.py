@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ContactLog, Customer, Order, OrderItem
+from .models import ContactLog, Order, OrderItem, Partner
 
 
 class ContactLogInline(admin.TabularInline):
@@ -14,16 +14,16 @@ class OrderItemInline(admin.TabularInline):
     extra = 1
 
 
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ("name", "company", "phone", "assigned_to", "created_at")
-    list_filter = ("assigned_to",)
+@admin.register(Partner)
+class PartnerAdmin(admin.ModelAdmin):
+    list_display = ("name", "partner_type", "tier", "company", "phone", "assigned_to", "created_at")
+    list_filter = ("partner_type", "tier", "assigned_to")
     search_fields = ("name", "company", "phone", "email")
     inlines = [ContactLogInline]
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer", "status", "total", "created_at")
-    list_filter = ("status",)
+    list_display = ("id", "customer", "status", "paid", "on_platform", "total", "gross_profit", "created_at")
+    list_filter = ("status", "paid", "on_platform")
     inlines = [OrderItemInline]

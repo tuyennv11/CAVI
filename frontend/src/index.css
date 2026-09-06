@@ -198,8 +198,7 @@ a:hover { text-decoration: underline; }
 .page-head-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
 
 /* ---------- Stat cards ---------- */
-.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
-@media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 28px; }
 .stat-card {
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
   padding: 18px 20px; display: flex; flex-direction: column; gap: 8px;
@@ -256,6 +255,9 @@ a:hover { text-decoration: underline; }
 .badge-done { background: var(--success-soft); color: var(--success); }
 .badge-cancelled { background: var(--danger-soft); color: var(--danger); }
 .badge-neutral { background: var(--surface-muted); color: var(--muted); }
+.badge-tier-standard { background: var(--surface-muted); color: var(--muted); }
+.badge-tier-vip { background: var(--primary-soft); color: var(--primary-dark); }
+.badge-tier-super_vip { background: #fdf2f8; color: #be185d; }
 
 /* ---------- Modal ---------- */
 .modal-overlay {

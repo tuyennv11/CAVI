@@ -37,9 +37,9 @@ export default function Sidebar({ user }) {
           {ICONS.dashboard}
           Dashboard
         </NavLink>
-        <NavLink to="/customers" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
+        <NavLink to="/partners" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
           {ICONS.customers}
-          Khách hàng
+          Đối tác
         </NavLink>
         <NavLink to="/pipeline" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
           {ICONS.pipeline}

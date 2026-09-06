@@ -1,5 +1,6 @@
 .wrangler/
 node_modules/
+.claude/
 
 # Python / Django
 backend/venv/

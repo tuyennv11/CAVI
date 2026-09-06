@@ -129,3 +129,10 @@ CORS_ALLOWED_ORIGINS = [
 # --- App-level role group names (created by: manage.py seed_groups) ---
 GROUP_MANAGER = "Quản lý"
 GROUP_SALES = "Nhân viên kinh doanh"
+
+# --- Hạn mức công nợ theo hạng đối tác (đơn vị: VNĐ) — sửa số ở đây nếu công ty đổi chính sách ---
+TIER_CREDIT_LIMITS = {
+    "standard": 50_000_000,
+    "vip": 200_000_000,
+    "super_vip": 500_000_000,
+}

@@ -11,25 +11,48 @@ from rest_framework.views import APIView
 
 from accounts.roles import is_manager
 
-from .models import ContactLog, Customer, Order
+from .models import ContactLog, Order, Partner
 from .permissions import IsManagerOrAssignedSales
-from .serializers import ContactLogSerializer, CustomerSerializer, OrderSerializer
+from .serializers import ContactLogSerializer, OrderSerializer, PartnerSerializer
+
+MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
-    serializer_class = CustomerSerializer
+def _sum_revenue(queryset):
+    return queryset.aggregate(
+        total=Coalesce(
+            Sum(F("items__quantity") * F("items__unit_price"), output_field=MONEY_FIELD), 0, output_field=MONEY_FIELD
+        )
+    )["total"]
+
+
+def _sum_gross_profit(queryset):
+    return queryset.aggregate(
+        total=Coalesce(
+            Sum(
+                F("items__quantity") * (F("items__unit_price") - F("items__unit_cost")),
+                output_field=MONEY_FIELD,
+            ),
+            0,
+            output_field=MONEY_FIELD,
+        )
+    )["total"]
+
+
+class PartnerViewSet(viewsets.ModelViewSet):
+    serializer_class = PartnerSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
     search_fields = ["name", "company", "phone", "email"]
-    filterset_fields = ["assigned_to"]
+    filterset_fields = ["assigned_to", "partner_type", "tier"]
 
     def get_queryset(self):
-        qs = Customer.objects.select_related("assigned_to").all()
+        qs = Partner.objects.select_related("assigned_to").all()
         if is_manager(self.request.user):
             return qs
         return qs.filter(assigned_to=self.request.user)
 
     def perform_create(self, serializer):
-        # Nhân viên kinh doanh tạo khách mới thì mặc định tự phụ trách khách đó.
+        # Nhân viên kinh doanh tạo đối tác mới thì mặc định tự phụ trách đối tác đó.
         if is_manager(self.request.user) and serializer.validated_data.get("assigned_to"):
             serializer.save()
         else:
@@ -37,21 +60,21 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get", "post"], url_path="contacts")
     def contacts(self, request, pk=None):
-        customer = self.get_object()
+        partner = self.get_object()
         if request.method == "GET":
-            logs = customer.contact_logs.select_related("created_by").all()
+            logs = partner.contact_logs.select_related("created_by").all()
             return Response(ContactLogSerializer(logs, many=True).data)
 
-        serializer = ContactLogSerializer(data={**request.data, "customer": customer.id})
+        serializer = ContactLogSerializer(data={**request.data, "customer": partner.id})
         serializer.is_valid(raise_exception=True)
-        serializer.save(customer=customer, created_by=request.user)
+        serializer.save(customer=partner, created_by=request.user)
         return Response(serializer.data, status=201)
 
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
-    filterset_fields = ["status", "customer"]
+    filterset_fields = ["status", "customer", "paid", "on_platform"]
 
     def get_queryset(self):
         qs = Order.objects.select_related("customer", "created_by").prefetch_related("items").all()
@@ -69,11 +92,11 @@ class DashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        customers = Customer.objects.all()
+        partners = Partner.objects.all()
         orders = Order.objects.all()
         contacts = ContactLog.objects.select_related("customer", "created_by")
         if not is_manager(request.user):
-            customers = customers.filter(assigned_to=request.user)
+            partners = partners.filter(assigned_to=request.user)
             orders = orders.filter(customer__assigned_to=request.user)
             contacts = contacts.filter(customer__assigned_to=request.user)
 
@@ -81,17 +104,6 @@ class DashboardStatsView(APIView):
         week_ago = now - timedelta(days=7)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         orders_this_month = orders.filter(created_at__gte=month_start)
-
-        revenue = orders_this_month.aggregate(
-            total=Coalesce(
-                Sum(
-                    F("items__quantity") * F("items__unit_price"),
-                    output_field=DecimalField(max_digits=16, decimal_places=2),
-                ),
-                0,
-                output_field=DecimalField(max_digits=16, decimal_places=2),
-            )
-        )["total"]
 
         recent_orders = orders.select_related("customer").order_by("-created_at")[:8]
         recent_contacts = contacts.order_by("-created_at")[:8]
@@ -118,10 +130,18 @@ class DashboardStatsView(APIView):
 
         return Response(
             {
-                "total_customers": customers.count(),
-                "new_customers_week": customers.filter(created_at__gte=week_ago).count(),
+                "total_customers": partners.count(),
+                "new_customers_week": partners.filter(created_at__gte=week_ago).count(),
                 "orders_this_month": orders_this_month.count(),
-                "revenue_this_month": revenue,
+                "revenue_this_month": _sum_revenue(orders_this_month),
+                "total_revenue_all_time": _sum_revenue(orders),
+                "gross_profit_this_month": _sum_gross_profit(orders_this_month),
+                "gross_profit_on_platform_this_month": _sum_gross_profit(
+                    orders_this_month.filter(on_platform=True)
+                ),
+                "gross_profit_off_platform_this_month": _sum_gross_profit(
+                    orders_this_month.filter(on_platform=False)
+                ),
                 "recent_activity": activity,
             }
         )

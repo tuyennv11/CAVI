@@ -3,12 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api";
 import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
+import { formatMoney, PARTNER_TYPE_LABEL, TIER_LABEL } from "../constants";
 
-const EMPTY_FORM = { name: "", company: "", phone: "", email: "", address: "" };
+const EMPTY_FORM = {
+  name: "",
+  company: "",
+  phone: "",
+  email: "",
+  address: "",
+  partner_type: "customer",
+  tier: "standard",
+};
 
-export default function CustomerList() {
+export default function PartnerList() {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -20,8 +29,8 @@ export default function CustomerList() {
     setLoading(true);
     try {
       const params = q ? `?search=${encodeURIComponent(q)}` : "";
-      const data = await apiFetch(`/api/customers/${params}`);
-      setCustomers(data.results ?? data);
+      const data = await apiFetch(`/api/partners/${params}`);
+      setPartners(data.results ?? data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -43,7 +52,7 @@ export default function CustomerList() {
     setError("");
     setSaving(true);
     try {
-      await apiFetch("/api/customers/", { method: "POST", body: JSON.stringify(form) });
+      await apiFetch("/api/partners/", { method: "POST", body: JSON.stringify(form) });
       setForm(EMPTY_FORM);
       setShowNew(false);
       load(search);
@@ -58,10 +67,10 @@ export default function CustomerList() {
     <div>
       <div className="page-head">
         <div>
-          <h1>Khách hàng</h1>
-          <div className="page-head-sub">{customers.length} khách hàng đang quản lý</div>
+          <h1>Đối tác</h1>
+          <div className="page-head-sub">{partners.length} đối tác đang quản lý</div>
         </div>
-        <button onClick={() => setShowNew(true)}>+ Thêm khách hàng</button>
+        <button onClick={() => setShowNew(true)}>+ Thêm đối tác</button>
       </div>
 
       <div className="toolbar">
@@ -82,51 +91,82 @@ export default function CustomerList() {
 
       {loading ? (
         <p className="muted">Đang tải...</p>
-      ) : customers.length === 0 ? (
+      ) : partners.length === 0 ? (
         <div className="panel">
-          <p className="muted">Chưa có khách hàng nào.</p>
+          <p className="muted">Chưa có đối tác nào.</p>
         </div>
       ) : (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Khách hàng</th>
-                <th>Điện thoại</th>
+                <th>Đối tác</th>
+                <th>Loại</th>
+                <th>Hạng</th>
+                <th>Công nợ</th>
                 <th>Phụ trách</th>
-                <th>Đơn hàng</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
-                <tr key={c.id} className="clickable" onClick={() => navigate(`/customers/${c.id}`)}>
-                  <td>
-                    <div className="row-name">
-                      <Avatar name={c.name} />
-                      <div>
-                        <div>{c.name}</div>
-                        {c.company && <div className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>{c.company}</div>}
+              {partners.map((p) => {
+                const overLimit = Number(p.debt) > Number(p.credit_limit);
+                return (
+                  <tr key={p.id} className="clickable" onClick={() => navigate(`/partners/${p.id}`)}>
+                    <td>
+                      <div className="row-name">
+                        <Avatar name={p.name} />
+                        <div>
+                          <div>{p.name}</div>
+                          {p.company && (
+                            <div className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>
+                              {p.company}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td>{c.phone || "—"}</td>
-                  <td>{c.assigned_to_detail?.username ?? "—"}</td>
-                  <td>
-                    <span className="badge badge-neutral">{c.order_count}</span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <span className="badge badge-neutral">{PARTNER_TYPE_LABEL[p.partner_type]}</span>
+                    </td>
+                    <td>
+                      <span className={`badge badge-tier-${p.tier}`}>{TIER_LABEL[p.tier]}</span>
+                    </td>
+                    <td className={overLimit ? "error" : ""}>{formatMoney(p.debt)}</td>
+                    <td>{p.assigned_to_detail?.username ?? "—"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
       {showNew && (
-        <Modal title="Thêm khách hàng" onClose={() => setShowNew(false)}>
+        <Modal title="Thêm đối tác" onClose={() => setShowNew(false)}>
           <form className="field-grid" onSubmit={handleCreate}>
             <label>
-              Tên khách hàng *
+              Tên *
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </label>
+            <label>
+              Loại đối tác
+              <select value={form.partner_type} onChange={(e) => setForm({ ...form, partner_type: e.target.value })}>
+                {Object.entries(PARTNER_TYPE_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Hạng
+              <select value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })}>
+                {Object.entries(TIER_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Công ty
@@ -150,7 +190,7 @@ export default function CustomerList() {
                 Huỷ
               </button>
               <button type="submit" disabled={saving}>
-                {saving ? "Đang lưu..." : "Lưu khách hàng"}
+                {saving ? "Đang lưu..." : "Lưu đối tác"}
               </button>
             </div>
           </form>

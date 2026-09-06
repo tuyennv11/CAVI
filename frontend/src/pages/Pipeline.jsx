@@ -94,9 +94,10 @@ export default function Pipeline() {
                           >
                             <div className="kc-id">#{o.id}</div>
                             <div className="kc-customer">
-                              <Link to={`/customers/${o.customer}`}>{o.customer_name}</Link>
+                              <Link to={`/partners/${o.customer}`}>{o.customer_name}</Link>
                             </div>
                             <div className="kc-total">{Number(o.total).toLocaleString("vi-VN")} đ</div>
+                            <div className="kc-total muted">LN gộp: {Number(o.gross_profit).toLocaleString("vi-VN")} đ</div>
                           </div>
                         )}
                       </Draggable>

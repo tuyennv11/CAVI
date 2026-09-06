@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api";
-
-function formatMoney(v) {
-  return Number(v).toLocaleString("vi-VN") + " đ";
-}
+import { formatMoney } from "../constants";
 
 function timeAgo(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -38,11 +35,11 @@ export default function Dashboard() {
 
       <div className="stat-grid">
         <div className="stat-card">
-          <span className="label">Tổng khách hàng</span>
+          <span className="label">Tổng đối tác</span>
           <span className="value">{stats.total_customers}</span>
         </div>
         <div className="stat-card">
-          <span className="label">Khách mới tuần này</span>
+          <span className="label">Mới tuần này</span>
           <span className="value">{stats.new_customers_week}</span>
           {stats.new_customers_week > 0 && <span className="delta">+{stats.new_customers_week} tuần này</span>}
         </div>
@@ -53,6 +50,22 @@ export default function Dashboard() {
         <div className="stat-card">
           <span className="label">Doanh thu tháng này</span>
           <span className="value">{formatMoney(stats.revenue_this_month)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="label">Tổng doanh thu</span>
+          <span className="value">{formatMoney(stats.total_revenue_all_time)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="label">LN gộp tháng này</span>
+          <span className="value">{formatMoney(stats.gross_profit_this_month)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="label">LN gộp trên sàn</span>
+          <span className="value">{formatMoney(stats.gross_profit_on_platform_this_month)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="label">LN gộp dưới sàn</span>
+          <span className="value">{formatMoney(stats.gross_profit_off_platform_this_month)}</span>
         </div>
       </div>
 
