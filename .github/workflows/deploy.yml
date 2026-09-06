@@ -19,4 +19,5 @@ jobs:
             cd /root/crm
             git pull origin main
             docker compose up -d --build
-            docker compose exec -T backend python manage.py migrate --noinput
+            # migrate đã chạy sẵn trong lệnh khởi động của container backend (docker-compose.yml) —
+            # gọi lại ở đây từng gây tranh chấp tạo bảng (race condition) khi container mới khởi động cùng lúc.
