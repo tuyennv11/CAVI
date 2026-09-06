@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ContactLog, Order, OrderItem, Partner, TierUpgradeRequest
+from .models import ContactLog, Notice, Order, OrderItem, Partner, TierUpgradeRequest
 
 
 class ContactLogInline(admin.TabularInline):
@@ -33,3 +33,8 @@ class OrderAdmin(admin.ModelAdmin):
 class TierUpgradeRequestAdmin(admin.ModelAdmin):
     list_display = ("partner", "requested_tier", "status", "requested_by", "reviewed_by", "created_at")
     list_filter = ("status", "requested_tier")
+
+
+@admin.register(Notice)
+class NoticeAdmin(admin.ModelAdmin):
+    list_display = ("code", "title", "created_by", "created_at")

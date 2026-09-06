@@ -13,9 +13,15 @@ from accounts.roles import is_manager
 
 from rest_framework.exceptions import PermissionDenied
 
-from .models import ContactLog, Order, Partner, TierUpgradeRequest
+from .models import ContactLog, Notice, Order, Partner, TierUpgradeRequest
 from .permissions import IsManagerOrAssignedSales
-from .serializers import ContactLogSerializer, OrderSerializer, PartnerSerializer, TierUpgradeRequestSerializer
+from .serializers import (
+    ContactLogSerializer,
+    NoticeSerializer,
+    OrderSerializer,
+    PartnerSerializer,
+    TierUpgradeRequestSerializer,
+)
 
 MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
 
@@ -122,6 +128,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         if is_manager(self.request.user):
             return qs
         return qs.filter(customer__assigned_to=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class NoticeViewSet(viewsets.ModelViewSet):
+    """Thông báo nội bộ — ai cũng xem được, chỉ Quản lý được đăng/sửa/xoá."""
+
+    serializer_class = NoticeSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Notice.objects.select_related("created_by").all()
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if request.method not in ("GET", "HEAD", "OPTIONS") and not is_manager(request.user):
+            raise PermissionDenied("Chỉ Quản lý mới đăng được thông báo nội bộ.")
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

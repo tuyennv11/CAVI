@@ -3,6 +3,7 @@ import { useAuth } from "../AuthContext";
 
 function titleFor(pathname) {
   if (pathname === "/") return "Dashboard";
+  if (pathname === "/notices") return "Thông báo nội bộ";
   if (pathname === "/partners") return "Đối tác";
   if (pathname.startsWith("/partners/")) return "Chi tiết đối tác";
   if (pathname === "/pipeline") return "Pipeline bán hàng";

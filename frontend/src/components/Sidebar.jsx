@@ -28,6 +28,12 @@ const ICONS = {
       <path d="M10 3l2 4 4.4.6-3.2 3 .8 4.4L10 13l-4 2 .8-4.4-3.2-3L8 7z" strokeLinejoin="round" />
     </svg>
   ),
+  notices: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M3 9l13-5v11L3 11z" strokeLinejoin="round" />
+      <path d="M6 11v3.5a1.5 1.5 0 0 0 3 0V12" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 export default function Sidebar({ user }) {
@@ -41,6 +47,10 @@ export default function Sidebar({ user }) {
         <NavLink to="/" end className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
           {ICONS.dashboard}
           Dashboard
+        </NavLink>
+        <NavLink to="/notices" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
+          {ICONS.notices}
+          Thông báo nội bộ
         </NavLink>
         <NavLink to="/partners" className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}>
           {ICONS.customers}

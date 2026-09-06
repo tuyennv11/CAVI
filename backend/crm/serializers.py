@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import ContactLog, Order, OrderItem, Partner, TierUpgradeRequest
+from .models import ContactLog, Notice, Order, OrderItem, Partner, TierUpgradeRequest
 
 User = get_user_model()
 
@@ -86,6 +86,15 @@ class TierUpgradeRequestSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["requested_by", "status", "reviewed_by", "reviewed_at", "created_at"]
+
+
+class NoticeSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+
+    class Meta:
+        model = Notice
+        fields = ["id", "code", "title", "body", "created_by", "created_by_name", "created_at"]
+        read_only_fields = ["created_by", "created_at"]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

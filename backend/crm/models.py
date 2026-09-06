@@ -175,3 +175,17 @@ class OrderItem(models.Model):
     @property
     def line_profit(self):
         return self.quantity * (self.unit_price - self.unit_cost)
+
+
+class Notice(models.Model):
+    code = models.CharField("Số hiệu", max_length=50, blank=True)
+    title = models.CharField("Tiêu đề", max_length=255)
+    body = models.TextField("Nội dung", blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
