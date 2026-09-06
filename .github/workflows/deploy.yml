@@ -16,7 +16,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd /root/crm
             git pull origin main
             docker compose up -d --build
             docker compose exec -T backend python manage.py migrate --noinput
