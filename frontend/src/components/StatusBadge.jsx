@@ -6,6 +6,8 @@ const LABEL = {
   not_processed: "Chưa xử lý",
   in_progress: "Đang xử lý",
   todo: "Cần làm",
+  open: "Đang hỏi giá",
+  quoted: "Đã chốt giá",
 };
 
 export default function StatusBadge({ status }) {

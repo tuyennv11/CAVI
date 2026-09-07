@@ -233,6 +233,54 @@ class Activity(models.Model):
         return f"{self.get_activity_type_display()}: {self.title}"
 
 
+class PriceInquiry(models.Model):
+    """Hỏi giá — Kinh doanh mô tả lô hàng, Cung ứng trao đổi rồi chốt giá theo form riêng."""
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Đang hỏi giá"
+        QUOTED = "quoted", "Đã chốt giá"
+        CANCELLED = "cancelled", "Huỷ"
+
+    customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="price_inquiries")
+    description = models.TextField("Mô tả", blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    cost_price = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
+    floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)
+    ceiling_price = models.DecimalField("Giá trần", max_digits=14, decimal_places=2, null=True, blank=True)
+    quoted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người chốt giá", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+"
+    )
+    quoted_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "Price inquiries"
+
+    def __str__(self):
+        return f"Hỏi giá #{self.pk} — {self.customer}"
+
+
+class PriceInquiryMessage(models.Model):
+    """Trao đổi qua lại giữa Kinh doanh và Cung ứng trong một yêu cầu hỏi giá."""
+
+    inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="messages")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    content = models.TextField()
+    # Đánh dấu tin nhắn hệ thống tự sinh khi chốt giá, để hiển thị khác trong luồng trao đổi.
+    is_quote = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.author} — {self.content[:40]}"
+
+
 class Task(models.Model):
     """Công việc — có thể tạo độc lập, từ một Hoạt động khách hàng, hoặc từ Chat."""
 

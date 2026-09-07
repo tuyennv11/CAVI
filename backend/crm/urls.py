@@ -7,6 +7,7 @@ from .views import (
     NoticeViewSet,
     OrderViewSet,
     PartnerViewSet,
+    PriceInquiryViewSet,
     TaskViewSet,
     TierUpgradeRequestViewSet,
 )
@@ -17,6 +18,7 @@ router.register("partners", PartnerViewSet, basename="partner")
 router.register("orders", OrderViewSet, basename="order")
 router.register("activities", ActivityViewSet, basename="activity")
 router.register("tasks", TaskViewSet, basename="task")
+router.register("price-inquiries", PriceInquiryViewSet, basename="price-inquiry")
 router.register("tier-requests", TierUpgradeRequestViewSet, basename="tier-request")
 router.register("notices", NoticeViewSet, basename="notice")
 

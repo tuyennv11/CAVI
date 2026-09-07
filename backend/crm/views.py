@@ -12,15 +12,17 @@ from rest_framework.views import APIView
 
 from accounts.roles import is_manager
 
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from .models import Activity, Notice, Order, Partner, Task, TierUpgradeRequest
+from .models import Activity, Notice, Order, Partner, PriceInquiry, Task, TierUpgradeRequest
 from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales
 from .serializers import (
     ActivitySerializer,
     NoticeSerializer,
     OrderSerializer,
     PartnerSerializer,
+    PriceInquiryMessageSerializer,
+    PriceInquirySerializer,
     TaskSerializer,
     TierUpgradeRequestSerializer,
 )
@@ -169,6 +171,55 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+class PriceInquiryViewSet(viewsets.ModelViewSet):
+    serializer_class = PriceInquirySerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["customer", "status"]
+
+    def get_queryset(self):
+        qs = PriceInquiry.objects.select_related("customer", "created_by", "quoted_by").prefetch_related(
+            "messages__author"
+        )
+        if is_manager(self.request.user):
+            return qs
+        return qs.filter(customer__assigned_to=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["get", "post"], url_path="messages")
+    def messages(self, request, pk=None):
+        inquiry = self.get_object()
+        if request.method == "GET":
+            return Response(PriceInquiryMessageSerializer(inquiry.messages.all(), many=True).data)
+        serializer = PriceInquiryMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(inquiry=inquiry, author=request.user)
+        return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=["post"], url_path="quote")
+    def quote(self, request, pk=None):
+        inquiry = self.get_object()
+        cost = request.data.get("cost_price")
+        floor = request.data.get("floor_price")
+        ceiling = request.data.get("ceiling_price")
+        if not (cost and floor and ceiling):
+            raise ValidationError("Cần nhập đủ Giá vốn, Giá sàn, Giá trần.")
+        inquiry.cost_price = cost
+        inquiry.floor_price = floor
+        inquiry.ceiling_price = ceiling
+        inquiry.status = PriceInquiry.Status.QUOTED
+        inquiry.quoted_by = request.user
+        inquiry.quoted_at = timezone.now()
+        inquiry.save()
+        inquiry.messages.create(
+            author=request.user,
+            is_quote=True,
+            content=f"📌 Đã chốt giá — Giá vốn: {cost} · Giá sàn: {floor} · Giá trần: {ceiling}",
+        )
+        return Response(PriceInquirySerializer(inquiry).data)
 
 
 class TierUpgradeRequestViewSet(viewsets.ModelViewSet):

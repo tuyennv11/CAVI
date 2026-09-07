@@ -132,6 +132,23 @@ export const TASK_STATUS_LABEL = {
   cancelled: "Huỷ",
 };
 
+// --- Hỏi giá (Price Inquiry) ---
+export const PRICE_INQUIRY_STATUS_LABEL = {
+  open: "Đang hỏi giá",
+  quoted: "Đã chốt giá",
+  cancelled: "Huỷ",
+};
+
+export const PRICE_INQUIRY_TEMPLATE = `Tên hàng:
+Số lượng: (Kiện / Pallet / Thùng / Bao / Container...)
+Kích thước / Tổng thể tích:
+Cân nặng / Tổng trọng lượng:
+Hình thức vận chuyển: TNV → TNC
+Điểm lấy hàng: Kho CAVI Hóc Môn
+Điểm giao hàng: Kho CAVI Phnom Penh
+Giá trị hàng hóa: Chưa xác định
+Ghi chú: `;
+
 export function formatMoney(v) {
   return Number(v).toLocaleString("vi-VN") + " đ";
 }

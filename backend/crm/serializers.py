@@ -1,7 +1,17 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Activity, Notice, Order, OrderItem, Partner, Task, TierUpgradeRequest
+from .models import (
+    Activity,
+    Notice,
+    Order,
+    OrderItem,
+    Partner,
+    PriceInquiry,
+    PriceInquiryMessage,
+    Task,
+    TierUpgradeRequest,
+)
 
 User = get_user_model()
 
@@ -103,6 +113,54 @@ class TaskSerializer(serializers.ModelSerializer):
         if not validated_data.get("assigned_to"):
             validated_data["assigned_to"] = self.context["request"].user
         return super().create(validated_data)
+
+
+class PriceInquiryMessageSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source="author.username", read_only=True)
+
+    class Meta:
+        model = PriceInquiryMessage
+        fields = ["id", "inquiry", "author", "author_name", "content", "is_quote", "created_at"]
+        read_only_fields = ["inquiry", "author", "is_quote", "created_at"]
+
+
+class PriceInquirySerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    quoted_by_name = serializers.CharField(source="quoted_by.username", read_only=True)
+    customer_name = serializers.CharField(source="customer.name", read_only=True)
+    messages = PriceInquiryMessageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PriceInquiry
+        fields = [
+            "id",
+            "customer",
+            "customer_name",
+            "description",
+            "status",
+            "cost_price",
+            "floor_price",
+            "ceiling_price",
+            "quoted_by",
+            "quoted_by_name",
+            "quoted_at",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+            "messages",
+        ]
+        read_only_fields = [
+            "status",
+            "cost_price",
+            "floor_price",
+            "ceiling_price",
+            "quoted_by",
+            "quoted_at",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class PartnerSerializer(serializers.ModelSerializer):

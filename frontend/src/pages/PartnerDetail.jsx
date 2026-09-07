@@ -9,6 +9,7 @@ import {
   ACTIVITY_TYPE_CATEGORY,
   formatMoney,
   PARTNER_TYPE_LABEL,
+  PRICE_INQUIRY_TEMPLATE,
   TIER_LABEL,
 } from "../constants";
 
@@ -93,6 +94,14 @@ export default function PartnerDetail() {
   const [activityError, setActivityError] = useState("");
   const activityContentRef = useRef(null);
 
+  const [inquiries, setInquiries] = useState([]);
+  const [showNewInquiry, setShowNewInquiry] = useState(false);
+  const [inquiryDescription, setInquiryDescription] = useState(PRICE_INQUIRY_TEMPLATE);
+  const [inquiryError, setInquiryError] = useState("");
+  const [messageDrafts, setMessageDrafts] = useState({});
+  const [openQuoteFor, setOpenQuoteFor] = useState(null);
+  const [quoteForms, setQuoteForms] = useState({});
+
   async function loadAll() {
     try {
       const [p, orderList, requestList] = await Promise.all([
@@ -138,8 +147,18 @@ export default function PartnerDetail() {
     }
   }
 
+  async function loadInquiries() {
+    try {
+      const res = await apiFetch(`/api/price-inquiries/?customer=${id}`);
+      setInquiries(res.results ?? res);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   useEffect(() => {
     loadAll();
+    loadInquiries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -185,6 +204,60 @@ export default function PartnerDetail() {
       loadActivities();
     } catch (err) {
       setActivityError(err.message);
+    }
+  }
+
+  async function handleCreateInquiry(e) {
+    e.preventDefault();
+    setInquiryError("");
+    try {
+      await apiFetch("/api/price-inquiries/", {
+        method: "POST",
+        body: JSON.stringify({ customer: Number(id), description: inquiryDescription }),
+      });
+      setInquiryDescription(PRICE_INQUIRY_TEMPLATE);
+      setShowNewInquiry(false);
+      loadInquiries();
+    } catch (err) {
+      setInquiryError(err.message);
+    }
+  }
+
+  async function handleSendMessage(inquiryId) {
+    const content = (messageDrafts[inquiryId] || "").trim();
+    if (!content) return;
+    try {
+      await apiFetch(`/api/price-inquiries/${inquiryId}/messages/`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+      setMessageDrafts((prev) => ({ ...prev, [inquiryId]: "" }));
+      loadInquiries();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function updateQuoteField(inquiryId, field, value) {
+    setQuoteForms((prev) => ({ ...prev, [inquiryId]: { ...prev[inquiryId], [field]: value } }));
+  }
+
+  async function handleQuote(inquiryId) {
+    const form = quoteForms[inquiryId] || {};
+    if (!form.cost_price || !form.floor_price || !form.ceiling_price) {
+      setError("Cần nhập đủ Giá vốn, Giá sàn, Giá trần.");
+      return;
+    }
+    try {
+      await apiFetch(`/api/price-inquiries/${inquiryId}/quote/`, {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      setQuoteForms((prev) => ({ ...prev, [inquiryId]: {} }));
+      setOpenQuoteFor(null);
+      loadInquiries();
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -289,6 +362,9 @@ export default function PartnerDetail() {
       <div className="tabs">
         <button className={`tab-btn${tab === "activity" ? " active" : ""}`} onClick={() => setTab("activity")}>
           Tương tác
+        </button>
+        <button className={`tab-btn${tab === "inquiries" ? " active" : ""}`} onClick={() => setTab("inquiries")}>
+          Hỏi giá ({inquiries.length})
         </button>
         <button className={`tab-btn${tab === "orders" ? " active" : ""}`} onClick={() => setTab("orders")}>
           Đơn hàng ({orders.length})
@@ -448,6 +524,124 @@ export default function PartnerDetail() {
               </ul>
             )}
           </div>
+        </div>
+      )}
+
+      {tab === "inquiries" && (
+        <div className="panel">
+          <div className="page-head">
+            <h2 style={{ margin: 0 }}>Hỏi giá</h2>
+            <button onClick={() => setShowNewInquiry((v) => !v)}>
+              {showNewInquiry ? "Đóng" : "+ Tạo yêu cầu hỏi giá"}
+            </button>
+          </div>
+
+          {showNewInquiry && (
+            <form className="field-grid" onSubmit={handleCreateInquiry} style={{ marginBottom: 14 }}>
+              <textarea
+                rows={9}
+                value={inquiryDescription}
+                onChange={(e) => setInquiryDescription(e.target.value)}
+              />
+              {inquiryError && <p className="error">{inquiryError}</p>}
+              <div className="modal-actions">
+                <button type="button" className="secondary" onClick={() => setShowNewInquiry(false)}>
+                  Huỷ
+                </button>
+                <button type="submit">Tạo yêu cầu</button>
+              </div>
+            </form>
+          )}
+
+          {inquiries.length === 0 ? (
+            <p className="muted">Chưa có yêu cầu hỏi giá nào.</p>
+          ) : (
+            <div className="inquiry-list">
+              {inquiries.map((inq) => (
+                <div className="inquiry-card" key={inq.id}>
+                  <div className="inquiry-head">
+                    <StatusBadge status={inq.status} />
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      #{inq.id} · {inq.created_by_name} · {formatDateTime(inq.created_at)}
+                    </span>
+                  </div>
+                  <div className="inquiry-description">{inq.description}</div>
+
+                  {inq.status === "quoted" && (
+                    <div className="inquiry-quote-summary">
+                      Giá vốn: <b>{formatMoney(inq.cost_price)}</b> · Giá sàn: <b>{formatMoney(inq.floor_price)}</b> ·
+                      Giá trần: <b>{formatMoney(inq.ceiling_price)}</b>
+                      <span className="muted"> — chốt bởi {inq.quoted_by_name}</span>
+                    </div>
+                  )}
+
+                  {inq.messages.length > 0 && (
+                    <div className="inquiry-thread">
+                      {inq.messages.map((m) => (
+                        <div className={`inquiry-message${m.is_quote ? " quote" : ""}`} key={m.id}>
+                          <b>{m.author_name}</b>
+                          <span className="muted"> · {formatDateTime(m.created_at)}</span>
+                          <div>{m.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="inquiry-reply-row">
+                    <input
+                      placeholder="Trao đổi về báo giá..."
+                      value={messageDrafts[inq.id] || ""}
+                      onChange={(e) => setMessageDrafts((prev) => ({ ...prev, [inq.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSendMessage(inq.id);
+                        }
+                      }}
+                    />
+                    <button type="button" onClick={() => handleSendMessage(inq.id)}>
+                      Gửi
+                    </button>
+                    {inq.status === "open" && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setOpenQuoteFor(openQuoteFor === inq.id ? null : inq.id)}
+                      >
+                        Chốt giá
+                      </button>
+                    )}
+                  </div>
+
+                  {openQuoteFor === inq.id && (
+                    <div className="inquiry-quote-form">
+                      <input
+                        type="number"
+                        placeholder="Giá vốn"
+                        value={quoteForms[inq.id]?.cost_price || ""}
+                        onChange={(e) => updateQuoteField(inq.id, "cost_price", e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Giá sàn"
+                        value={quoteForms[inq.id]?.floor_price || ""}
+                        onChange={(e) => updateQuoteField(inq.id, "floor_price", e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Giá trần"
+                        value={quoteForms[inq.id]?.ceiling_price || ""}
+                        onChange={(e) => updateQuoteField(inq.id, "ceiling_price", e.target.value)}
+                      />
+                      <button type="button" onClick={() => handleQuote(inq.id)}>
+                        Xác nhận chốt giá
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

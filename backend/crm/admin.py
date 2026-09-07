@@ -1,6 +1,17 @@
 from django.contrib import admin
 
-from .models import Activity, KPITarget, Notice, Order, OrderItem, Partner, Task, TierUpgradeRequest
+from .models import (
+    Activity,
+    KPITarget,
+    Notice,
+    Order,
+    OrderItem,
+    Partner,
+    PriceInquiry,
+    PriceInquiryMessage,
+    Task,
+    TierUpgradeRequest,
+)
 
 
 class ActivityInline(admin.TabularInline):
@@ -60,3 +71,16 @@ class TaskAdmin(admin.ModelAdmin):
 class KPITargetAdmin(admin.ModelAdmin):
     list_display = ("user", "year", "month", "revenue_target", "new_customer_target", "quote_target", "order_target", "task_target")
     list_filter = ("year", "month")
+
+
+class PriceInquiryMessageInline(admin.TabularInline):
+    model = PriceInquiryMessage
+    extra = 0
+    readonly_fields = ("author", "created_at")
+
+
+@admin.register(PriceInquiry)
+class PriceInquiryAdmin(admin.ModelAdmin):
+    list_display = ("id", "customer", "status", "cost_price", "floor_price", "ceiling_price", "quoted_by", "created_at")
+    list_filter = ("status",)
+    inlines = [PriceInquiryMessageInline]
