@@ -362,6 +362,13 @@ a:hover { text-decoration: underline; }
   box-shadow: none; transition: background 0.12s ease, border-color 0.12s ease;
 }
 .quick-action-btn:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
+.quick-action-btn.active { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+
+.inline-add-activity {
+  background: var(--surface-muted); border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 18px; margin-bottom: 18px;
+  animation: pop-in 0.14s ease;
+}
 
 .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; align-items: center; }
 .filter-bar select, .filter-bar input[type="date"] { width: auto; min-width: 0; }
