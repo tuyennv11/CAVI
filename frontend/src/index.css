@@ -403,27 +403,31 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Hoạt động khách hàng (Timeline) ---------- */
 .quick-log-bar {
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
   margin-bottom: 8px;
 }
 .quick-log-input {
-  flex: 1; min-width: 220px;
+  flex: 1; min-width: 160px; padding: 7px 10px; font-size: 13px;
 }
-.quick-log-date, .quick-log-time { width: auto; flex: 0 0 auto; }
+.quick-log-date, .quick-log-time {
+  flex: 0 0 auto; padding: 6px 6px; font-size: 12px;
+}
+.quick-log-date { width: 116px; }
+.quick-log-time { width: 98px; }
 .quick-log-group {
-  display: flex; align-items: center; gap: 4px; flex: 0 0 auto;
-  background: var(--surface-muted); border-radius: var(--radius-sm); padding: 3px;
+  display: flex; align-items: center; gap: 3px; flex: 0 0 auto;
+  background: var(--surface-muted); border-radius: var(--radius-sm); padding: 2px;
 }
 .quick-log-group .quick-log-date, .quick-log-group .quick-log-time { background: var(--surface); }
-.quick-log-group-icon { font-size: 13px; padding: 0 2px 0 4px; }
+.quick-log-group-icon { font-size: 12px; padding: 0 1px 0 3px; }
 .quick-log-file {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 38px; height: 38px; flex: 0 0 auto; cursor: pointer;
+  width: 30px; height: 30px; flex: 0 0 auto; cursor: pointer;
   background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-  font-size: 15px;
+  font-size: 13px;
 }
 .quick-log-file:hover { background: var(--surface-muted); }
-.quick-log-submit { flex: 0 0 auto; }
+.quick-log-submit { flex: 0 0 auto; padding: 6px 14px; font-size: 12.5px; }
 
 .inline-add-activity {
   background: var(--surface-muted); border: 1px solid var(--line); border-radius: var(--radius-md);
