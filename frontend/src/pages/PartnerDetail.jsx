@@ -235,7 +235,7 @@ export default function PartnerDetail() {
 
   return (
     <div>
-      <p style={{ marginBottom: 16 }}>
+      <p style={{ marginBottom: 10 }}>
         <Link to="/partners">&larr; Danh sách đối tác</Link>
       </p>
 
@@ -283,7 +283,7 @@ export default function PartnerDetail() {
           )}
 
           {partner.partner_type !== "supplier" && (
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
                 <span className={overLimit ? "error" : "muted"}>
                   Công nợ: <b>{formatMoney(partner.debt)}</b>
@@ -317,7 +317,7 @@ export default function PartnerDetail() {
       {tab === "activity" && (
         <div>
           {summary && (
-            <div className="stat-grid" style={{ marginBottom: 20 }}>
+            <div className="stat-grid">
               <div className="stat-card">
                 <span className="label">Tổng số hoạt động</span>
                 <span className="value">{summary.total_activities}</span>
@@ -336,7 +336,7 @@ export default function PartnerDetail() {
           )}
 
           <div className="panel">
-            <div className="page-head" style={{ marginBottom: 14 }}>
+            <div className="page-head">
               <h2 style={{ margin: 0 }}>Lịch sử tương tác</h2>
             </div>
 
@@ -491,7 +491,7 @@ export default function PartnerDetail() {
           </div>
 
           {showNewOrder && (
-            <form className="field-grid" onSubmit={handleCreateOrder} style={{ marginBottom: 18 }}>
+            <form className="field-grid" onSubmit={handleCreateOrder} style={{ marginBottom: 12 }}>
               {items.map((it, i) => (
                 <div className="order-item-row" style={{ gridTemplateColumns: "1fr 70px 110px 110px" }} key={i}>
                   <input
