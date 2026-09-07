@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework import viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -128,14 +128,27 @@ class PartnerViewSet(viewsets.ModelViewSet):
             {
                 "total_activities": acts.count(),
                 "last_activity_at": last.activity_at if last else None,
-                "upcoming_follow_ups": acts.filter(follow_up_date__isnull=False, follow_up_date__gte=today)
-                .exclude(status__in=[Activity.Status.DONE, Activity.Status.CANCELLED])
-                .count(),
+                "upcoming_follow_ups": acts.filter(
+                    follow_up_date__isnull=False, follow_up_date__gte=today, follow_up_done=False
+                ).count(),
                 "unfinished_tasks": acts.filter(activity_type__in=TASK_LIKE_TYPES)
                 .filter(status__in=OPEN_STATUSES)
                 .count(),
             }
         )
+
+
+class ActivityViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """Chỉ hỗ trợ cập nhật (vd đánh dấu đã nhắc follow-up) — tạo/xem hoạt động đi qua PartnerViewSet.activities."""
+
+    serializer_class = ActivitySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Activity.objects.select_related("customer", "performed_by", "assigned_to").all()
+        if is_manager(self.request.user):
+            return qs
+        return qs.filter(Q(assigned_to=self.request.user) | Q(customer__assigned_to=self.request.user)).distinct()
 
 
 class TaskViewSet(viewsets.ModelViewSet):

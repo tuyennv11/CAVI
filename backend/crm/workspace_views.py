@@ -58,8 +58,8 @@ class WorkspaceTodayView(APIView):
 
         my_activities = Activity.objects.filter(Q(performed_by=user) | Q(assigned_to=user)).distinct()
         follow_ups_due = my_activities.filter(
-            follow_up_date__isnull=False, follow_up_date__lte=today
-        ).exclude(status__in=[Activity.Status.DONE, Activity.Status.CANCELLED]).order_by("follow_up_date")
+            follow_up_date__isnull=False, follow_up_date__lte=today, follow_up_done=False
+        ).order_by("follow_up_date")
         appointments_today = my_activities.filter(
             activity_type__in=[Activity.ActivityType.MEETING, Activity.ActivityType.APPOINTMENT],
             activity_at__date=today,

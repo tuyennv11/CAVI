@@ -209,6 +209,9 @@ class Activity(models.Model):
     result = models.TextField("Kết quả", blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
     follow_up_date = models.DateField("Ngày cần follow-up", null=True, blank=True)
+    # Tách riêng khỏi `status` — trạng thái hoạt động gốc (vd cuộc gọi đã "Hoàn thành") không
+    # đồng nghĩa với việc đã nhắc/xử lý xong follow-up gắn với nó.
+    follow_up_done = models.BooleanField("Đã nhắc follow-up", default=False)
     note = models.TextField("Ghi chú", blank=True)
     attachment = models.FileField("File đính kèm", upload_to="activities/%Y/%m/", null=True, blank=True)
     related_order = models.ForeignKey(

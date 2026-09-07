@@ -7,7 +7,6 @@ import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import {
   ACTIVITY_STATUS_LABEL,
-  ACTIVITY_TASK_LIKE_TYPES,
   ACTIVITY_TYPE_CATEGORY,
   ACTIVITY_TYPE_GROUPS,
   ACTIVITY_TYPE_LABEL,
@@ -43,6 +42,19 @@ const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
+
+function addDaysStr(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const FOLLOW_UP_PRESETS = [
+  { label: "Ngày mai", days: 1 },
+  { label: "3 ngày tới", days: 3 },
+  { label: "Tuần sau", days: 7 },
+  { label: "2 tuần tới", days: 14 },
+];
 
 const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 };
 const TIER_ORDER = ["standard", "vip", "super_vip"];
@@ -132,6 +144,18 @@ export default function PartnerDetail() {
       ]);
       setActivities(list);
       setSummary(sum);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function markFollowUpDone(activityId) {
+    try {
+      await apiFetch(`/api/activities/${activityId}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ follow_up_done: true }),
+      });
+      loadActivities();
     } catch (err) {
       setError(err.message);
     }
@@ -238,7 +262,6 @@ export default function PartnerDetail() {
   const debtRatio = partner.credit_limit > 0 ? Math.min(100, (partner.debt / partner.credit_limit) * 100) : 0;
   const pendingRequest = tierRequests.find((r) => r.status === "pending");
   const higherTiers = TIER_ORDER.slice(TIER_ORDER.indexOf(partner.tier) + 1);
-  const isTaskLike = ACTIVITY_TASK_LIKE_TYPES.includes(activityForm.activity_type);
 
   return (
     <div>
@@ -471,32 +494,51 @@ export default function PartnerDetail() {
                     onChange={(e) => updateActivityField("result", e.target.value)}
                   />
                 </label>
-                <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                  <label>
-                    Trạng thái
-                    <select
-                      value={activityForm.status}
-                      onChange={(e) => updateActivityField("status", e.target.value)}
-                    >
-                      <option value="">Tự động theo loại</option>
-                      {Object.entries(ACTIVITY_STATUS_LABEL).map(([v, l]) => (
-                        <option key={v} value={v}>
-                          {l}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {isTaskLike && (
-                    <label>
-                      Ngày cần follow-up
-                      <input
-                        type="date"
-                        value={activityForm.follow_up_date}
-                        onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
-                      />
-                    </label>
-                  )}
-                </div>
+                <label>
+                  Trạng thái
+                  <select
+                    value={activityForm.status}
+                    onChange={(e) => updateActivityField("status", e.target.value)}
+                  >
+                    <option value="">Tự động theo loại</option>
+                    {Object.entries(ACTIVITY_STATUS_LABEL).map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  🔔 Hẹn nhắc lại
+                  <div className="followup-picker">
+                    {FOLLOW_UP_PRESETS.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        className={`followup-preset-btn${
+                          activityForm.follow_up_date === addDaysStr(p.days) ? " active" : ""
+                        }`}
+                        onClick={() => updateActivityField("follow_up_date", addDaysStr(p.days))}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                    <input
+                      type="date"
+                      value={activityForm.follow_up_date}
+                      onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
+                    />
+                    {activityForm.follow_up_date && (
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() => updateActivityField("follow_up_date", "")}
+                      >
+                        Bỏ hẹn
+                      </button>
+                    )}
+                  </div>
+                </label>
                 <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
                   <label>
                     Đơn hàng liên quan
@@ -622,11 +664,7 @@ export default function PartnerDetail() {
               <ul className="timeline">
                 {activities.map((a) => {
                   const category = ACTIVITY_TYPE_CATEGORY[a.activity_type] ?? "interaction";
-                  const overdue =
-                    a.follow_up_date &&
-                    a.follow_up_date < todayStr() &&
-                    a.status !== "done" &&
-                    a.status !== "cancelled";
+                  const overdue = a.follow_up_date && a.follow_up_date < todayStr() && !a.follow_up_done;
                   return (
                     <li className="timeline-item" key={a.id}>
                       <div className="timeline-marker">
@@ -654,10 +692,24 @@ export default function PartnerDetail() {
                         <div className="timeline-tags">
                           <StatusBadge status={a.status} />
                           {a.follow_up_date && (
-                            <span className={`timeline-followup${overdue ? " overdue" : ""}`}>
-                              Follow-up {new Date(a.follow_up_date).toLocaleDateString("vi-VN")}
+                            <span
+                              className={`timeline-followup${overdue ? " overdue" : ""}${
+                                a.follow_up_done ? " done" : ""
+                              }`}
+                            >
+                              🔔 Follow-up {new Date(a.follow_up_date).toLocaleDateString("vi-VN")}
                               {overdue ? " (quá hạn)" : ""}
+                              {a.follow_up_done ? " ✓ đã nhắc" : ""}
                             </span>
+                          )}
+                          {a.follow_up_date && !a.follow_up_done && (
+                            <button
+                              type="button"
+                              className="link-btn timeline-link"
+                              onClick={() => markFollowUpDone(a.id)}
+                            >
+                              Đánh dấu đã nhắc
+                            </button>
                           )}
                           {a.related_order_label && (
                             <button type="button" className="link-btn timeline-link" onClick={() => setTab("orders")}>

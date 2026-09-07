@@ -1,12 +1,21 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import DashboardStatsView, NoticeViewSet, OrderViewSet, PartnerViewSet, TaskViewSet, TierUpgradeRequestViewSet
+from .views import (
+    ActivityViewSet,
+    DashboardStatsView,
+    NoticeViewSet,
+    OrderViewSet,
+    PartnerViewSet,
+    TaskViewSet,
+    TierUpgradeRequestViewSet,
+)
 from .workspace_views import WorkspaceKPIView, WorkspaceRankingView, WorkspaceTodayView
 
 router = DefaultRouter()
 router.register("partners", PartnerViewSet, basename="partner")
 router.register("orders", OrderViewSet, basename="order")
+router.register("activities", ActivityViewSet, basename="activity")
 router.register("tasks", TaskViewSet, basename="task")
 router.register("tier-requests", TierUpgradeRequestViewSet, basename="tier-request")
 router.register("notices", NoticeViewSet, basename="notice")
