@@ -26,24 +26,41 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <form className="login-card" onSubmit={handleSubmit}>
-        <div className="brand-row">
-          <img src="/logo.jpg" alt="CAVI" className="mark-logo" />
-          <h1>Đăng nhập</h1>
+      <div className="login-visual">
+        <div className="brand">
+          <img src="/logo.jpg" alt="CAVI" />
+          <span>CAVI</span>
         </div>
-        <label>
-          Tên đăng nhập
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
-        </label>
-        <label>
-          Mật khẩu
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
-        </button>
-      </form>
+        <div className="pitch">
+          <h2>Vận hành toàn bộ công ty trên một nền tảng.</h2>
+          <p>
+            Đối tác, đơn hàng, ký duyệt, vận hành, chấm công — quản lý xuyên suốt cho đội ngũ vận tải
+            Việt Nam · Campuchia · Lào.
+          </p>
+        </div>
+        <div className="foot">© {new Date().getFullYear()} CAVI</div>
+      </div>
+
+      <div className="login-form-side">
+        <form className="login-card" onSubmit={handleSubmit}>
+          <div>
+            <h1>Đăng nhập</h1>
+            <p className="subtitle">Nhập tài khoản nội bộ để tiếp tục</p>
+          </div>
+          <label>
+            Tên đăng nhập
+            <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
+          </label>
+          <label>
+            Mật khẩu
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </label>
+          {error && <p className="error">{error}</p>}
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
