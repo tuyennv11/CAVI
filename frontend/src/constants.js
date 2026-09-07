@@ -103,6 +103,21 @@ export const ACTIVITY_STATUS_LABEL = {
   cancelled: "Huỷ",
 };
 
+// --- Công việc (Task) ---
+export const TASK_PRIORITY_LABEL = {
+  low: "Thấp",
+  normal: "Bình thường",
+  high: "Cao",
+  urgent: "Khẩn cấp",
+};
+
+export const TASK_STATUS_LABEL = {
+  todo: "Cần làm",
+  in_progress: "Đang làm",
+  done: "Hoàn thành",
+  cancelled: "Huỷ",
+};
+
 export function formatMoney(v) {
   return Number(v).toLocaleString("vi-VN") + " đ";
 }

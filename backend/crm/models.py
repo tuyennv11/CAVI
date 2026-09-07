@@ -228,6 +228,80 @@ class Activity(models.Model):
         return f"{self.get_activity_type_display()}: {self.title}"
 
 
+class Task(models.Model):
+    """Công việc — có thể tạo độc lập, từ một Hoạt động khách hàng, hoặc từ Chat."""
+
+    class Priority(models.TextChoices):
+        LOW = "low", "Thấp"
+        NORMAL = "normal", "Bình thường"
+        HIGH = "high", "Cao"
+        URGENT = "urgent", "Khẩn cấp"
+
+    class Status(models.TextChoices):
+        TODO = "todo", "Cần làm"
+        IN_PROGRESS = "in_progress", "Đang làm"
+        DONE = "done", "Hoàn thành"
+        CANCELLED = "cancelled", "Huỷ"
+
+    title = models.CharField("Tên công việc", max_length=255)
+    content = models.TextField("Nội dung", blank=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người phụ trách", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="tasks"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người giao", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    partner = models.ForeignKey(
+        Partner, verbose_name="Khách hàng/đối tác liên quan", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="tasks"
+    )
+    related_activity = models.ForeignKey(
+        Activity, verbose_name="Hoạt động liên quan", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="tasks"
+    )
+    due_at = models.DateTimeField("Hạn hoàn thành", null=True, blank=True)
+    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
+    attachment = models.FileField("File liên quan", upload_to="tasks/%Y/%m/", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["due_at", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_overdue(self):
+        return (
+            bool(self.due_at)
+            and self.due_at < timezone.now()
+            and self.status not in (self.Status.DONE, self.Status.CANCELLED)
+        )
+
+
+class KPITarget(models.Model):
+    """Chỉ tiêu KPI tháng của một nhân viên — hiện tại cấu hình qua trang Admin (do Quản lý đặt)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="kpi_targets")
+    year = models.IntegerField()
+    month = models.IntegerField()
+    revenue_target = models.DecimalField("Chỉ tiêu doanh thu", max_digits=16, decimal_places=2, default=0)
+    new_customer_target = models.IntegerField("Chỉ tiêu khách hàng mới", default=0)
+    quote_target = models.IntegerField("Chỉ tiêu báo giá", default=0)
+    order_target = models.IntegerField("Chỉ tiêu đơn hàng", default=0)
+    task_target = models.IntegerField("Chỉ tiêu công việc hoàn thành", default=0)
+
+    class Meta:
+        ordering = ["-year", "-month"]
+        unique_together = ["user", "year", "month"]
+
+    def __str__(self):
+        return f"KPI {self.user} — {self.month:02d}/{self.year}"
+
+
 class Notice(models.Model):
     code = models.CharField("Số hiệu", max_length=50, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)

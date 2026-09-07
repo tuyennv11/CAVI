@@ -2,7 +2,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 
 function titleFor(pathname) {
-  if (pathname === "/") return "Dashboard";
+  if (pathname === "/") return "Làm việc";
+  if (pathname === "/dashboard") return "Dashboard";
   if (pathname === "/notices") return "Thông báo nội bộ";
   if (pathname === "/partners") return "Đối tác";
   if (pathname.startsWith("/partners/")) return "Chi tiết đối tác";

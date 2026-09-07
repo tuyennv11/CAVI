@@ -2,6 +2,13 @@ import { NavLink } from "react-router-dom";
 import Avatar from "./Avatar";
 
 const ICONS = {
+  workspace: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M6 3.5v2M14 3.5v2M3 7h14" strokeLinecap="round" />
+      <rect x="3" y="4.5" width="14" height="12" rx="1.6" />
+      <path d="M6.5 10.5l2 2 4.5-4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
   dashboard: (
     <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.2" />
@@ -84,7 +91,10 @@ export default function Sidebar({ user }) {
         CAVI
       </div>
       <nav className="sidebar-nav">
-        <NavItem to="/" end icon={ICONS.dashboard}>
+        <NavItem to="/" end icon={ICONS.workspace}>
+          Làm việc
+        </NavItem>
+        <NavItem to="/dashboard" icon={ICONS.dashboard}>
           Dashboard
         </NavItem>
         <NavItem to="/notices" icon={ICONS.notices}>

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Activity, Notice, Order, OrderItem, Partner, TierUpgradeRequest
+from .models import Activity, Notice, Order, OrderItem, Partner, Task, TierUpgradeRequest
 
 User = get_user_model()
 
@@ -16,6 +16,7 @@ class ActivitySerializer(serializers.ModelSerializer):
     performed_by_name = serializers.CharField(source="performed_by.username", read_only=True)
     assigned_to_name = serializers.CharField(source="assigned_to.username", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    customer_name = serializers.CharField(source="customer.name", read_only=True)
     related_order_label = serializers.SerializerMethodField()
 
     class Meta:
@@ -23,6 +24,7 @@ class ActivitySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "customer",
+            "customer_name",
             "activity_type",
             "title",
             "activity_at",
@@ -56,6 +58,41 @@ class ActivitySerializer(serializers.ModelSerializer):
         if "status" not in self.initial_data:
             is_historical = validated_data.get("activity_type") in Activity.HISTORICAL_TYPES
             validated_data["status"] = Activity.Status.DONE if is_historical else Activity.Status.NOT_PROCESSED
+        return super().create(validated_data)
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    assigned_to_name = serializers.CharField(source="assigned_to.username", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    partner_name = serializers.CharField(source="partner.name", read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "content",
+            "assigned_to",
+            "assigned_to_name",
+            "created_by",
+            "created_by_name",
+            "partner",
+            "partner_name",
+            "related_activity",
+            "due_at",
+            "priority",
+            "status",
+            "attachment",
+            "is_overdue",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_by", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        if not validated_data.get("assigned_to"):
+            validated_data["assigned_to"] = self.context["request"].user
         return super().create(validated_data)
 
 

@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import ShipmentBatches from "./pages/ShipmentBatches";
 import Shipments from "./pages/Shipments";
 import TierRequests from "./pages/TierRequests";
+import Workspace from "./pages/Workspace";
 
 export default function App() {
   return (
@@ -20,7 +21,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Workspace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/notices" element={<Notices />} />
           <Route path="/partners" element={<PartnerList />} />
           <Route path="/partners/:id" element={<PartnerDetail />} />

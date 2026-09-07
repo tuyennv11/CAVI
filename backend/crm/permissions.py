@@ -20,3 +20,12 @@ class IsManagerOrAssignedSales(permissions.BasePermission):
         else:
             partner = obj.partner
         return partner.assigned_to_id == request.user.id
+
+
+class IsAssignedOrCreatorOrManager(permissions.BasePermission):
+    """Công việc: Quản lý xem hết; nhân viên chỉ xem việc mình phụ trách hoặc mình giao."""
+
+    def has_object_permission(self, request, view, obj):
+        if is_manager(request.user):
+            return True
+        return obj.assigned_to_id == request.user.id or obj.created_by_id == request.user.id

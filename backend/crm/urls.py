@@ -1,14 +1,19 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import DashboardStatsView, NoticeViewSet, OrderViewSet, PartnerViewSet, TierUpgradeRequestViewSet
+from .views import DashboardStatsView, NoticeViewSet, OrderViewSet, PartnerViewSet, TaskViewSet, TierUpgradeRequestViewSet
+from .workspace_views import WorkspaceKPIView, WorkspaceRankingView, WorkspaceTodayView
 
 router = DefaultRouter()
 router.register("partners", PartnerViewSet, basename="partner")
 router.register("orders", OrderViewSet, basename="order")
+router.register("tasks", TaskViewSet, basename="task")
 router.register("tier-requests", TierUpgradeRequestViewSet, basename="tier-request")
 router.register("notices", NoticeViewSet, basename="notice")
 
 urlpatterns = [
     path("dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
+    path("workspace/today/", WorkspaceTodayView.as_view(), name="workspace-today"),
+    path("workspace/kpi/", WorkspaceKPIView.as_view(), name="workspace-kpi"),
+    path("workspace/ranking/", WorkspaceRankingView.as_view(), name="workspace-ranking"),
 ] + router.urls

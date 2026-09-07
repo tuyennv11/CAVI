@@ -13,13 +13,14 @@ from accounts.roles import is_manager
 
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Activity, Notice, Order, Partner, TierUpgradeRequest
-from .permissions import IsManagerOrAssignedSales
+from .models import Activity, Notice, Order, Partner, Task, TierUpgradeRequest
+from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales
 from .serializers import (
     ActivitySerializer,
     NoticeSerializer,
     OrderSerializer,
     PartnerSerializer,
+    TaskSerializer,
     TierUpgradeRequestSerializer,
 )
 
@@ -135,6 +136,31 @@ class PartnerViewSet(viewsets.ModelViewSet):
                 .count(),
             }
         )
+
+
+class TaskViewSet(viewsets.ModelViewSet):
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated, IsAssignedOrCreatorOrManager]
+    filterset_fields = ["status", "priority", "assigned_to", "partner"]
+
+    def get_queryset(self):
+        qs = Task.objects.select_related("assigned_to", "created_by", "partner").all()
+        if not is_manager(self.request.user):
+            qs = qs.filter(Q(assigned_to=self.request.user) | Q(created_by=self.request.user))
+
+        p = self.request.query_params
+        today = timezone.localdate()
+        open_statuses = [Task.Status.TODO, Task.Status.IN_PROGRESS]
+        if p.get("due") == "today":
+            qs = qs.filter(due_at__date=today, status__in=open_statuses)
+        elif p.get("due") == "overdue":
+            qs = qs.filter(due_at__date__lt=today, status__in=open_statuses)
+        elif p.get("due") == "upcoming":
+            qs = qs.filter(due_at__date__gt=today, status__in=open_statuses)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 
 class TierUpgradeRequestViewSet(viewsets.ModelViewSet):
