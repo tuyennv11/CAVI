@@ -85,6 +85,17 @@ export const ACTIVITY_TASK_LIKE_TYPES = [
   "post_sale_care",
 ];
 
+// Các loại hoạt động dùng hàng ngày — hiện thành nút bấm nhanh thay vì phải mở form rồi chọn trong dropdown.
+export const QUICK_ACTIVITY_TYPES = [
+  { value: "call", label: "Cuộc gọi", icon: "📞" },
+  { value: "message", label: "Tin nhắn", icon: "💬" },
+  { value: "email", label: "Email", icon: "✉️" },
+  { value: "meeting", label: "Gặp mặt", icon: "🤝" },
+  { value: "note", label: "Ghi chú", icon: "📝" },
+  { value: "task", label: "Công việc", icon: "✅" },
+  { value: "follow_up", label: "Follow-up", icon: "⏰" },
+];
+
 export const ACTIVITY_STATUS_LABEL = {
   not_processed: "Chưa xử lý",
   in_progress: "Đang xử lý",

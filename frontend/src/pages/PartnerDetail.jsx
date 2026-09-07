@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch, apiUpload, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
@@ -13,6 +13,7 @@ import {
   ACTIVITY_TYPE_LABEL,
   formatMoney,
   PARTNER_TYPE_LABEL,
+  QUICK_ACTIVITY_TYPES,
   TIER_LABEL,
 } from "../constants";
 
@@ -57,9 +58,9 @@ const EMPTY_FILTERS = {
   search: "",
 };
 
-function emptyActivityForm(currentUserId) {
+function emptyActivityForm(currentUserId, activityType = "call") {
   return {
-    activity_type: "call",
+    activity_type: activityType,
     title: "",
     activity_at: toLocalInputValue(new Date()),
     performed_by: currentUserId ?? "",
@@ -99,6 +100,7 @@ export default function PartnerDetail() {
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [activityForm, setActivityForm] = useState(emptyActivityForm());
   const [activityError, setActivityError] = useState("");
+  const activityTitleRef = useRef(null);
 
   async function loadAll() {
     try {
@@ -149,10 +151,11 @@ export default function PartnerDetail() {
     setFilters((prev) => ({ ...prev, [field]: value }));
   }
 
-  function openAddActivity() {
-    setActivityForm(emptyActivityForm(currentUser?.id));
+  function openAddActivity(activityType = "call") {
+    setActivityForm(emptyActivityForm(currentUser?.id, activityType));
     setActivityError("");
     setShowAddActivity(true);
+    setTimeout(() => activityTitleRef.current?.focus(), 50);
   }
 
   function updateActivityField(field, value) {
@@ -342,7 +345,26 @@ export default function PartnerDetail() {
           <div className="panel">
             <div className="page-head" style={{ marginBottom: 14 }}>
               <h2 style={{ margin: 0 }}>Timeline</h2>
-              <button onClick={openAddActivity}>+ Thêm hoạt động</button>
+            </div>
+
+            <div className="quick-actions">
+              {QUICK_ACTIVITY_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  className="quick-action-btn"
+                  onClick={() => openAddActivity(t.value)}
+                >
+                  <span>{t.icon}</span> {t.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="quick-action-btn"
+                onClick={() => openAddActivity("opportunity")}
+              >
+                <span>➕</span> Khác...
+              </button>
             </div>
 
             <div className="filter-bar">
@@ -611,6 +633,7 @@ export default function PartnerDetail() {
             <label>
               Tiêu đề *
               <input
+                ref={activityTitleRef}
                 required
                 placeholder="VD: Gọi tư vấn báo giá lô hàng tháng 9"
                 value={activityForm.title}
