@@ -353,7 +353,7 @@ export default function PartnerDetail() {
 
           <div className="panel">
             <div className="page-head" style={{ marginBottom: 14 }}>
-              <h2 style={{ margin: 0 }}>Timeline</h2>
+              <h2 style={{ margin: 0 }}>Lịch sử tương tác</h2>
             </div>
 
             <form className="quick-log-bar" onSubmit={handleAddActivity}>
