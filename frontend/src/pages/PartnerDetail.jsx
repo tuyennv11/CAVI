@@ -54,10 +54,6 @@ const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 }
 const TIER_ORDER = ["standard", "vip", "super_vip"];
 
 const EMPTY_FILTERS = {
-  performed_by: "",
-  has_follow_up: "",
-  date_from: "",
-  date_to: "",
   search: "",
 };
 
@@ -80,7 +76,6 @@ export default function PartnerDetail() {
   const [partner, setPartner] = useState(null);
   const [orders, setOrders] = useState([]);
   const [tierRequests, setTierRequests] = useState([]);
-  const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("activity");
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -100,16 +95,14 @@ export default function PartnerDetail() {
 
   async function loadAll() {
     try {
-      const [p, orderList, requestList, userList] = await Promise.all([
+      const [p, orderList, requestList] = await Promise.all([
         apiFetch(`/api/partners/${id}/`),
         apiFetch(`/api/orders/?customer=${id}`),
         apiFetch(`/api/tier-requests/?partner=${id}`),
-        apiFetch(`/api/users/`),
       ]);
       setPartner(p);
       setOrders(orderList.results ?? orderList);
       setTierRequests(requestList.results ?? requestList);
-      setUsers(userList);
     } catch (err) {
       setError(err.message);
     }
@@ -414,39 +407,6 @@ export default function PartnerDetail() {
                 value={filters.search}
                 onChange={(e) => updateFilter("search", e.target.value)}
               />
-              <select value={filters.performed_by} onChange={(e) => updateFilter("performed_by", e.target.value)}>
-                <option value="">Mọi người thực hiện</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filters.has_follow_up}
-                onChange={(e) => updateFilter("has_follow_up", e.target.value)}
-              >
-                <option value="">Follow-up: tất cả</option>
-                <option value="true">Có follow-up</option>
-                <option value="false">Không follow-up</option>
-              </select>
-              <input
-                type="date"
-                title="Từ ngày"
-                value={filters.date_from}
-                onChange={(e) => updateFilter("date_from", e.target.value)}
-              />
-              <input
-                type="date"
-                title="Đến ngày"
-                value={filters.date_to}
-                onChange={(e) => updateFilter("date_to", e.target.value)}
-              />
-              {Object.values(filters).some(Boolean) && (
-                <button type="button" className="link-btn" onClick={() => setFilters(EMPTY_FILTERS)}>
-                  Xoá bộ lọc
-                </button>
-              )}
             </div>
 
             {activities.length === 0 ? (

@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
@@ -67,9 +68,17 @@ class PartnerViewSet(viewsets.ModelViewSet):
         else:
             serializer.save(assigned_to=self.request.user)
 
+    def _get_partner(self, request, pk):
+        # Không dùng self.get_object() ở đây — nó áp cả filter_backends (vd search_fields của
+        # Partner) lên chính request này, và các action con bên dưới cũng dùng query param
+        # "search"/"assigned_to" riêng cho Activity nên bị đụng nhau, gây 404 sai.
+        partner = get_object_or_404(self.get_queryset(), pk=pk)
+        self.check_object_permissions(request, partner)
+        return partner
+
     @action(detail=True, methods=["get", "post"], url_path="activities")
     def activities(self, request, pk=None):
-        partner = self.get_object()
+        partner = self._get_partner(request, pk)
         if request.method == "GET":
             qs = partner.activities.select_related(
                 "performed_by", "assigned_to", "created_by", "related_order"
@@ -109,7 +118,7 @@ class PartnerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="activities/summary")
     def activities_summary(self, request, pk=None):
-        partner = self.get_object()
+        partner = self._get_partner(request, pk)
         acts = partner.activities.all()
         today = timezone.localdate()
         last = acts.order_by("-activity_at").first()
