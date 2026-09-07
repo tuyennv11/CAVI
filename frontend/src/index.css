@@ -482,6 +482,11 @@ a:hover { text-decoration: underline; }
   white-space: pre-wrap; font-size: 13px; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px;
 }
+.inquiry-image-link { display: inline-block; margin-bottom: 8px; }
+.inquiry-image {
+  max-width: 160px; max-height: 120px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); display: block; object-fit: cover;
+}
 .inquiry-quote-summary {
   font-size: 13px; color: var(--ink); background: var(--success-soft); border-radius: var(--radius-sm);
   padding: 8px 12px; margin-bottom: 8px;

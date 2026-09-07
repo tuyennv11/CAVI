@@ -11,6 +11,11 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-m
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
 
+# Cloudflare/nginx đứng trước Django và lo phần HTTPS — kết nối thật tới gunicorn là HTTP thường,
+# nên phải khai báo header này để request.is_secure() (và build_absolute_uri()) trả về đúng https,
+# nếu không các URL tuyệt đối tự sinh (vd ảnh hỏi giá) sẽ ra http:// và bị trình duyệt chặn mixed-content.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

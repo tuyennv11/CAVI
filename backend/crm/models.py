@@ -243,6 +243,7 @@ class PriceInquiry(models.Model):
 
     customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="price_inquiries")
     description = models.TextField("Mô tả", blank=True)
+    image = models.FileField("Hình ảnh", upload_to="price_inquiries/%Y/%m/", null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     cost_price = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
     floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)

@@ -97,6 +97,7 @@ export default function PartnerDetail() {
   const [inquiries, setInquiries] = useState([]);
   const [showNewInquiry, setShowNewInquiry] = useState(false);
   const [inquiryDescription, setInquiryDescription] = useState(PRICE_INQUIRY_TEMPLATE);
+  const [inquiryImage, setInquiryImage] = useState(null);
   const [inquiryError, setInquiryError] = useState("");
   const [messageDrafts, setMessageDrafts] = useState({});
   const [openQuoteFor, setOpenQuoteFor] = useState(null);
@@ -211,11 +212,13 @@ export default function PartnerDetail() {
     e.preventDefault();
     setInquiryError("");
     try {
-      await apiFetch("/api/price-inquiries/", {
-        method: "POST",
-        body: JSON.stringify({ customer: Number(id), description: inquiryDescription }),
-      });
+      const fd = new FormData();
+      fd.set("customer", id);
+      fd.set("description", inquiryDescription);
+      if (inquiryImage) fd.set("image", inquiryImage);
+      await apiUpload("/api/price-inquiries/", fd);
       setInquiryDescription(PRICE_INQUIRY_TEMPLATE);
+      setInquiryImage(null);
       setShowNewInquiry(false);
       loadInquiries();
     } catch (err) {
@@ -543,6 +546,14 @@ export default function PartnerDetail() {
                 value={inquiryDescription}
                 onChange={(e) => setInquiryDescription(e.target.value)}
               />
+              <label>
+                Hình ảnh
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setInquiryImage(e.target.files[0] ?? null)}
+                />
+              </label>
               {inquiryError && <p className="error">{inquiryError}</p>}
               <div className="modal-actions">
                 <button type="button" className="secondary" onClick={() => setShowNewInquiry(false)}>
@@ -566,6 +577,12 @@ export default function PartnerDetail() {
                     </span>
                   </div>
                   <div className="inquiry-description">{inq.description}</div>
+
+                  {inq.image && (
+                    <a href={inq.image} target="_blank" rel="noreferrer" className="inquiry-image-link">
+                      <img src={inq.image} alt="Hình ảnh hỏi giá" className="inquiry-image" />
+                    </a>
+                  )}
 
                   {inq.status === "quoted" && (
                     <div className="inquiry-quote-summary">

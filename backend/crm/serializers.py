@@ -137,6 +137,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "customer",
             "customer_name",
             "description",
+            "image",
             "status",
             "cost_price",
             "floor_price",
