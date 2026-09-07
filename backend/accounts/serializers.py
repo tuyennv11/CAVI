@@ -4,6 +4,15 @@ from rest_framework import serializers
 from .roles import is_manager
 
 
+class UserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    full_name = serializers.SerializerMethodField()
+
+    def get_full_name(self, user):
+        return user.get_full_name() or user.username
+
+
 class MeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     username = serializers.CharField()

@@ -23,6 +23,75 @@ export const TIER_REQUEST_STATUS_LABEL = {
   rejected: "Từ chối",
 };
 
+// --- Hoạt động khách hàng (Timeline) ---
+export const ACTIVITY_TYPE_GROUPS = [
+  {
+    label: "Tương tác",
+    options: [
+      { value: "call", label: "Cuộc gọi" },
+      { value: "email", label: "Email" },
+      { value: "message", label: "Tin nhắn" },
+      { value: "meeting", label: "Gặp mặt" },
+      { value: "note", label: "Ghi chú" },
+    ],
+  },
+  {
+    label: "Công việc",
+    options: [
+      { value: "task", label: "Công việc cần làm" },
+      { value: "follow_up", label: "Follow-up" },
+      { value: "appointment", label: "Lịch hẹn / cuộc họp" },
+    ],
+  },
+  {
+    label: "Kinh doanh",
+    options: [
+      { value: "opportunity", label: "Cơ hội kinh doanh" },
+      { value: "quote", label: "Báo giá" },
+      { value: "order", label: "Đơn hàng" },
+      { value: "contract", label: "Hợp đồng" },
+      { value: "payment", label: "Thanh toán" },
+    ],
+  },
+  {
+    label: "Chăm sóc khách hàng",
+    options: [
+      { value: "support_request", label: "Yêu cầu hỗ trợ" },
+      { value: "complaint", label: "Khiếu nại" },
+      { value: "issue_handling", label: "Xử lý sự cố" },
+      { value: "post_sale_care", label: "Chăm sóc sau bán hàng" },
+    ],
+  },
+];
+
+export const ACTIVITY_TYPE_LABEL = Object.fromEntries(
+  ACTIVITY_TYPE_GROUPS.flatMap((g) => g.options.map((o) => [o.value, o.label]))
+);
+
+// Nhóm loại nào thuộc category nào — dùng để tô màu chấm trên Timeline.
+export const ACTIVITY_TYPE_CATEGORY = Object.fromEntries(
+  ACTIVITY_TYPE_GROUPS.flatMap((g, i) =>
+    g.options.map((o) => [o.value, ["interaction", "task", "business", "care"][i]])
+  )
+);
+
+export const ACTIVITY_TASK_LIKE_TYPES = [
+  "task",
+  "follow_up",
+  "appointment",
+  "support_request",
+  "complaint",
+  "issue_handling",
+  "post_sale_care",
+];
+
+export const ACTIVITY_STATUS_LABEL = {
+  not_processed: "Chưa xử lý",
+  in_progress: "Đang xử lý",
+  done: "Hoàn thành",
+  cancelled: "Huỷ",
+};
+
 export function formatMoney(v) {
   return Number(v).toLocaleString("vi-VN") + " đ";
 }

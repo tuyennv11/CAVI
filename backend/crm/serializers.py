@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import ContactLog, Notice, Order, OrderItem, Partner, TierUpgradeRequest
+from .models import Activity, Notice, Order, OrderItem, Partner, TierUpgradeRequest
 
 User = get_user_model()
 
@@ -12,27 +12,56 @@ class AssignedToSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "first_name", "last_name"]
 
 
-class ContactLogSerializer(serializers.ModelSerializer):
+class ActivitySerializer(serializers.ModelSerializer):
+    performed_by_name = serializers.CharField(source="performed_by.username", read_only=True)
+    assigned_to_name = serializers.CharField(source="assigned_to.username", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    related_order_label = serializers.SerializerMethodField()
 
     class Meta:
-        model = ContactLog
+        model = Activity
         fields = [
             "id",
             "customer",
+            "activity_type",
+            "title",
+            "activity_at",
+            "performed_by",
+            "performed_by_name",
+            "assigned_to",
+            "assigned_to_name",
             "contact_person",
-            "outcome",
+            "content",
+            "result",
+            "status",
+            "follow_up_date",
             "note",
+            "attachment",
+            "related_order",
+            "related_order_label",
+            "related_reference",
             "created_by",
             "created_by_name",
             "created_at",
+            "updated_at",
         ]
-        read_only_fields = ["created_by", "created_at"]
+        read_only_fields = ["created_by", "created_at", "updated_at"]
+
+    def get_related_order_label(self, obj):
+        return f"Đơn #{obj.related_order_id}" if obj.related_order_id else None
+
+    def create(self, validated_data):
+        if not validated_data.get("assigned_to"):
+            validated_data["assigned_to"] = validated_data.get("performed_by")
+        if "status" not in self.initial_data:
+            is_historical = validated_data.get("activity_type") in Activity.HISTORICAL_TYPES
+            validated_data["status"] = Activity.Status.DONE if is_historical else Activity.Status.NOT_PROCESSED
+        return super().create(validated_data)
 
 
 class PartnerSerializer(serializers.ModelSerializer):
     assigned_to_detail = AssignedToSerializer(source="assigned_to", read_only=True)
-    contact_count = serializers.IntegerField(source="contact_logs.count", read_only=True)
+    activity_count = serializers.IntegerField(source="activities.count", read_only=True)
     order_count = serializers.IntegerField(source="orders.count", read_only=True)
     credit_limit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     debt = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
@@ -58,7 +87,7 @@ class PartnerSerializer(serializers.ModelSerializer):
             "debt",
             "assigned_to",
             "assigned_to_detail",
-            "contact_count",
+            "activity_count",
             "order_count",
             "created_at",
         ]

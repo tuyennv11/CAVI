@@ -350,6 +350,40 @@ a:hover { text-decoration: underline; }
 .badge-tier-standard { background: var(--surface-muted); color: var(--muted); }
 .badge-tier-vip { background: var(--primary-soft); color: var(--primary-dark); }
 .badge-tier-super_vip { background: var(--gold-soft); color: var(--gold); }
+.badge-not_processed { background: var(--primary-soft); color: var(--primary-dark); }
+.badge-in_progress { background: var(--warning-soft); color: var(--warning); }
+
+/* ---------- Hoạt động khách hàng (Timeline) ---------- */
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; align-items: center; }
+.filter-bar select, .filter-bar input[type="date"] { width: auto; min-width: 0; }
+.filter-bar .search-input { flex: 1; min-width: 160px; }
+.filter-bar .link-btn { white-space: nowrap; }
+
+.timeline { display: flex; flex-direction: column; gap: 0; list-style: none; margin: 0; padding: 0; }
+.timeline-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.timeline-item:last-child { border-bottom: none; padding-bottom: 0; }
+.timeline-item:first-child { padding-top: 0; }
+.timeline-marker { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; padding-top: 3px; }
+.timeline-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.timeline-dot.cat-interaction { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+.timeline-dot.cat-task { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
+.timeline-dot.cat-business { background: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.timeline-dot.cat-care { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.timeline-body { flex: 1; min-width: 0; }
+.timeline-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.timeline-type { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.timeline-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+.timeline-time { margin-left: auto; color: var(--faint); font-size: 12px; white-space: nowrap; }
+.timeline-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.timeline-meta span + span::before { content: "· "; }
+.timeline-content { font-size: 13.5px; color: var(--ink); white-space: pre-wrap; margin-bottom: 4px; }
+.timeline-result { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.timeline-result b { color: var(--ink); }
+.timeline-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.timeline-followup { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--warning-soft); color: var(--warning); }
+.timeline-followup.overdue { background: var(--danger-soft); color: var(--danger); }
+.timeline-link { font-size: 12px; font-weight: 600; }
+.timeline-note { font-size: 12px; color: var(--faint); margin-top: 6px; font-style: italic; }
 
 /* ---------- Modal ---------- */
 .modal-overlay {

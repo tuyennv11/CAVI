@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import DecimalField, F, Sum
+from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import viewsets
@@ -13,10 +13,10 @@ from accounts.roles import is_manager
 
 from rest_framework.exceptions import PermissionDenied
 
-from .models import ContactLog, Notice, Order, Partner, TierUpgradeRequest
+from .models import Activity, Notice, Order, Partner, TierUpgradeRequest
 from .permissions import IsManagerOrAssignedSales
 from .serializers import (
-    ContactLogSerializer,
+    ActivitySerializer,
     NoticeSerializer,
     OrderSerializer,
     PartnerSerializer,
@@ -24,6 +24,17 @@ from .serializers import (
 )
 
 MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
+
+TASK_LIKE_TYPES = {
+    Activity.ActivityType.TASK,
+    Activity.ActivityType.FOLLOW_UP,
+    Activity.ActivityType.APPOINTMENT,
+    Activity.ActivityType.SUPPORT_REQUEST,
+    Activity.ActivityType.COMPLAINT,
+    Activity.ActivityType.ISSUE_HANDLING,
+    Activity.ActivityType.POST_SALE_CARE,
+}
+OPEN_STATUSES = [Activity.Status.NOT_PROCESSED, Activity.Status.IN_PROGRESS]
 
 
 def _sum_revenue(queryset):
@@ -66,17 +77,64 @@ class PartnerViewSet(viewsets.ModelViewSet):
         else:
             serializer.save(assigned_to=self.request.user)
 
-    @action(detail=True, methods=["get", "post"], url_path="contacts")
-    def contacts(self, request, pk=None):
+    @action(detail=True, methods=["get", "post"], url_path="activities")
+    def activities(self, request, pk=None):
         partner = self.get_object()
         if request.method == "GET":
-            logs = partner.contact_logs.select_related("created_by").all()
-            return Response(ContactLogSerializer(logs, many=True).data)
+            qs = partner.activities.select_related(
+                "performed_by", "assigned_to", "created_by", "related_order"
+            ).all()
+            p = request.query_params
+            if p.get("activity_type"):
+                qs = qs.filter(activity_type=p["activity_type"])
+            if p.get("assigned_to"):
+                qs = qs.filter(assigned_to_id=p["assigned_to"])
+            if p.get("performed_by"):
+                qs = qs.filter(performed_by_id=p["performed_by"])
+            if p.get("status"):
+                qs = qs.filter(status=p["status"])
+            if p.get("has_follow_up") == "true":
+                qs = qs.filter(follow_up_date__isnull=False)
+            elif p.get("has_follow_up") == "false":
+                qs = qs.filter(follow_up_date__isnull=True)
+            if p.get("date_from"):
+                qs = qs.filter(activity_at__date__gte=p["date_from"])
+            if p.get("date_to"):
+                qs = qs.filter(activity_at__date__lte=p["date_to"])
+            if p.get("search"):
+                term = p["search"]
+                qs = qs.filter(Q(title__icontains=term) | Q(content__icontains=term))
+            return Response(ActivitySerializer(qs, many=True).data)
 
-        serializer = ContactLogSerializer(data={**request.data, "customer": partner.id})
+        data = request.data.copy()
+        data["customer"] = partner.id
+        serializer = ActivitySerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(customer=partner, created_by=request.user)
+        serializer.save(
+            customer=partner,
+            created_by=request.user,
+            performed_by=serializer.validated_data.get("performed_by") or request.user,
+        )
         return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=["get"], url_path="activities/summary")
+    def activities_summary(self, request, pk=None):
+        partner = self.get_object()
+        acts = partner.activities.all()
+        today = timezone.localdate()
+        last = acts.order_by("-activity_at").first()
+        return Response(
+            {
+                "total_activities": acts.count(),
+                "last_activity_at": last.activity_at if last else None,
+                "upcoming_follow_ups": acts.filter(follow_up_date__isnull=False, follow_up_date__gte=today)
+                .exclude(status__in=[Activity.Status.DONE, Activity.Status.CANCELLED])
+                .count(),
+                "unfinished_tasks": acts.filter(activity_type__in=TASK_LIKE_TYPES)
+                .filter(status__in=OPEN_STATUSES)
+                .count(),
+            }
+        )
 
 
 class TierUpgradeRequestViewSet(viewsets.ModelViewSet):
@@ -157,11 +215,11 @@ class DashboardStatsView(APIView):
     def get(self, request):
         partners = Partner.objects.all()
         orders = Order.objects.all()
-        contacts = ContactLog.objects.select_related("customer", "created_by")
+        acts = Activity.objects.select_related("customer", "performed_by")
         if not is_manager(request.user):
             partners = partners.filter(assigned_to=request.user)
             orders = orders.filter(customer__assigned_to=request.user)
-            contacts = contacts.filter(customer__assigned_to=request.user)
+            acts = acts.filter(customer__assigned_to=request.user)
 
         now = timezone.now()
         week_ago = now - timedelta(days=7)
@@ -169,7 +227,7 @@ class DashboardStatsView(APIView):
         orders_this_month = orders.filter(created_at__gte=month_start)
 
         recent_orders = orders.select_related("customer").order_by("-created_at")[:8]
-        recent_contacts = contacts.order_by("-created_at")[:8]
+        recent_activities = acts.order_by("-activity_at")[:8]
         activity = sorted(
             [
                 {
@@ -182,10 +240,10 @@ class DashboardStatsView(APIView):
             + [
                 {
                     "type": "contact",
-                    "at": c.created_at,
-                    "text": f"Chăm sóc {c.customer.name}: {c.note[:80]}",
+                    "at": a.activity_at,
+                    "text": f"{a.get_activity_type_display()} — {a.customer.name}: {a.title[:80]}",
                 }
-                for c in recent_contacts
+                for a in recent_activities
             ],
             key=lambda item: item["at"],
             reverse=True,

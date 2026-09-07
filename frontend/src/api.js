@@ -75,4 +75,34 @@ export async function apiFetch(path, options = {}) {
   return res.json();
 }
 
+// Gửi FormData (multipart, dùng cho upload file) kèm JWT; không set Content-Type để
+// trình duyệt tự sinh boundary. Cùng cơ chế tự làm mới token khi hết hạn như apiFetch.
+export async function apiUpload(path, formData, method = "POST") {
+  const { access } = getTokens();
+  const doFetch = (token) =>
+    fetch(`${API_URL}${path}`, {
+      method,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+  let res = await doFetch(access);
+  if (res.status === 401) {
+    const newAccess = await refreshAccessToken();
+    if (newAccess) {
+      res = await doFetch(newAccess);
+    } else {
+      clearTokens();
+      window.location.href = "/login";
+      throw new Error("Phiên đăng nhập đã hết hạn");
+    }
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Lỗi ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
 export { API_URL };

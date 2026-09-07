@@ -105,29 +105,6 @@ class TierUpgradeRequest(models.Model):
         return f"{self.partner} → {self.get_requested_tier_display()} ({self.status})"
 
 
-class ContactLog(models.Model):
-    class Outcome(models.TextChoices):
-        PENDING = "pending", "Đang chờ"
-        SUCCESS = "success", "Thành công"
-        NOT_CLOSED = "not_closed", "Không chốt"
-        RECEIVED = "received", "Đã nhận"
-
-    customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="contact_logs")
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
-    )
-    contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
-    outcome = models.CharField("Kết quả", max_length=20, choices=Outcome.choices, default=Outcome.PENDING)
-    note = models.TextField("Nội dung chăm sóc")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"{self.customer} — {self.created_at:%Y-%m-%d}"
-
-
 class Order(models.Model):
     class Status(models.TextChoices):
         NEW = "new", "Mới"
@@ -175,6 +152,80 @@ class OrderItem(models.Model):
     @property
     def line_profit(self):
         return self.quantity * (self.unit_price - self.unit_cost)
+
+
+class Activity(models.Model):
+    """Hoạt động khách hàng — lịch sử tương tác/công việc/kinh doanh/chăm sóc theo dòng thời gian."""
+
+    class ActivityType(models.TextChoices):
+        # Tương tác
+        CALL = "call", "Cuộc gọi"
+        EMAIL = "email", "Email"
+        MESSAGE = "message", "Tin nhắn"
+        MEETING = "meeting", "Gặp mặt"
+        NOTE = "note", "Ghi chú"
+        # Công việc
+        TASK = "task", "Công việc cần làm"
+        FOLLOW_UP = "follow_up", "Follow-up"
+        APPOINTMENT = "appointment", "Lịch hẹn / cuộc họp"
+        # Kinh doanh
+        OPPORTUNITY = "opportunity", "Cơ hội kinh doanh"
+        QUOTE = "quote", "Báo giá"
+        ORDER = "order", "Đơn hàng"
+        CONTRACT = "contract", "Hợp đồng"
+        PAYMENT = "payment", "Thanh toán"
+        # Chăm sóc khách hàng
+        SUPPORT_REQUEST = "support_request", "Yêu cầu hỗ trợ"
+        COMPLAINT = "complaint", "Khiếu nại"
+        ISSUE_HANDLING = "issue_handling", "Xử lý sự cố"
+        POST_SALE_CARE = "post_sale_care", "Chăm sóc sau bán hàng"
+
+    # Loại nào mặc định "Đã hoàn thành" ngay khi ghi nhận (mang tính lịch sử) —
+    # còn lại mặc định "Chưa xử lý" (mang tính công việc cần làm).
+    HISTORICAL_TYPES = {
+        ActivityType.CALL, ActivityType.EMAIL, ActivityType.MESSAGE,
+        ActivityType.MEETING, ActivityType.NOTE,
+    }
+
+    class Status(models.TextChoices):
+        NOT_PROCESSED = "not_processed", "Chưa xử lý"
+        IN_PROGRESS = "in_progress", "Đang xử lý"
+        DONE = "done", "Hoàn thành"
+        CANCELLED = "cancelled", "Huỷ"
+
+    customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="activities")
+    activity_type = models.CharField("Loại hoạt động", max_length=20, choices=ActivityType.choices)
+    title = models.CharField("Tiêu đề", max_length=255)
+    activity_at = models.DateTimeField("Ngày giờ", default=timezone.now)
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người thực hiện", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+"
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người phụ trách", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
+    content = models.TextField("Nội dung", blank=True)
+    result = models.TextField("Kết quả", blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
+    follow_up_date = models.DateField("Ngày cần follow-up", null=True, blank=True)
+    note = models.TextField("Ghi chú", blank=True)
+    attachment = models.FileField("File đính kèm", upload_to="activities/%Y/%m/", null=True, blank=True)
+    related_order = models.ForeignKey(
+        Order, verbose_name="Đơn hàng liên quan", on_delete=models.SET_NULL, null=True, blank=True, related_name="activities"
+    )
+    related_reference = models.CharField(
+        "Tham chiếu khác (báo giá/hợp đồng/cơ hội/phiếu hỗ trợ...)", max_length=255, blank=True
+    )
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-activity_at"]
+
+    def __str__(self):
+        return f"{self.get_activity_type_display()}: {self.title}"
 
 
 class Notice(models.Model):

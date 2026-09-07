@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { apiFetch } from "../api";
+import { apiFetch, apiUpload, API_URL } from "../api";
+import { useAuth } from "../AuthContext";
 import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
-import { formatMoney, OUTCOME_LABEL, PARTNER_TYPE_LABEL, TIER_LABEL, TIER_REQUEST_STATUS_LABEL } from "../constants";
+import {
+  ACTIVITY_STATUS_LABEL,
+  ACTIVITY_TASK_LIKE_TYPES,
+  ACTIVITY_TYPE_CATEGORY,
+  ACTIVITY_TYPE_GROUPS,
+  ACTIVITY_TYPE_LABEL,
+  formatMoney,
+  PARTNER_TYPE_LABEL,
+  TIER_LABEL,
+} from "../constants";
 
 function timeAgo(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -16,18 +26,63 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString("vi-VN");
 }
 
+function formatDateTime(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+}
+
+function toLocalInputValue(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
+    date.getMinutes()
+  )}`;
+}
+
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 };
 const TIER_ORDER = ["standard", "vip", "super_vip"];
 
+const EMPTY_FILTERS = {
+  activity_type: "",
+  assigned_to: "",
+  performed_by: "",
+  status: "",
+  has_follow_up: "",
+  date_from: "",
+  date_to: "",
+  search: "",
+};
+
+function emptyActivityForm(currentUserId) {
+  return {
+    activity_type: "call",
+    title: "",
+    activity_at: toLocalInputValue(new Date()),
+    performed_by: currentUserId ?? "",
+    assigned_to: "",
+    contact_person: "",
+    content: "",
+    result: "",
+    status: "",
+    follow_up_date: "",
+    note: "",
+    related_order: "",
+    related_reference: "",
+    attachment: null,
+  };
+}
+
 export default function PartnerDetail() {
   const { id } = useParams();
+  const { user: currentUser } = useAuth();
   const [partner, setPartner] = useState(null);
-  const [contacts, setContacts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tierRequests, setTierRequests] = useState([]);
-  const [note, setNote] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [outcome, setOutcome] = useState("pending");
+  const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("activity");
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -38,18 +93,43 @@ export default function PartnerDetail() {
   const [requestedTier, setRequestedTier] = useState("vip");
   const [requestReason, setRequestReason] = useState("");
 
+  const [activities, setActivities] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showAddActivity, setShowAddActivity] = useState(false);
+  const [activityForm, setActivityForm] = useState(emptyActivityForm());
+  const [activityError, setActivityError] = useState("");
+
   async function loadAll() {
     try {
-      const [p, contactList, orderList, requestList] = await Promise.all([
+      const [p, orderList, requestList, userList] = await Promise.all([
         apiFetch(`/api/partners/${id}/`),
-        apiFetch(`/api/partners/${id}/contacts/`),
         apiFetch(`/api/orders/?customer=${id}`),
         apiFetch(`/api/tier-requests/?partner=${id}`),
+        apiFetch(`/api/users/`),
       ]);
       setPartner(p);
-      setContacts(contactList);
       setOrders(orderList.results ?? orderList);
       setTierRequests(requestList.results ?? requestList);
+      setUsers(userList);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function loadActivities() {
+    try {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v);
+      });
+      const qs = params.toString();
+      const [list, sum] = await Promise.all([
+        apiFetch(`/api/partners/${id}/activities/${qs ? `?${qs}` : ""}`),
+        apiFetch(`/api/partners/${id}/activities/summary/`),
+      ]);
+      setActivities(list);
+      setSummary(sum);
     } catch (err) {
       setError(err.message);
     }
@@ -60,20 +140,50 @@ export default function PartnerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function handleAddNote(e) {
+  useEffect(() => {
+    loadActivities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, filters]);
+
+  function updateFilter(field, value) {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function openAddActivity() {
+    setActivityForm(emptyActivityForm(currentUser?.id));
+    setActivityError("");
+    setShowAddActivity(true);
+  }
+
+  function updateActivityField(field, value) {
+    setActivityForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleAddActivity(e) {
     e.preventDefault();
-    if (!note.trim()) return;
+    setActivityError("");
     try {
-      await apiFetch(`/api/partners/${id}/contacts/`, {
-        method: "POST",
-        body: JSON.stringify({ note, contact_person: contactPerson, outcome }),
-      });
-      setNote("");
-      setContactPerson("");
-      setOutcome("pending");
-      loadAll();
+      const fd = new FormData();
+      fd.set("activity_type", activityForm.activity_type);
+      fd.set("title", activityForm.title);
+      if (activityForm.activity_at) fd.set("activity_at", new Date(activityForm.activity_at).toISOString());
+      if (activityForm.performed_by) fd.set("performed_by", activityForm.performed_by);
+      if (activityForm.assigned_to) fd.set("assigned_to", activityForm.assigned_to);
+      if (activityForm.contact_person) fd.set("contact_person", activityForm.contact_person);
+      if (activityForm.content) fd.set("content", activityForm.content);
+      if (activityForm.result) fd.set("result", activityForm.result);
+      if (activityForm.status) fd.set("status", activityForm.status);
+      if (activityForm.follow_up_date) fd.set("follow_up_date", activityForm.follow_up_date);
+      if (activityForm.note) fd.set("note", activityForm.note);
+      if (activityForm.related_order) fd.set("related_order", activityForm.related_order);
+      if (activityForm.related_reference) fd.set("related_reference", activityForm.related_reference);
+      if (activityForm.attachment) fd.set("attachment", activityForm.attachment);
+
+      await apiUpload(`/api/partners/${id}/activities/`, fd);
+      setShowAddActivity(false);
+      loadActivities();
     } catch (err) {
-      setError(err.message);
+      setActivityError(err.message);
     }
   }
 
@@ -121,28 +231,7 @@ export default function PartnerDetail() {
   const debtRatio = partner.credit_limit > 0 ? Math.min(100, (partner.debt / partner.credit_limit) * 100) : 0;
   const pendingRequest = tierRequests.find((r) => r.status === "pending");
   const higherTiers = TIER_ORDER.slice(TIER_ORDER.indexOf(partner.tier) + 1);
-
-  const timeline = [
-    ...contacts.map((c) => ({
-      type: "contact",
-      at: c.created_at,
-      node: (
-        <>
-          <b>{c.created_by_name}</b> liên hệ {c.contact_person && <>với <b>{c.contact_person}</b></>} —{" "}
-          <span className="muted">{OUTCOME_LABEL[c.outcome]}</span>: {c.note}
-        </>
-      ),
-    })),
-    ...orders.map((o) => ({
-      type: "order",
-      at: o.created_at,
-      node: (
-        <>
-          Tạo đơn hàng <b>#{o.id}</b> — {formatMoney(o.total)}
-        </>
-      ),
-    })),
-  ].sort((a, b) => new Date(b.at) - new Date(a.at));
+  const isTaskLike = ACTIVITY_TASK_LIKE_TYPES.includes(activityForm.activity_type);
 
   return (
     <div>
@@ -226,46 +315,174 @@ export default function PartnerDetail() {
       </div>
 
       {tab === "activity" && (
-        <div className="panel">
-          <form className="field-grid" onSubmit={handleAddNote} style={{ marginBottom: 18 }}>
-            <div className="order-item-row" style={{ gridTemplateColumns: "1fr 160px" }}>
+        <div>
+          {summary && (
+            <div className="stat-grid" style={{ marginBottom: 20 }}>
+              <div className="stat-card">
+                <span className="label">Tổng số hoạt động</span>
+                <span className="value">{summary.total_activities}</span>
+              </div>
+              <div className="stat-card">
+                <span className="label">Hoạt động gần nhất</span>
+                <span className="value" style={{ fontSize: 16 }}>
+                  {summary.last_activity_at ? timeAgo(summary.last_activity_at) : "—"}
+                </span>
+              </div>
+              <div className="stat-card">
+                <span className="label">Follow-up sắp tới</span>
+                <span className="value">{summary.upcoming_follow_ups}</span>
+              </div>
+              <div className="stat-card">
+                <span className="label">Công việc chưa hoàn thành</span>
+                <span className="value">{summary.unfinished_tasks}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="page-head" style={{ marginBottom: 14 }}>
+              <h2 style={{ margin: 0 }}>Timeline</h2>
+              <button onClick={openAddActivity}>+ Thêm hoạt động</button>
+            </div>
+
+            <div className="filter-bar">
               <input
-                placeholder="Người liên hệ (vd: Anh Nam)"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
+                className="search-input"
+                placeholder="Tìm theo tiêu đề/nội dung..."
+                value={filters.search}
+                onChange={(e) => updateFilter("search", e.target.value)}
               />
-              <select value={outcome} onChange={(e) => setOutcome(e.target.value)}>
-                {Object.entries(OUTCOME_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
+              <select value={filters.activity_type} onChange={(e) => updateFilter("activity_type", e.target.value)}>
+                <option value="">Mọi loại hoạt động</option>
+                {ACTIVITY_TYPE_GROUPS.map((g) => (
+                  <optgroup label={g.label} key={g.label}>
+                    {g.options.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <select value={filters.status} onChange={(e) => updateFilter("status", e.target.value)}>
+                <option value="">Mọi trạng thái</option>
+                {Object.entries(ACTIVITY_STATUS_LABEL).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
                   </option>
                 ))}
               </select>
+              <select value={filters.assigned_to} onChange={(e) => updateFilter("assigned_to", e.target.value)}>
+                <option value="">Mọi người phụ trách</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name}
+                  </option>
+                ))}
+              </select>
+              <select value={filters.performed_by} onChange={(e) => updateFilter("performed_by", e.target.value)}>
+                <option value="">Mọi người thực hiện</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.has_follow_up}
+                onChange={(e) => updateFilter("has_follow_up", e.target.value)}
+              >
+                <option value="">Follow-up: tất cả</option>
+                <option value="true">Có follow-up</option>
+                <option value="false">Không follow-up</option>
+              </select>
+              <input
+                type="date"
+                title="Từ ngày"
+                value={filters.date_from}
+                onChange={(e) => updateFilter("date_from", e.target.value)}
+              />
+              <input
+                type="date"
+                title="Đến ngày"
+                value={filters.date_to}
+                onChange={(e) => updateFilter("date_to", e.target.value)}
+              />
+              {Object.values(filters).some(Boolean) && (
+                <button type="button" className="link-btn" onClick={() => setFilters(EMPTY_FILTERS)}>
+                  Xoá bộ lọc
+                </button>
+              )}
             </div>
-            <textarea
-              rows={2}
-              placeholder="Ghi lại nội dung vừa liên hệ..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="submit">Lưu ghi chú</button>
-            </div>
-          </form>
 
-          {timeline.length === 0 ? (
-            <p className="muted">Chưa có hoạt động nào.</p>
-          ) : (
-            <ul className="activity-list">
-              {timeline.map((item, i) => (
-                <li className="activity-item" key={i}>
-                  <span className={`activity-dot ${item.type}`} />
-                  <span className="activity-text">{item.node}</span>
-                  <span className="activity-time">{timeAgo(item.at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+            {activities.length === 0 ? (
+              <p className="muted">Chưa có hoạt động nào.</p>
+            ) : (
+              <ul className="timeline">
+                {activities.map((a) => {
+                  const category = ACTIVITY_TYPE_CATEGORY[a.activity_type] ?? "interaction";
+                  const overdue =
+                    a.follow_up_date &&
+                    a.follow_up_date < todayStr() &&
+                    a.status !== "done" &&
+                    a.status !== "cancelled";
+                  return (
+                    <li className="timeline-item" key={a.id}>
+                      <div className="timeline-marker">
+                        <span className={`timeline-dot cat-${category}`} />
+                      </div>
+                      <div className="timeline-body">
+                        <div className="timeline-head">
+                          <span className="timeline-type">{ACTIVITY_TYPE_LABEL[a.activity_type]}</span>
+                          <span className="timeline-title">{a.title}</span>
+                          <span className="timeline-time">{formatDateTime(a.activity_at)}</span>
+                        </div>
+                        <div className="timeline-meta">
+                          {a.performed_by_name && <span>Thực hiện: {a.performed_by_name}</span>}
+                          {a.assigned_to_name && a.assigned_to_name !== a.performed_by_name && (
+                            <span>Phụ trách: {a.assigned_to_name}</span>
+                          )}
+                          {a.contact_person && <span>Liên hệ: {a.contact_person}</span>}
+                        </div>
+                        {a.content && <div className="timeline-content">{a.content}</div>}
+                        {a.result && (
+                          <div className="timeline-result">
+                            Kết quả: <b>{a.result}</b>
+                          </div>
+                        )}
+                        <div className="timeline-tags">
+                          <StatusBadge status={a.status} />
+                          {a.follow_up_date && (
+                            <span className={`timeline-followup${overdue ? " overdue" : ""}`}>
+                              Follow-up {new Date(a.follow_up_date).toLocaleDateString("vi-VN")}
+                              {overdue ? " (quá hạn)" : ""}
+                            </span>
+                          )}
+                          {a.related_order_label && (
+                            <button type="button" className="link-btn timeline-link" onClick={() => setTab("orders")}>
+                              {a.related_order_label}
+                            </button>
+                          )}
+                          {a.related_reference && <span className="badge badge-neutral">{a.related_reference}</span>}
+                          {a.attachment && (
+                            <a
+                              className="timeline-link"
+                              href={`${API_URL}${a.attachment}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              📎 Tệp đính kèm
+                            </a>
+                          )}
+                        </div>
+                        {a.note && <div className="timeline-note">Ghi chú: {a.note}</div>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 
@@ -369,6 +586,172 @@ export default function PartnerDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {showAddActivity && (
+        <Modal title="Thêm hoạt động" onClose={() => setShowAddActivity(false)}>
+          <form className="field-grid" onSubmit={handleAddActivity}>
+            <label>
+              Loại hoạt động *
+              <select
+                value={activityForm.activity_type}
+                onChange={(e) => updateActivityField("activity_type", e.target.value)}
+              >
+                {ACTIVITY_TYPE_GROUPS.map((g) => (
+                  <optgroup label={g.label} key={g.label}>
+                    {g.options.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <label>
+              Tiêu đề *
+              <input
+                required
+                placeholder="VD: Gọi tư vấn báo giá lô hàng tháng 9"
+                value={activityForm.title}
+                onChange={(e) => updateActivityField("title", e.target.value)}
+              />
+            </label>
+            <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <label>
+                Ngày giờ *
+                <input
+                  type="datetime-local"
+                  required
+                  value={activityForm.activity_at}
+                  onChange={(e) => updateActivityField("activity_at", e.target.value)}
+                />
+              </label>
+              <label>
+                Người liên hệ
+                <input
+                  placeholder="VD: Anh Nam"
+                  value={activityForm.contact_person}
+                  onChange={(e) => updateActivityField("contact_person", e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <label>
+                Người thực hiện
+                <select
+                  value={activityForm.performed_by}
+                  onChange={(e) => updateActivityField("performed_by", e.target.value)}
+                >
+                  <option value="">— Tôi —</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Người phụ trách
+                <select
+                  value={activityForm.assigned_to}
+                  onChange={(e) => updateActivityField("assigned_to", e.target.value)}
+                >
+                  <option value="">— Như người thực hiện —</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              Nội dung
+              <textarea
+                rows={3}
+                placeholder="Đã trao đổi những gì với khách..."
+                value={activityForm.content}
+                onChange={(e) => updateActivityField("content", e.target.value)}
+              />
+            </label>
+            <label>
+              Kết quả
+              <textarea
+                rows={2}
+                placeholder="Kết quả của lần làm việc này..."
+                value={activityForm.result}
+                onChange={(e) => updateActivityField("result", e.target.value)}
+              />
+            </label>
+            <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <label>
+                Trạng thái
+                <select value={activityForm.status} onChange={(e) => updateActivityField("status", e.target.value)}>
+                  <option value="">Tự động theo loại</option>
+                  {Object.entries(ACTIVITY_STATUS_LABEL).map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {isTaskLike && (
+                <label>
+                  Ngày cần follow-up
+                  <input
+                    type="date"
+                    value={activityForm.follow_up_date}
+                    onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <label>
+                Đơn hàng liên quan
+                <select
+                  value={activityForm.related_order}
+                  onChange={(e) => updateActivityField("related_order", e.target.value)}
+                >
+                  <option value="">— Không —</option>
+                  {orders.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      Đơn #{o.id} — {formatMoney(o.total)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Tham chiếu khác
+                <input
+                  placeholder="VD: Báo giá #BG-045"
+                  value={activityForm.related_reference}
+                  onChange={(e) => updateActivityField("related_reference", e.target.value)}
+                />
+              </label>
+            </div>
+            <label>
+              Ghi chú
+              <textarea
+                rows={2}
+                value={activityForm.note}
+                onChange={(e) => updateActivityField("note", e.target.value)}
+              />
+            </label>
+            <label>
+              File đính kèm
+              <input type="file" onChange={(e) => updateActivityField("attachment", e.target.files[0] ?? null)} />
+            </label>
+            {activityError && <p className="error">{activityError}</p>}
+            <div className="modal-actions">
+              <button type="button" className="secondary" onClick={() => setShowAddActivity(false)}>
+                Huỷ
+              </button>
+              <button type="submit">Lưu hoạt động</button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {showTierRequest && (

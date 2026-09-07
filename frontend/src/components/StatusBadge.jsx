@@ -3,6 +3,8 @@ const LABEL = {
   processing: "Đang xử lý",
   done: "Hoàn thành",
   cancelled: "Huỷ",
+  not_processed: "Chưa xử lý",
+  in_progress: "Đang xử lý",
 };
 
 export default function StatusBadge({ status }) {
