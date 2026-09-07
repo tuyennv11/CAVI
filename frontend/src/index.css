@@ -500,10 +500,13 @@ a:hover { text-decoration: underline; }
   padding: 6px 10px; font-size: 12.5px;
 }
 .inquiry-message.quote { background: var(--gold-soft); border-color: var(--gold); font-weight: 600; }
-.inquiry-reply-row { display: flex; gap: 6px; }
-.inquiry-reply-row input { flex: 1; padding: 7px 10px; font-size: 13px; }
-.inquiry-quote-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.inquiry-quote-form input { flex: 0 1 130px; padding: 7px 10px; font-size: 13px; }
+.inquiry-reply-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.inquiry-reply-row input { flex: 1; min-width: 140px; padding: 7px 10px; font-size: 13px; }
+.inquiry-line-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.inquiry-line-form input, .inquiry-line-form select { padding: 7px 10px; font-size: 13px; }
+.inquiry-line-form select { flex: 1 1 220px; }
+.inquiry-lines-table th, .inquiry-lines-table td { padding: 7px 10px; font-size: 12.5px; }
+.inquiry-lines-table tfoot td { border-top: 1px solid var(--line); background: var(--surface-muted); }
 
 /* ---------- Modal ---------- */
 .modal-overlay {

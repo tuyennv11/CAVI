@@ -9,6 +9,8 @@ from .models import (
     Partner,
     PriceInquiry,
     PriceInquiryMessage,
+    PriceInquiryQuoteLine,
+    PriceListItem,
     Task,
     TierUpgradeRequest,
 )
@@ -124,11 +126,66 @@ class PriceInquiryMessageSerializer(serializers.ModelSerializer):
         read_only_fields = ["inquiry", "author", "is_quote", "created_at"]
 
 
+class PriceListItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceListItem
+        fields = ["id", "category", "group_code", "group_name", "item_code", "name", "unit", "floor_pct", "ceiling_pct"]
+
+
+class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
+    item_code = serializers.CharField(source="item.item_code", read_only=True)
+    # Không bắt buộc ở đây — khi có chọn `item` thì create() tự điền lại từ bảng giá gốc bên dưới.
+    item_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    unit = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    floor_pct = serializers.DecimalField(max_digits=6, decimal_places=2, required=False)
+    ceiling_pct = serializers.DecimalField(max_digits=6, decimal_places=2, required=False)
+    line_cost = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    line_floor = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    line_ceiling = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = PriceInquiryQuoteLine
+        fields = [
+            "id",
+            "inquiry",
+            "item",
+            "item_code",
+            "item_name",
+            "unit",
+            "floor_pct",
+            "ceiling_pct",
+            "quantity",
+            "unit_cost",
+            "line_cost",
+            "line_floor",
+            "line_ceiling",
+            "created_at",
+        ]
+        read_only_fields = ["inquiry", "created_at"]
+
+    def validate(self, attrs):
+        if not attrs.get("item") and not attrs.get("item_name"):
+            raise serializers.ValidationError("Cần chọn mặt hàng từ bảng giá hoặc nhập tên mặt hàng.")
+        return attrs
+
+    def create(self, validated_data):
+        item = validated_data.get("item")
+        if item:
+            if not validated_data.get("item_name"):
+                validated_data["item_name"] = item.name
+            if not validated_data.get("unit"):
+                validated_data["unit"] = item.unit
+            validated_data["floor_pct"] = item.floor_pct
+            validated_data["ceiling_pct"] = item.ceiling_pct
+        return super().create(validated_data)
+
+
 class PriceInquirySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     quoted_by_name = serializers.CharField(source="quoted_by.username", read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     messages = PriceInquiryMessageSerializer(many=True, read_only=True)
+    quote_lines = PriceInquiryQuoteLineSerializer(many=True, read_only=True)
 
     class Meta:
         model = PriceInquiry
@@ -150,6 +207,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "messages",
+            "quote_lines",
         ]
         read_only_fields = [
             "status",

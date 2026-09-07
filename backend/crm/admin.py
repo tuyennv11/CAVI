@@ -9,6 +9,8 @@ from .models import (
     Partner,
     PriceInquiry,
     PriceInquiryMessage,
+    PriceInquiryQuoteLine,
+    PriceListItem,
     Task,
     TierUpgradeRequest,
 )
@@ -79,8 +81,22 @@ class PriceInquiryMessageInline(admin.TabularInline):
     readonly_fields = ("author", "created_at")
 
 
+class PriceInquiryQuoteLineInline(admin.TabularInline):
+    model = PriceInquiryQuoteLine
+    extra = 0
+    readonly_fields = ("created_by", "created_at")
+
+
 @admin.register(PriceInquiry)
 class PriceInquiryAdmin(admin.ModelAdmin):
     list_display = ("id", "customer", "status", "cost_price", "floor_price", "ceiling_price", "quoted_by", "created_at")
     list_filter = ("status",)
-    inlines = [PriceInquiryMessageInline]
+    inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
+
+
+@admin.register(PriceListItem)
+class PriceListItemAdmin(admin.ModelAdmin):
+    list_display = ("item_code", "category", "group_code", "group_name", "name", "unit", "floor_pct", "ceiling_pct", "is_active")
+    list_filter = ("category", "group_code", "is_active")
+    search_fields = ("item_code", "name", "group_name")
+    list_editable = ("floor_pct", "ceiling_pct", "is_active")

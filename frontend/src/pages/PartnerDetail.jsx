@@ -58,6 +58,36 @@ const EMPTY_FILTERS = {
   search: "",
 };
 
+function groupPriceList(priceList) {
+  const groups = [];
+  const byName = new Map();
+  for (const item of priceList) {
+    let group = byName.get(item.group_name);
+    if (!group) {
+      group = { label: item.group_name, options: [] };
+      byName.set(item.group_name, group);
+      groups.push(group);
+    }
+    group.options.push({ value: item.id, label: `${item.item_code} — ${item.name}` });
+  }
+  return groups;
+}
+
+function sumLines(lines) {
+  return lines.reduce(
+    (acc, l) => ({
+      cost: acc.cost + Number(l.line_cost),
+      floor: acc.floor + Number(l.line_floor),
+      ceiling: acc.ceiling + Number(l.line_ceiling),
+    }),
+    { cost: 0, floor: 0, ceiling: 0 }
+  );
+}
+
+function emptyLineForm() {
+  return { item: "", item_name: "", unit: "", floor_pct: "", ceiling_pct: "", quantity: 1, unit_cost: "" };
+}
+
 function emptyActivityForm(currentUserId) {
   return {
     activity_type: "note",
@@ -100,8 +130,9 @@ export default function PartnerDetail() {
   const [inquiryImage, setInquiryImage] = useState(null);
   const [inquiryError, setInquiryError] = useState("");
   const [messageDrafts, setMessageDrafts] = useState({});
-  const [openQuoteFor, setOpenQuoteFor] = useState(null);
-  const [quoteForms, setQuoteForms] = useState({});
+  const [priceList, setPriceList] = useState([]);
+  const [lineFormFor, setLineFormFor] = useState(null);
+  const [lineForms, setLineForms] = useState({});
 
   async function loadAll() {
     try {
@@ -157,9 +188,19 @@ export default function PartnerDetail() {
     }
   }
 
+  async function loadPriceList() {
+    try {
+      const res = await apiFetch("/api/price-list-items/");
+      setPriceList(res.results ?? res);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   useEffect(() => {
     loadAll();
     loadInquiries();
+    loadPriceList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -241,23 +282,60 @@ export default function PartnerDetail() {
     }
   }
 
-  function updateQuoteField(inquiryId, field, value) {
-    setQuoteForms((prev) => ({ ...prev, [inquiryId]: { ...prev[inquiryId], [field]: value } }));
+  function updateLineField(inquiryId, field, value) {
+    setLineForms((prev) => ({ ...prev, [inquiryId]: { ...emptyLineForm(), ...prev[inquiryId], [field]: value } }));
   }
 
-  async function handleQuote(inquiryId) {
-    const form = quoteForms[inquiryId] || {};
-    if (!form.cost_price || !form.floor_price || !form.ceiling_price) {
-      setError("Cần nhập đủ Giá vốn, Giá sàn, Giá trần.");
+  function toggleLineForm(inquiryId) {
+    setLineFormFor((prev) => (prev === inquiryId ? null : inquiryId));
+    setLineForms((prev) => ({ ...prev, [inquiryId]: prev[inquiryId] || emptyLineForm() }));
+  }
+
+  async function handleAddLine(inquiryId) {
+    const form = lineForms[inquiryId] || emptyLineForm();
+    if (!form.item && !form.item_name) {
+      setError("Chọn mặt hàng từ bảng giá hoặc nhập tên mặt hàng.");
       return;
     }
+    if (!form.quantity || !form.unit_cost) {
+      setError("Cần nhập Số lượng và Đơn giá vốn.");
+      return;
+    }
+    const payload = form.item
+      ? { item: Number(form.item), quantity: form.quantity, unit_cost: form.unit_cost }
+      : {
+          item_name: form.item_name,
+          unit: form.unit,
+          floor_pct: form.floor_pct || 0,
+          ceiling_pct: form.ceiling_pct || 0,
+          quantity: form.quantity,
+          unit_cost: form.unit_cost,
+        };
     try {
-      await apiFetch(`/api/price-inquiries/${inquiryId}/quote/`, {
+      await apiFetch(`/api/price-inquiries/${inquiryId}/lines/`, {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
-      setQuoteForms((prev) => ({ ...prev, [inquiryId]: {} }));
-      setOpenQuoteFor(null);
+      setLineForms((prev) => ({ ...prev, [inquiryId]: emptyLineForm() }));
+      loadInquiries();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteLine(lineId) {
+    try {
+      await apiFetch(`/api/quote-lines/${lineId}/`, { method: "DELETE" });
+      loadInquiries();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleConfirmQuote(inquiryId) {
+    try {
+      await apiFetch(`/api/price-inquiries/${inquiryId}/confirm-quote/`, { method: "POST" });
+      setLineFormFor(null);
       loadInquiries();
     } catch (err) {
       setError(err.message);
@@ -584,6 +662,70 @@ export default function PartnerDetail() {
                     </a>
                   )}
 
+                  {inq.quote_lines.length > 0 &&
+                    (() => {
+                      const totals = sumLines(inq.quote_lines);
+                      return (
+                        <div className="table-wrap" style={{ marginBottom: 8 }}>
+                          <table className="data-table inquiry-lines-table">
+                            <thead>
+                              <tr>
+                                <th>Mặt hàng</th>
+                                <th>ĐVT</th>
+                                <th>SL</th>
+                                <th>Đơn giá vốn</th>
+                                <th>Giá vốn</th>
+                                <th>Giá sàn</th>
+                                <th>Giá trần</th>
+                                {inq.status === "open" && <th></th>}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {inq.quote_lines.map((l) => (
+                                <tr key={l.id}>
+                                  <td>{l.item_name}</td>
+                                  <td>{l.unit}</td>
+                                  <td>{l.quantity}</td>
+                                  <td>{formatMoney(l.unit_cost)}</td>
+                                  <td>{formatMoney(l.line_cost)}</td>
+                                  <td>{formatMoney(l.line_floor)}</td>
+                                  <td>{formatMoney(l.line_ceiling)}</td>
+                                  {inq.status === "open" && (
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => handleDeleteLine(l.id)}
+                                      >
+                                        Xoá
+                                      </button>
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr>
+                                <td colSpan={4}>
+                                  <b>Tổng</b>
+                                </td>
+                                <td>
+                                  <b>{formatMoney(totals.cost)}</b>
+                                </td>
+                                <td>
+                                  <b>{formatMoney(totals.floor)}</b>
+                                </td>
+                                <td>
+                                  <b>{formatMoney(totals.ceiling)}</b>
+                                </td>
+                                {inq.status === "open" && <td></td>}
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      );
+                    })()}
+
                   {inq.status === "quoted" && (
                     <div className="inquiry-quote-summary">
                       Giá vốn: <b>{formatMoney(inq.cost_price)}</b> · Giá sàn: <b>{formatMoney(inq.floor_price)}</b> ·
@@ -620,38 +762,79 @@ export default function PartnerDetail() {
                       Gửi
                     </button>
                     {inq.status === "open" && (
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => setOpenQuoteFor(openQuoteFor === inq.id ? null : inq.id)}
-                      >
-                        Chốt giá
+                      <button type="button" className="secondary" onClick={() => toggleLineForm(inq.id)}>
+                        {lineFormFor === inq.id ? "Đóng" : "+ Thêm dòng báo giá"}
+                      </button>
+                    )}
+                    {inq.status === "open" && inq.quote_lines.length > 0 && (
+                      <button type="button" onClick={() => handleConfirmQuote(inq.id)}>
+                        Xác nhận báo giá
                       </button>
                     )}
                   </div>
 
-                  {openQuoteFor === inq.id && (
-                    <div className="inquiry-quote-form">
+                  {lineFormFor === inq.id && (
+                    <div className="inquiry-line-form">
+                      <select
+                        value={lineForms[inq.id]?.item || ""}
+                        onChange={(e) => updateLineField(inq.id, "item", e.target.value)}
+                      >
+                        <option value="">— Mặt hàng khác (tự nhập) —</option>
+                        {groupPriceList(priceList).map((g) => (
+                          <optgroup label={g.label} key={g.label}>
+                            {g.options.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {!lineForms[inq.id]?.item && (
+                        <>
+                          <input
+                            placeholder="Tên mặt hàng"
+                            value={lineForms[inq.id]?.item_name || ""}
+                            onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}
+                          />
+                          <input
+                            placeholder="ĐVT"
+                            style={{ width: 70 }}
+                            value={lineForms[inq.id]?.unit || ""}
+                            onChange={(e) => updateLineField(inq.id, "unit", e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Sàn %"
+                            style={{ width: 80 }}
+                            value={lineForms[inq.id]?.floor_pct || ""}
+                            onChange={(e) => updateLineField(inq.id, "floor_pct", e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Trần %"
+                            style={{ width: 80 }}
+                            value={lineForms[inq.id]?.ceiling_pct || ""}
+                            onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
+                          />
+                        </>
+                      )}
                       <input
                         type="number"
-                        placeholder="Giá vốn"
-                        value={quoteForms[inq.id]?.cost_price || ""}
-                        onChange={(e) => updateQuoteField(inq.id, "cost_price", e.target.value)}
+                        placeholder="Số lượng"
+                        style={{ width: 90 }}
+                        value={lineForms[inq.id]?.quantity ?? 1}
+                        onChange={(e) => updateLineField(inq.id, "quantity", e.target.value)}
                       />
                       <input
                         type="number"
-                        placeholder="Giá sàn"
-                        value={quoteForms[inq.id]?.floor_price || ""}
-                        onChange={(e) => updateQuoteField(inq.id, "floor_price", e.target.value)}
+                        placeholder="Đơn giá vốn"
+                        style={{ width: 120 }}
+                        value={lineForms[inq.id]?.unit_cost || ""}
+                        onChange={(e) => updateLineField(inq.id, "unit_cost", e.target.value)}
                       />
-                      <input
-                        type="number"
-                        placeholder="Giá trần"
-                        value={quoteForms[inq.id]?.ceiling_price || ""}
-                        onChange={(e) => updateQuoteField(inq.id, "ceiling_price", e.target.value)}
-                      />
-                      <button type="button" onClick={() => handleQuote(inq.id)}>
-                        Xác nhận chốt giá
+                      <button type="button" onClick={() => handleAddLine(inq.id)}>
+                        Thêm dòng
                       </button>
                     </div>
                   )}

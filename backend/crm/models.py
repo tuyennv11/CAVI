@@ -282,6 +282,65 @@ class PriceInquiryMessage(models.Model):
         return f"{self.author} — {self.content[:40]}"
 
 
+class PriceListItem(models.Model):
+    """Bảng giá dịch vụ chuẩn — Cung ứng chọn từ đây khi lên chi tiết báo giá cho một Hỏi giá."""
+
+    class Category(models.TextChoices):
+        I = "I", "Loại I"
+        II = "II", "Loại II"
+        III = "III", "Loại III"
+
+    category = models.CharField("Phân loại", max_length=5, choices=Category.choices)
+    group_name = models.CharField("Nhóm mặt hàng", max_length=255)
+    group_code = models.CharField("Mã nhóm", max_length=10)
+    item_code = models.CharField("Mã mặt hàng", max_length=20, unique=True)
+    name = models.CharField("Tên mặt hàng", max_length=255)
+    unit = models.CharField("ĐVT", max_length=50, blank=True)
+    floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
+    ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["group_code", "item_code"]
+
+    def __str__(self):
+        return f"{self.item_code} — {self.name}"
+
+
+class PriceInquiryQuoteLine(models.Model):
+    """Một dòng mặt hàng/dịch vụ trong báo giá chi tiết của một Hỏi giá — Cung ứng nhập sau khi trao đổi xong."""
+
+    inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="quote_lines")
+    item = models.ForeignKey(PriceListItem, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    # Snapshot lại tại thời điểm thêm dòng — bảng giá gốc có đổi sau này cũng không ảnh hưởng báo giá đã lập.
+    item_name = models.CharField("Tên mặt hàng", max_length=255)
+    unit = models.CharField("ĐVT", max_length=50, blank=True)
+    floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
+    ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
+    unit_cost = models.DecimalField("Đơn giá vốn", max_digits=14, decimal_places=2, default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.item_name} x{self.quantity}"
+
+    @property
+    def line_cost(self):
+        return self.quantity * self.unit_cost
+
+    @property
+    def line_floor(self):
+        return self.line_cost * (1 + self.floor_pct / 100)
+
+    @property
+    def line_ceiling(self):
+        return self.line_cost * (1 + self.ceiling_pct / 100)
+
+
 class Task(models.Model):
     """Công việc — có thể tạo độc lập, từ một Hoạt động khách hàng, hoặc từ Chat."""
 

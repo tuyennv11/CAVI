@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
@@ -14,7 +15,17 @@ from accounts.roles import is_manager
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from .models import Activity, Notice, Order, Partner, PriceInquiry, Task, TierUpgradeRequest
+from .models import (
+    Activity,
+    Notice,
+    Order,
+    Partner,
+    PriceInquiry,
+    PriceInquiryQuoteLine,
+    PriceListItem,
+    Task,
+    TierUpgradeRequest,
+)
 from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales
 from .serializers import (
     ActivitySerializer,
@@ -22,7 +33,9 @@ from .serializers import (
     OrderSerializer,
     PartnerSerializer,
     PriceInquiryMessageSerializer,
+    PriceInquiryQuoteLineSerializer,
     PriceInquirySerializer,
+    PriceListItemSerializer,
     TaskSerializer,
     TierUpgradeRequestSerializer,
 )
@@ -199,17 +212,29 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         serializer.save(inquiry=inquiry, author=request.user)
         return Response(serializer.data, status=201)
 
-    @action(detail=True, methods=["post"], url_path="quote")
-    def quote(self, request, pk=None):
+    @action(detail=True, methods=["get", "post"], url_path="lines")
+    def lines(self, request, pk=None):
         inquiry = self.get_object()
-        cost = request.data.get("cost_price")
-        floor = request.data.get("floor_price")
-        ceiling = request.data.get("ceiling_price")
-        if not (cost and floor and ceiling):
-            raise ValidationError("Cần nhập đủ Giá vốn, Giá sàn, Giá trần.")
-        inquiry.cost_price = cost
-        inquiry.floor_price = floor
-        inquiry.ceiling_price = ceiling
+        if request.method == "GET":
+            return Response(PriceInquiryQuoteLineSerializer(inquiry.quote_lines.all(), many=True).data)
+        serializer = PriceInquiryQuoteLineSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(inquiry=inquiry, created_by=request.user)
+        return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=["post"], url_path="confirm-quote")
+    def confirm_quote(self, request, pk=None):
+        inquiry = self.get_object()
+        lines = list(inquiry.quote_lines.all())
+        if not lines:
+            raise ValidationError("Cần thêm ít nhất 1 dòng báo giá trước khi xác nhận.")
+        cents = Decimal("0.01")
+        total_cost = sum((line.line_cost for line in lines), Decimal("0")).quantize(cents)
+        total_floor = sum((line.line_floor for line in lines), Decimal("0")).quantize(cents)
+        total_ceiling = sum((line.line_ceiling for line in lines), Decimal("0")).quantize(cents)
+        inquiry.cost_price = total_cost
+        inquiry.floor_price = total_floor
+        inquiry.ceiling_price = total_ceiling
         inquiry.status = PriceInquiry.Status.QUOTED
         inquiry.quoted_by = request.user
         inquiry.quoted_at = timezone.now()
@@ -217,9 +242,28 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         inquiry.messages.create(
             author=request.user,
             is_quote=True,
-            content=f"📌 Đã chốt giá — Giá vốn: {cost} · Giá sàn: {floor} · Giá trần: {ceiling}",
+            content=f"📌 Đã chốt giá — Giá vốn: {total_cost} · Giá sàn: {total_floor} · Giá trần: {total_ceiling}",
         )
         return Response(PriceInquirySerializer(inquiry).data)
+
+
+class PriceInquiryQuoteLineViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    serializer_class = PriceInquiryQuoteLineSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = PriceInquiryQuoteLine.objects.select_related("inquiry__customer")
+        if is_manager(self.request.user):
+            return qs
+        return qs.filter(inquiry__customer__assigned_to=self.request.user)
+
+
+class PriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = PriceListItemSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = PriceListItem.objects.filter(is_active=True)
+    search_fields = ["name", "item_code", "group_name"]
+    pagination_class = None
 
 
 class TierUpgradeRequestViewSet(viewsets.ModelViewSet):
