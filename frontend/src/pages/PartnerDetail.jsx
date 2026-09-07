@@ -499,21 +499,9 @@ export default function PartnerDetail() {
                         <span className={`timeline-dot cat-${category}`} />
                       </div>
                       <div className="timeline-body">
-                        <div className="timeline-head">
+                        <div className="timeline-row">
                           <span className="timeline-time">{formatDateTime(a.activity_at)}</span>
                           <span className="timeline-content-text">{a.content || a.title}</span>
-                        </div>
-                        {a.contact_person && (
-                          <div className="timeline-meta">
-                            <span>Liên hệ: {a.contact_person}</span>
-                          </div>
-                        )}
-                        {a.result && (
-                          <div className="timeline-result">
-                            Kết quả: <b>{a.result}</b>
-                          </div>
-                        )}
-                        <div className="timeline-tags">
                           {a.follow_up_date && (
                             <span
                               className={`timeline-followup${overdue ? " overdue" : ""}${
@@ -551,6 +539,16 @@ export default function PartnerDetail() {
                             </a>
                           )}
                         </div>
+                        {a.contact_person && (
+                          <div className="timeline-meta">
+                            <span>Liên hệ: {a.contact_person}</span>
+                          </div>
+                        )}
+                        {a.result && (
+                          <div className="timeline-result">
+                            Kết quả: <b>{a.result}</b>
+                          </div>
+                        )}
                         {a.note && <div className="timeline-note">Ghi chú: {a.note}</div>}
                       </div>
                     </li>

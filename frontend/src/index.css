@@ -451,18 +451,23 @@ a:hover { text-decoration: underline; }
 .timeline-dot.cat-business { background: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 .timeline-dot.cat-care { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .timeline-body { flex: 1; min-width: 0; }
-.timeline-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-.timeline-time { color: var(--faint); font-size: 12px; white-space: nowrap; flex-shrink: 0; }
-.timeline-content-text { font-size: 13.5px; color: var(--ink); white-space: pre-wrap; }
+/* Trôi tự nhiên như một dòng văn bản — gọn 1 dòng khi ngắn, tự tràn xuống khi nội dung dài. */
+.timeline-row { font-size: 13.5px; color: var(--ink); line-height: 1.9; margin-bottom: 4px; }
+.timeline-row > * + * { margin-left: 8px; }
+.timeline-time { color: var(--faint); font-size: 12px; white-space: nowrap; }
+.timeline-content-text { white-space: pre-wrap; }
 .timeline-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .timeline-meta span + span::before { content: "· "; }
 .timeline-result { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .timeline-result b { color: var(--ink); }
-.timeline-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.timeline-followup { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--warning-soft); color: var(--warning); }
+.timeline-followup {
+  display: inline-flex; align-items: center; vertical-align: middle;
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  background: var(--warning-soft); color: var(--warning);
+}
 .timeline-followup.overdue { background: var(--danger-soft); color: var(--danger); }
 .timeline-followup.done { background: var(--surface-muted); color: var(--muted); }
-.timeline-link { font-size: 12px; font-weight: 600; }
+.timeline-link { font-size: 12px; font-weight: 600; vertical-align: middle; }
 .timeline-note { font-size: 12px; color: var(--faint); margin-top: 6px; font-style: italic; }
 
 /* ---------- Modal ---------- */
