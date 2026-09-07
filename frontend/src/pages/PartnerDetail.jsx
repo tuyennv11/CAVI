@@ -288,7 +288,7 @@ export default function PartnerDetail() {
 
       <div className="tabs">
         <button className={`tab-btn${tab === "activity" ? " active" : ""}`} onClick={() => setTab("activity")}>
-          Hoạt động
+          Tương tác
         </button>
         <button className={`tab-btn${tab === "orders" ? " active" : ""}`} onClick={() => setTab("orders")}>
           Đơn hàng ({orders.length})
