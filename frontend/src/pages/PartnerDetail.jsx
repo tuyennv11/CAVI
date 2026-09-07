@@ -229,22 +229,19 @@ export default function PartnerDetail() {
   if (!partner) return <p className="muted">Đang tải...</p>;
 
   const overLimit = Number(partner.debt) > Number(partner.credit_limit);
-  const debtRatio = partner.credit_limit > 0 ? Math.min(100, (partner.debt / partner.credit_limit) * 100) : 0;
   const pendingRequest = tierRequests.find((r) => r.status === "pending");
   const higherTiers = TIER_ORDER.slice(TIER_ORDER.indexOf(partner.tier) + 1);
 
   return (
     <div>
-      <p style={{ marginBottom: 10 }}>
-        <Link to="/partners">&larr; Danh sách đối tác</Link>
-      </p>
-
       <div className="profile-header">
         <Avatar name={partner.name} size="lg" />
-        <div style={{ flex: 1 }}>
-          <h1>{partner.name}</h1>
-          {partner.note && <div className="company">{partner.note}</div>}
-          <div className="profile-pills">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="profile-title-row">
+            <Link to="/partners" className="profile-back" title="Danh sách đối tác">
+              &larr;
+            </Link>
+            <h1>{partner.name}</h1>
             <span className="badge badge-neutral">{PARTNER_TYPE_LABEL[partner.partner_type]}</span>
             <span className={`badge badge-tier-${partner.tier}`}>
               {TIER_LABEL[partner.tier]}
@@ -255,53 +252,37 @@ export default function PartnerDetail() {
             {partner.assigned_to_detail && (
               <span className="profile-pill">Phụ trách: {partner.assigned_to_detail.username}</span>
             )}
+            {higherTiers.length > 0 && (
+              <span className="profile-title-spacer">
+                {pendingRequest ? (
+                  <span className="muted" style={{ fontSize: 12.5 }}>
+                    Đang chờ duyệt lên <b>{TIER_LABEL[pendingRequest.requested_tier]}</b>
+                  </span>
+                ) : (
+                  <button
+                    className="secondary"
+                    onClick={() => {
+                      setRequestedTier(higherTiers[0]);
+                      setShowTierRequest(true);
+                    }}
+                  >
+                    Xin nâng hạng
+                  </button>
+                )}
+              </span>
+            )}
           </div>
-          <div className="profile-pills" style={{ marginTop: 6 }}>
-            <span className="muted" style={{ fontSize: 12 }}>
+          <div className="profile-meta-row">
+            <span>
               Gắn bó {partner.tenure_months} tháng · Doanh thu tích luỹ {formatMoney(partner.total_revenue)}
             </span>
+            {partner.partner_type !== "supplier" && (
+              <span className={overLimit ? "error" : ""}>
+                · Công nợ: <b>{formatMoney(partner.debt)}</b> / {formatMoney(partner.credit_limit)}
+              </span>
+            )}
+            {partner.note && <span>· {partner.note}</span>}
           </div>
-
-          {higherTiers.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              {pendingRequest ? (
-                <span className="muted" style={{ fontSize: 12.5 }}>
-                  Đang chờ duyệt lên <b>{TIER_LABEL[pendingRequest.requested_tier]}</b>
-                </span>
-              ) : (
-                <button
-                  className="secondary"
-                  onClick={() => {
-                    setRequestedTier(higherTiers[0]);
-                    setShowTierRequest(true);
-                  }}
-                >
-                  Xin nâng hạng
-                </button>
-              )}
-            </div>
-          )}
-
-          {partner.partner_type !== "supplier" && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-                <span className={overLimit ? "error" : "muted"}>
-                  Công nợ: <b>{formatMoney(partner.debt)}</b>
-                </span>
-                <span className="muted">Hạn mức: {formatMoney(partner.credit_limit)}</span>
-              </div>
-              <div style={{ background: "var(--surface-muted)", borderRadius: 999, height: 6, marginTop: 6 }}>
-                <div
-                  style={{
-                    width: `${debtRatio}%`,
-                    background: overLimit ? "var(--danger)" : "var(--primary)",
-                    height: "100%",
-                    borderRadius: 999,
-                  }}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -316,98 +297,85 @@ export default function PartnerDetail() {
 
       {tab === "activity" && (
         <div>
-          {summary && (
-            <div className="stat-grid">
-              <div className="stat-card">
-                <span className="label">Tổng số hoạt động</span>
-                <span className="value">{summary.total_activities}</span>
-              </div>
-              <div className="stat-card">
-                <span className="label">Hoạt động gần nhất</span>
-                <span className="value" style={{ fontSize: 16 }}>
-                  {summary.last_activity_at ? timeAgo(summary.last_activity_at) : "—"}
-                </span>
-              </div>
-              <div className="stat-card">
-                <span className="label">Follow-up sắp tới</span>
-                <span className="value">{summary.upcoming_follow_ups}</span>
-              </div>
-            </div>
-          )}
-
           <div className="panel">
             <div className="page-head">
               <h2 style={{ margin: 0 }}>Lịch sử tương tác</h2>
+              {summary && (
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  {summary.total_activities} hoạt động · Gần nhất:{" "}
+                  {summary.last_activity_at ? timeAgo(summary.last_activity_at) : "—"}
+                  {summary.upcoming_follow_ups > 0 && ` · 🔔 ${summary.upcoming_follow_ups} follow-up sắp tới`}
+                </span>
+              )}
             </div>
 
-            <form className="quick-log-bar" onSubmit={handleAddActivity}>
-              <div className="quick-log-group">
+            <div className="quick-log-row">
+              <form className="quick-log-bar" onSubmit={handleAddActivity}>
+                <div className="quick-log-group">
+                  <input
+                    type="date"
+                    className="quick-log-date"
+                    title="Ngày"
+                    required
+                    value={activityForm.activity_date}
+                    onChange={(e) => updateActivityField("activity_date", e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    className="quick-log-time"
+                    title="Giờ"
+                    required
+                    value={activityForm.activity_time}
+                    onChange={(e) => updateActivityField("activity_time", e.target.value)}
+                  />
+                </div>
                 <input
-                  type="date"
-                  className="quick-log-date"
-                  title="Ngày"
+                  ref={activityContentRef}
                   required
-                  value={activityForm.activity_date}
-                  onChange={(e) => updateActivityField("activity_date", e.target.value)}
+                  className="quick-log-input"
+                  placeholder="Ghi nhanh hoạt động với khách... (VD: Đã gọi cho anh Nam báo giá lô hàng T9)"
+                  value={activityForm.content}
+                  onChange={(e) => updateActivityField("content", e.target.value)}
                 />
-                <input
-                  type="time"
-                  className="quick-log-time"
-                  title="Giờ"
-                  required
-                  value={activityForm.activity_time}
-                  onChange={(e) => updateActivityField("activity_time", e.target.value)}
-                />
-              </div>
+                <div className="quick-log-group quick-log-followup">
+                  <span className="quick-log-group-icon" title="Hẹn nhắc lại">
+                    🔔
+                  </span>
+                  <input
+                    type="date"
+                    className="quick-log-date"
+                    title="Hẹn nhắc lại — ngày"
+                    value={activityForm.follow_up_date}
+                    onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    className="quick-log-time"
+                    title="Hẹn nhắc lại — giờ chính xác"
+                    value={activityForm.follow_up_time}
+                    onChange={(e) => updateActivityField("follow_up_time", e.target.value)}
+                  />
+                </div>
+                <label className="quick-log-file" title="Đính kèm file">
+                  📎
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(e) => updateActivityField("attachment", e.target.files[0] ?? null)}
+                  />
+                </label>
+                <button type="submit" className="quick-log-submit">
+                  Lưu
+                </button>
+              </form>
               <input
-                ref={activityContentRef}
-                required
-                className="quick-log-input"
-                placeholder="Ghi nhanh hoạt động với khách... (VD: Đã gọi cho anh Nam báo giá lô hàng T9)"
-                value={activityForm.content}
-                onChange={(e) => updateActivityField("content", e.target.value)}
-              />
-              <div className="quick-log-group quick-log-followup">
-                <span className="quick-log-group-icon" title="Hẹn nhắc lại">
-                  🔔
-                </span>
-                <input
-                  type="date"
-                  className="quick-log-date"
-                  title="Hẹn nhắc lại — ngày"
-                  value={activityForm.follow_up_date}
-                  onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
-                />
-                <input
-                  type="time"
-                  className="quick-log-time"
-                  title="Hẹn nhắc lại — giờ chính xác"
-                  value={activityForm.follow_up_time}
-                  onChange={(e) => updateActivityField("follow_up_time", e.target.value)}
-                />
-              </div>
-              <label className="quick-log-file" title="Đính kèm file">
-                📎
-                <input
-                  type="file"
-                  hidden
-                  onChange={(e) => updateActivityField("attachment", e.target.files[0] ?? null)}
-                />
-              </label>
-              <button type="submit" className="quick-log-submit">
-                Lưu
-              </button>
-            </form>
-            {activityError && <p className="error">{activityError}</p>}
-
-            <div className="filter-bar">
-              <input
-                className="search-input"
-                placeholder="Tìm theo nội dung..."
+                className="search-input quick-log-search"
+                placeholder="Tìm nội dung..."
                 value={filters.search}
                 onChange={(e) => updateFilter("search", e.target.value)}
               />
             </div>
+            {activityError && <p className="error">{activityError}</p>}
 
             {activities.length === 0 ? (
               <p className="muted">Chưa có hoạt động nào.</p>

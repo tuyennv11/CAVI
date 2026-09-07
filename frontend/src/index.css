@@ -402,10 +402,14 @@ a:hover { text-decoration: underline; }
 .performance-breakdown li b { color: var(--ink); }
 
 /* ---------- Hoạt động khách hàng (Timeline) ---------- */
-.quick-log-bar {
+.quick-log-row {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
   margin-bottom: 8px;
 }
+.quick-log-bar {
+  display: contents;
+}
+.quick-log-search { flex: 0 1 160px; min-width: 110px; }
 .quick-log-input {
   flex: 1; min-width: 160px; padding: 7px 10px; font-size: 13px;
 }
@@ -434,11 +438,6 @@ a:hover { text-decoration: underline; }
   padding: 18px; margin-bottom: 18px;
   animation: pop-in 0.14s ease;
 }
-
-.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
-.filter-bar select, .filter-bar input[type="date"] { width: auto; min-width: 0; }
-.filter-bar .search-input { flex: 1; min-width: 160px; padding: 7px 10px; font-size: 13px; }
-.filter-bar .link-btn { white-space: nowrap; }
 
 .timeline { display: flex; flex-direction: column; gap: 0; list-style: none; margin: 0; padding: 0; }
 .timeline-item { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
@@ -506,16 +505,25 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Customer profile header ---------- */
 .profile-header {
-  display: flex; gap: 16px; align-items: flex-start;
+  display: flex; gap: 14px; align-items: center;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
-  padding: 16px 20px; margin-bottom: 14px; box-shadow: var(--shadow-sm);
+  padding: 12px 18px; margin-bottom: 10px; box-shadow: var(--shadow-sm);
 }
-.profile-header h1 { font-size: 19px; margin: 0 0 3px; font-weight: 700; }
-.profile-header .company { color: var(--muted); font-size: 13.5px; }
-.profile-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.profile-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.profile-title-row h1 { font-size: 17px; margin: 0; font-weight: 700; }
+.profile-back {
+  color: var(--muted); font-size: 15px; line-height: 1; text-decoration: none; flex-shrink: 0;
+}
+.profile-back:hover { color: var(--primary-dark); }
+.profile-title-spacer { margin-left: auto; }
+.profile-meta-row {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px;
+  font-size: 12px; color: var(--muted);
+}
+.profile-meta-row .error { font-weight: 600; }
 .profile-pill {
   display: flex; align-items: center; gap: 6px; background: var(--surface-muted);
-  padding: 5px 12px; border-radius: 999px; font-size: 12.5px; color: var(--muted); font-weight: 500;
+  padding: 3px 10px; border-radius: 999px; font-size: 12.5px; color: var(--muted); font-weight: 500;
 }
 
 /* ---------- Kanban / Pipeline ---------- */
