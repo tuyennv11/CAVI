@@ -6,7 +6,6 @@ import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import {
-  ACTIVITY_RESULT_OPTIONS,
   ACTIVITY_STATUS_LABEL,
   ACTIVITY_TYPE_CATEGORY,
   ACTIVITY_TYPE_GROUPS,
@@ -44,6 +43,16 @@ function formatFollowUp(followUpDate, followUpTime) {
   return followUpTime ? `${d} lúc ${followUpTime.slice(0, 5)}` : d;
 }
 
+function nowDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function nowTimeStr() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 };
 const TIER_ORDER = ["standard", "vip", "super_vip"];
 
@@ -62,8 +71,9 @@ function emptyActivityForm(currentUserId) {
   return {
     activity_type: "note",
     performed_by: currentUserId ?? "",
+    activity_date: nowDateStr(),
+    activity_time: nowTimeStr(),
     content: "",
-    result: "",
     follow_up_date: "",
     follow_up_time: "",
     attachment: null,
@@ -162,15 +172,22 @@ export default function PartnerDetail() {
   async function handleAddActivity(e) {
     e.preventDefault();
     setActivityError("");
+    if (activityForm.follow_up_date && !activityForm.follow_up_time) {
+      setActivityError("Hẹn nhắc lại cần chọn giờ chính xác.");
+      return;
+    }
     try {
       const fd = new FormData();
       fd.set("activity_type", activityForm.activity_type);
-      fd.set("activity_at", new Date().toISOString());
+      const activityAt =
+        activityForm.activity_date && activityForm.activity_time
+          ? new Date(`${activityForm.activity_date}T${activityForm.activity_time}`).toISOString()
+          : new Date().toISOString();
+      fd.set("activity_at", activityAt);
       if (activityForm.performed_by) fd.set("performed_by", activityForm.performed_by);
       if (activityForm.content) fd.set("content", activityForm.content);
-      if (activityForm.result) fd.set("result", activityForm.result);
-      if (activityForm.follow_up_date) fd.set("follow_up_date", activityForm.follow_up_date);
-      if (activityForm.follow_up_date && activityForm.follow_up_time) {
+      if (activityForm.follow_up_date) {
+        fd.set("follow_up_date", activityForm.follow_up_date);
         fd.set("follow_up_time", activityForm.follow_up_time);
       }
       if (activityForm.attachment) fd.set("attachment", activityForm.attachment);
@@ -341,6 +358,24 @@ export default function PartnerDetail() {
             </div>
 
             <form className="quick-log-bar" onSubmit={handleAddActivity}>
+              <div className="quick-log-group">
+                <input
+                  type="date"
+                  className="quick-log-date"
+                  title="Ngày"
+                  required
+                  value={activityForm.activity_date}
+                  onChange={(e) => updateActivityField("activity_date", e.target.value)}
+                />
+                <input
+                  type="time"
+                  className="quick-log-time"
+                  title="Giờ"
+                  required
+                  value={activityForm.activity_time}
+                  onChange={(e) => updateActivityField("activity_time", e.target.value)}
+                />
+              </div>
               <input
                 ref={activityContentRef}
                 required
@@ -349,35 +384,25 @@ export default function PartnerDetail() {
                 value={activityForm.content}
                 onChange={(e) => updateActivityField("content", e.target.value)}
               />
-              <select
-                className="quick-log-select"
-                title="Kết quả"
-                value={activityForm.result}
-                onChange={(e) => updateActivityField("result", e.target.value)}
-              >
-                <option value="">Kết quả</option>
-                {ACTIVITY_RESULT_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                className="quick-log-date"
-                title="Hẹn nhắc lại — ngày"
-                value={activityForm.follow_up_date}
-                onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
-              />
-              {activityForm.follow_up_date && (
+              <div className="quick-log-group quick-log-followup">
+                <span className="quick-log-group-icon" title="Hẹn nhắc lại">
+                  🔔
+                </span>
+                <input
+                  type="date"
+                  className="quick-log-date"
+                  title="Hẹn nhắc lại — ngày"
+                  value={activityForm.follow_up_date}
+                  onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
+                />
                 <input
                   type="time"
                   className="quick-log-time"
-                  title="Hẹn nhắc lại — giờ cụ thể (vd khách hẹn 15h gọi lại), để trống nếu chỉ hẹn ngày"
+                  title="Hẹn nhắc lại — giờ chính xác"
                   value={activityForm.follow_up_time}
                   onChange={(e) => updateActivityField("follow_up_time", e.target.value)}
                 />
-              )}
+              </div>
               <label className="quick-log-file" title="Đính kèm file">
                 📎
                 <input
