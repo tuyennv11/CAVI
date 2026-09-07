@@ -96,6 +96,20 @@ export const QUICK_ACTIVITY_TYPES = [
   { value: "follow_up", label: "Follow-up", icon: "⏰" },
 ];
 
+// Kết quả — thang cố định để chọn nhanh thay vì gõ tay.
+export const ACTIVITY_RESULT_OPTIONS = [
+  "10/100",
+  "20/100",
+  "30/100",
+  "40/100",
+  "50/100",
+  "60/100",
+  "70/100",
+  "80/100",
+  "90/100",
+  "100/100",
+];
+
 export const ACTIVITY_STATUS_LABEL = {
   not_processed: "Chưa xử lý",
   in_progress: "Đang xử lý",

@@ -18,6 +18,8 @@ class ActivitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     related_order_label = serializers.SerializerMethodField()
+    # Không bắt nhập tiêu đề riêng — nội dung note đã đủ, tiêu đề tự suy ra ở create() nếu bỏ trống.
+    title = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
     class Meta:
         model = Activity
@@ -59,6 +61,11 @@ class ActivitySerializer(serializers.ModelSerializer):
         if "status" not in self.initial_data:
             is_historical = validated_data.get("activity_type") in Activity.HISTORICAL_TYPES
             validated_data["status"] = Activity.Status.DONE if is_historical else Activity.Status.NOT_PROCESSED
+        if not validated_data.get("title"):
+            content = (validated_data.get("content") or "").strip()
+            validated_data["title"] = content[:60] if content else Activity(
+                activity_type=validated_data.get("activity_type")
+            ).get_activity_type_display()
         return super().create(validated_data)
 
 

@@ -6,6 +6,7 @@ import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import {
+  ACTIVITY_RESULT_OPTIONS,
   ACTIVITY_STATUS_LABEL,
   ACTIVITY_TYPE_CATEGORY,
   ACTIVITY_TYPE_GROUPS,
@@ -73,18 +74,11 @@ const EMPTY_FILTERS = {
 function emptyActivityForm(currentUserId, activityType = "call") {
   return {
     activity_type: activityType,
-    title: "",
     activity_at: toLocalInputValue(new Date()),
     performed_by: currentUserId ?? "",
-    assigned_to: "",
-    contact_person: "",
     content: "",
     result: "",
-    status: "",
     follow_up_date: "",
-    note: "",
-    related_order: "",
-    related_reference: "",
     attachment: null,
   };
 }
@@ -112,7 +106,7 @@ export default function PartnerDetail() {
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [activityForm, setActivityForm] = useState(emptyActivityForm());
   const [activityError, setActivityError] = useState("");
-  const activityTitleRef = useRef(null);
+  const activityContentRef = useRef(null);
 
   async function loadAll() {
     try {
@@ -183,7 +177,7 @@ export default function PartnerDetail() {
     setActivityForm(emptyActivityForm(currentUser?.id, activityType));
     setActivityError("");
     setShowAddActivity(true);
-    setTimeout(() => activityTitleRef.current?.focus(), 50);
+    setTimeout(() => activityContentRef.current?.focus(), 50);
   }
 
   function updateActivityField(field, value) {
@@ -196,18 +190,11 @@ export default function PartnerDetail() {
     try {
       const fd = new FormData();
       fd.set("activity_type", activityForm.activity_type);
-      fd.set("title", activityForm.title);
       if (activityForm.activity_at) fd.set("activity_at", new Date(activityForm.activity_at).toISOString());
       if (activityForm.performed_by) fd.set("performed_by", activityForm.performed_by);
-      if (activityForm.assigned_to) fd.set("assigned_to", activityForm.assigned_to);
-      if (activityForm.contact_person) fd.set("contact_person", activityForm.contact_person);
       if (activityForm.content) fd.set("content", activityForm.content);
       if (activityForm.result) fd.set("result", activityForm.result);
-      if (activityForm.status) fd.set("status", activityForm.status);
       if (activityForm.follow_up_date) fd.set("follow_up_date", activityForm.follow_up_date);
-      if (activityForm.note) fd.set("note", activityForm.note);
-      if (activityForm.related_order) fd.set("related_order", activityForm.related_order);
-      if (activityForm.related_reference) fd.set("related_reference", activityForm.related_reference);
       if (activityForm.attachment) fd.set("attachment", activityForm.attachment);
 
       await apiUpload(`/api/partners/${id}/activities/`, fd);
@@ -400,33 +387,25 @@ export default function PartnerDetail() {
 
             {showAddActivity && (
               <form className="field-grid inline-add-activity" onSubmit={handleAddActivity}>
-                <label>
-                  Loại hoạt động *
-                  <select
-                    value={activityForm.activity_type}
-                    onChange={(e) => updateActivityField("activity_type", e.target.value)}
-                  >
-                    {ACTIVITY_TYPE_GROUPS.map((g) => (
-                      <optgroup label={g.label} key={g.label}>
-                        {g.options.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Tiêu đề *
-                  <input
-                    ref={activityTitleRef}
-                    required
-                    placeholder="VD: Gọi tư vấn báo giá lô hàng tháng 9"
-                    value={activityForm.title}
-                    onChange={(e) => updateActivityField("title", e.target.value)}
-                  />
-                </label>
+                {!QUICK_ACTIVITY_TYPES.some((t) => t.value === activityForm.activity_type) && (
+                  <label>
+                    Loại hoạt động *
+                    <select
+                      value={activityForm.activity_type}
+                      onChange={(e) => updateActivityField("activity_type", e.target.value)}
+                    >
+                      {ACTIVITY_TYPE_GROUPS.map((g) => (
+                        <optgroup label={g.label} key={g.label}>
+                          {g.options.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
                   <label>
                     Ngày giờ *
@@ -437,16 +416,6 @@ export default function PartnerDetail() {
                       onChange={(e) => updateActivityField("activity_at", e.target.value)}
                     />
                   </label>
-                  <label>
-                    Người liên hệ
-                    <input
-                      placeholder="VD: Anh Nam"
-                      value={activityForm.contact_person}
-                      onChange={(e) => updateActivityField("contact_person", e.target.value)}
-                    />
-                  </label>
-                </div>
-                <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
                   <label>
                     Người thực hiện
                     <select
@@ -461,49 +430,25 @@ export default function PartnerDetail() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    Người phụ trách
-                    <select
-                      value={activityForm.assigned_to}
-                      onChange={(e) => updateActivityField("assigned_to", e.target.value)}
-                    >
-                      <option value="">— Như người thực hiện —</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
                 <label>
-                  Nội dung
+                  Nội dung *
                   <textarea
+                    ref={activityContentRef}
+                    required
                     rows={3}
-                    placeholder="Đã trao đổi những gì với khách..."
+                    placeholder="VD: Đã gọi điện cho anh Nam, trao đổi về..."
                     value={activityForm.content}
                     onChange={(e) => updateActivityField("content", e.target.value)}
                   />
                 </label>
                 <label>
                   Kết quả
-                  <textarea
-                    rows={2}
-                    placeholder="Kết quả của lần làm việc này..."
-                    value={activityForm.result}
-                    onChange={(e) => updateActivityField("result", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Trạng thái
-                  <select
-                    value={activityForm.status}
-                    onChange={(e) => updateActivityField("status", e.target.value)}
-                  >
-                    <option value="">Tự động theo loại</option>
-                    {Object.entries(ACTIVITY_STATUS_LABEL).map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
+                  <select value={activityForm.result} onChange={(e) => updateActivityField("result", e.target.value)}>
+                    <option value="">— Chưa đánh giá —</option>
+                    {ACTIVITY_RESULT_OPTIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
                       </option>
                     ))}
                   </select>
@@ -538,38 +483,6 @@ export default function PartnerDetail() {
                       </button>
                     )}
                   </div>
-                </label>
-                <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                  <label>
-                    Đơn hàng liên quan
-                    <select
-                      value={activityForm.related_order}
-                      onChange={(e) => updateActivityField("related_order", e.target.value)}
-                    >
-                      <option value="">— Không —</option>
-                      {orders.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          Đơn #{o.id} — {formatMoney(o.total)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Tham chiếu khác
-                    <input
-                      placeholder="VD: Báo giá #BG-045"
-                      value={activityForm.related_reference}
-                      onChange={(e) => updateActivityField("related_reference", e.target.value)}
-                    />
-                  </label>
-                </div>
-                <label>
-                  Ghi chú
-                  <textarea
-                    rows={2}
-                    value={activityForm.note}
-                    onChange={(e) => updateActivityField("note", e.target.value)}
-                  />
                 </label>
                 <label>
                   File đính kèm
