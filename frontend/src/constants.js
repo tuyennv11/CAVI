@@ -143,10 +143,10 @@ export const PRICE_INQUIRY_TEMPLATE = `Tên hàng:
 Số lượng: (Kiện / Pallet / Thùng / Bao / Container...)
 Kích thước / Tổng thể tích:
 Cân nặng / Tổng trọng lượng:
-Hình thức vận chuyển: TNV → TNC
-Điểm lấy hàng: Kho CAVI Hóc Môn
-Điểm giao hàng: Kho CAVI Phnom Penh
-Giá trị hàng hóa: Chưa xác định
+Hình thức vận chuyển: Chính ngạch VN -> Tiểu ngạch Cam ( Vận chuyển nội địa/ Chính ngạch VN -> Chính ngạch Lào ...)
+Điểm lấy hàng:
+Điểm giao hàng:
+Giá trị hàng hóa:
 Ghi chú: `;
 
 export function formatMoney(v) {
