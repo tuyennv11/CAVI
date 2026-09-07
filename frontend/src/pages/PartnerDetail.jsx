@@ -13,7 +13,6 @@ import {
   ACTIVITY_TYPE_LABEL,
   formatMoney,
   PARTNER_TYPE_LABEL,
-  QUICK_ACTIVITY_TYPES,
   TIER_LABEL,
 } from "../constants";
 
@@ -31,26 +30,6 @@ function formatDateTime(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
 }
-
-function toLocalInputValue(date) {
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
-    date.getMinutes()
-  )}`;
-}
-
-function addDaysStr(n) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-const FOLLOW_UP_PRESETS = [
-  { label: "Ngày mai", days: 1 },
-  { label: "3 ngày tới", days: 3 },
-  { label: "Tuần sau", days: 7 },
-  { label: "2 tuần tới", days: 14 },
-];
 
 // Hẹn có giờ cụ thể (vd "15h gọi lại") thì quá hạn tính đúng theo giờ đó; hẹn chỉ có ngày
 // (vd "thứ 4 tuần sau") thì coi như còn hạn tới hết ngày hôm đó.
@@ -79,10 +58,9 @@ const EMPTY_FILTERS = {
   search: "",
 };
 
-function emptyActivityForm(currentUserId, activityType = "call") {
+function emptyActivityForm(currentUserId) {
   return {
-    activity_type: activityType,
-    activity_at: toLocalInputValue(new Date()),
+    activity_type: "note",
     performed_by: currentUserId ?? "",
     content: "",
     result: "",
@@ -112,8 +90,7 @@ export default function PartnerDetail() {
   const [activities, setActivities] = useState([]);
   const [summary, setSummary] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [showAddActivity, setShowAddActivity] = useState(false);
-  const [activityForm, setActivityForm] = useState(emptyActivityForm());
+  const [activityForm, setActivityForm] = useState(() => emptyActivityForm(currentUser?.id));
   const [activityError, setActivityError] = useState("");
   const activityContentRef = useRef(null);
 
@@ -178,17 +155,6 @@ export default function PartnerDetail() {
     setFilters((prev) => ({ ...prev, [field]: value }));
   }
 
-  function openAddActivity(activityType = "call") {
-    if (showAddActivity && activityForm.activity_type === activityType) {
-      setShowAddActivity(false);
-      return;
-    }
-    setActivityForm(emptyActivityForm(currentUser?.id, activityType));
-    setActivityError("");
-    setShowAddActivity(true);
-    setTimeout(() => activityContentRef.current?.focus(), 50);
-  }
-
   function updateActivityField(field, value) {
     setActivityForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -199,7 +165,7 @@ export default function PartnerDetail() {
     try {
       const fd = new FormData();
       fd.set("activity_type", activityForm.activity_type);
-      if (activityForm.activity_at) fd.set("activity_at", new Date(activityForm.activity_at).toISOString());
+      fd.set("activity_at", new Date().toISOString());
       if (activityForm.performed_by) fd.set("performed_by", activityForm.performed_by);
       if (activityForm.content) fd.set("content", activityForm.content);
       if (activityForm.result) fd.set("result", activityForm.result);
@@ -210,7 +176,8 @@ export default function PartnerDetail() {
       if (activityForm.attachment) fd.set("attachment", activityForm.attachment);
 
       await apiUpload(`/api/partners/${id}/activities/`, fd);
-      setShowAddActivity(false);
+      setActivityForm(emptyActivityForm(currentUser?.id));
+      activityContentRef.current?.focus();
       loadActivities();
     } catch (err) {
       setActivityError(err.message);
@@ -373,156 +340,57 @@ export default function PartnerDetail() {
               <h2 style={{ margin: 0 }}>Timeline</h2>
             </div>
 
-            <div className="quick-actions">
-              {QUICK_ACTIVITY_TYPES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  className={`quick-action-btn${showAddActivity && activityForm.activity_type === t.value ? " active" : ""}`}
-                  onClick={() => openAddActivity(t.value)}
-                >
-                  <span>{t.icon}</span> {t.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                className={`quick-action-btn${
-                  showAddActivity && !QUICK_ACTIVITY_TYPES.some((t) => t.value === activityForm.activity_type)
-                    ? " active"
-                    : ""
-                }`}
-                onClick={() => openAddActivity("opportunity")}
+            <form className="quick-log-bar" onSubmit={handleAddActivity}>
+              <input
+                ref={activityContentRef}
+                required
+                className="quick-log-input"
+                placeholder="Ghi nhanh hoạt động với khách... (VD: Đã gọi cho anh Nam báo giá lô hàng T9)"
+                value={activityForm.content}
+                onChange={(e) => updateActivityField("content", e.target.value)}
+              />
+              <select
+                className="quick-log-select"
+                title="Kết quả"
+                value={activityForm.result}
+                onChange={(e) => updateActivityField("result", e.target.value)}
               >
-                <span>➕</span> Khác...
+                <option value="">Kết quả</option>
+                {ACTIVITY_RESULT_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                className="quick-log-date"
+                title="Hẹn nhắc lại — ngày"
+                value={activityForm.follow_up_date}
+                onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
+              />
+              {activityForm.follow_up_date && (
+                <input
+                  type="time"
+                  className="quick-log-time"
+                  title="Hẹn nhắc lại — giờ cụ thể (vd khách hẹn 15h gọi lại), để trống nếu chỉ hẹn ngày"
+                  value={activityForm.follow_up_time}
+                  onChange={(e) => updateActivityField("follow_up_time", e.target.value)}
+                />
+              )}
+              <label className="quick-log-file" title="Đính kèm file">
+                📎
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) => updateActivityField("attachment", e.target.files[0] ?? null)}
+                />
+              </label>
+              <button type="submit" className="quick-log-submit">
+                Lưu
               </button>
-            </div>
-
-            {showAddActivity && (
-              <form className="field-grid inline-add-activity" onSubmit={handleAddActivity}>
-                {!QUICK_ACTIVITY_TYPES.some((t) => t.value === activityForm.activity_type) && (
-                  <label>
-                    Loại hoạt động *
-                    <select
-                      value={activityForm.activity_type}
-                      onChange={(e) => updateActivityField("activity_type", e.target.value)}
-                    >
-                      {ACTIVITY_TYPE_GROUPS.map((g) => (
-                        <optgroup label={g.label} key={g.label}>
-                          {g.options.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <div className="order-item-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                  <label>
-                    Ngày giờ *
-                    <input
-                      type="datetime-local"
-                      required
-                      value={activityForm.activity_at}
-                      onChange={(e) => updateActivityField("activity_at", e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Người thực hiện
-                    <select
-                      value={activityForm.performed_by}
-                      onChange={(e) => updateActivityField("performed_by", e.target.value)}
-                    >
-                      <option value="">— Tôi —</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <label>
-                  Nội dung *
-                  <textarea
-                    ref={activityContentRef}
-                    required
-                    rows={3}
-                    placeholder="VD: Đã gọi điện cho anh Nam, trao đổi về..."
-                    value={activityForm.content}
-                    onChange={(e) => updateActivityField("content", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Kết quả
-                  <select value={activityForm.result} onChange={(e) => updateActivityField("result", e.target.value)}>
-                    <option value="">— Chưa đánh giá —</option>
-                    {ACTIVITY_RESULT_OPTIONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  🔔 Hẹn nhắc lại
-                  <div className="followup-picker">
-                    {FOLLOW_UP_PRESETS.map((p) => (
-                      <button
-                        key={p.label}
-                        type="button"
-                        className={`followup-preset-btn${
-                          activityForm.follow_up_date === addDaysStr(p.days) ? " active" : ""
-                        }`}
-                        onClick={() => updateActivityField("follow_up_date", addDaysStr(p.days))}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                    <input
-                      type="date"
-                      value={activityForm.follow_up_date}
-                      onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
-                    />
-                    {activityForm.follow_up_date && (
-                      <>
-                        <input
-                          type="time"
-                          title="Giờ cụ thể (vd khách hẹn 15h gọi lại) — để trống nếu chỉ hẹn ngày"
-                          value={activityForm.follow_up_time}
-                          onChange={(e) => updateActivityField("follow_up_time", e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="link-btn"
-                          onClick={() => {
-                            updateActivityField("follow_up_date", "");
-                            updateActivityField("follow_up_time", "");
-                          }}
-                        >
-                          Bỏ hẹn
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </label>
-                <label>
-                  File đính kèm
-                  <input
-                    type="file"
-                    onChange={(e) => updateActivityField("attachment", e.target.files[0] ?? null)}
-                  />
-                </label>
-                {activityError && <p className="error">{activityError}</p>}
-                <div className="modal-actions">
-                  <button type="button" className="secondary" onClick={() => setShowAddActivity(false)}>
-                    Huỷ
-                  </button>
-                  <button type="submit">Lưu hoạt động</button>
-                </div>
-              </form>
-            )}
+            </form>
+            {activityError && <p className="error">{activityError}</p>}
 
             <div className="filter-bar">
               <input
