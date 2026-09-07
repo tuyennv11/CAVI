@@ -29,7 +29,7 @@ export default function PhoneInput({ value, onChange, placeholder }) {
       >
         {COUNTRY_CODES.map((c) => (
           <option key={c.code} value={c.dial}>
-            {c.flag} {c.dial} {c.name}
+            {c.flag} {c.name} {c.dial}
           </option>
         ))}
       </select>

@@ -321,7 +321,7 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Phone input (mã vùng + số) ---------- */
 .phone-input { display: flex; gap: 8px; }
-.phone-input-dial { flex: 0 0 150px; min-width: 0; }
+.phone-input-dial { flex: 0 0 170px; min-width: 0; }
 .phone-input input { flex: 1; min-width: 0; }
 
 /* ---------- Order items / detail forms ---------- */
