@@ -26,17 +26,6 @@ from .serializers import (
 
 MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
 
-TASK_LIKE_TYPES = {
-    Activity.ActivityType.TASK,
-    Activity.ActivityType.FOLLOW_UP,
-    Activity.ActivityType.APPOINTMENT,
-    Activity.ActivityType.SUPPORT_REQUEST,
-    Activity.ActivityType.COMPLAINT,
-    Activity.ActivityType.ISSUE_HANDLING,
-    Activity.ActivityType.POST_SALE_CARE,
-}
-OPEN_STATUSES = [Activity.Status.NOT_PROCESSED, Activity.Status.IN_PROGRESS]
-
 
 def _sum_revenue(queryset):
     return queryset.aggregate(
@@ -131,9 +120,6 @@ class PartnerViewSet(viewsets.ModelViewSet):
                 "upcoming_follow_ups": acts.filter(
                     follow_up_date__isnull=False, follow_up_date__gte=today, follow_up_done=False
                 ).count(),
-                "unfinished_tasks": acts.filter(activity_type__in=TASK_LIKE_TYPES)
-                .filter(status__in=OPEN_STATUSES)
-                .count(),
             }
         )
 

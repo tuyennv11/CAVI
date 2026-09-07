@@ -6,9 +6,7 @@ import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import {
-  ACTIVITY_STATUS_LABEL,
   ACTIVITY_TYPE_CATEGORY,
-  ACTIVITY_TYPE_GROUPS,
   formatMoney,
   PARTNER_TYPE_LABEL,
   TIER_LABEL,
@@ -56,10 +54,7 @@ const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 }
 const TIER_ORDER = ["standard", "vip", "super_vip"];
 
 const EMPTY_FILTERS = {
-  activity_type: "",
-  assigned_to: "",
   performed_by: "",
-  status: "",
   has_follow_up: "",
   date_from: "",
   date_to: "",
@@ -344,10 +339,6 @@ export default function PartnerDetail() {
                 <span className="label">Follow-up sắp tới</span>
                 <span className="value">{summary.upcoming_follow_ups}</span>
               </div>
-              <div className="stat-card">
-                <span className="label">Công việc chưa hoàn thành</span>
-                <span className="value">{summary.unfinished_tasks}</span>
-              </div>
             </div>
           )}
 
@@ -419,38 +410,10 @@ export default function PartnerDetail() {
             <div className="filter-bar">
               <input
                 className="search-input"
-                placeholder="Tìm theo tiêu đề/nội dung..."
+                placeholder="Tìm theo nội dung..."
                 value={filters.search}
                 onChange={(e) => updateFilter("search", e.target.value)}
               />
-              <select value={filters.activity_type} onChange={(e) => updateFilter("activity_type", e.target.value)}>
-                <option value="">Mọi loại hoạt động</option>
-                {ACTIVITY_TYPE_GROUPS.map((g) => (
-                  <optgroup label={g.label} key={g.label}>
-                    {g.options.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <select value={filters.status} onChange={(e) => updateFilter("status", e.target.value)}>
-                <option value="">Mọi trạng thái</option>
-                {Object.entries(ACTIVITY_STATUS_LABEL).map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-              <select value={filters.assigned_to} onChange={(e) => updateFilter("assigned_to", e.target.value)}>
-                <option value="">Mọi người phụ trách</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name}
-                  </option>
-                ))}
-              </select>
               <select value={filters.performed_by} onChange={(e) => updateFilter("performed_by", e.target.value)}>
                 <option value="">Mọi người thực hiện</option>
                 {users.map((u) => (
