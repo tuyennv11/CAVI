@@ -323,6 +323,8 @@ a:hover { text-decoration: underline; }
 .phone-input { display: flex; gap: 8px; }
 .phone-input-dial { flex: 0 0 170px; min-width: 0; }
 .phone-input input { flex: 1; min-width: 0; }
+.phone-input-hint { font-size: 11.5px; color: var(--faint); margin-top: 4px; }
+.phone-input-hint.error { color: var(--danger); }
 
 /* ---------- Order items / detail forms ---------- */
 .order-item-row { display: grid; grid-template-columns: 1fr 90px 140px; gap: 8px; }
