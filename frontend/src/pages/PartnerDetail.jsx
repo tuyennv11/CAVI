@@ -9,7 +9,6 @@ import {
   ACTIVITY_STATUS_LABEL,
   ACTIVITY_TYPE_CATEGORY,
   ACTIVITY_TYPE_GROUPS,
-  ACTIVITY_TYPE_LABEL,
   formatMoney,
   PARTNER_TYPE_LABEL,
   TIER_LABEL,
@@ -40,7 +39,7 @@ function isFollowUpOverdue(followUpDate, followUpTime) {
 
 function formatFollowUp(followUpDate, followUpTime) {
   const d = new Date(followUpDate).toLocaleDateString("vi-VN");
-  return followUpTime ? `${d} lúc ${followUpTime.slice(0, 5)}` : d;
+  return followUpTime ? `lúc ${followUpTime.slice(0, 5)} ${d}` : d;
 }
 
 function nowDateStr() {
@@ -501,32 +500,27 @@ export default function PartnerDetail() {
                       </div>
                       <div className="timeline-body">
                         <div className="timeline-head">
-                          <span className="timeline-type">{ACTIVITY_TYPE_LABEL[a.activity_type]}</span>
-                          <span className="timeline-title">{a.title}</span>
                           <span className="timeline-time">{formatDateTime(a.activity_at)}</span>
+                          <span className="timeline-content-text">{a.content || a.title}</span>
                         </div>
-                        <div className="timeline-meta">
-                          {a.performed_by_name && <span>Thực hiện: {a.performed_by_name}</span>}
-                          {a.assigned_to_name && a.assigned_to_name !== a.performed_by_name && (
-                            <span>Phụ trách: {a.assigned_to_name}</span>
-                          )}
-                          {a.contact_person && <span>Liên hệ: {a.contact_person}</span>}
-                        </div>
-                        {a.content && <div className="timeline-content">{a.content}</div>}
+                        {a.contact_person && (
+                          <div className="timeline-meta">
+                            <span>Liên hệ: {a.contact_person}</span>
+                          </div>
+                        )}
                         {a.result && (
                           <div className="timeline-result">
                             Kết quả: <b>{a.result}</b>
                           </div>
                         )}
                         <div className="timeline-tags">
-                          <StatusBadge status={a.status} />
                           {a.follow_up_date && (
                             <span
                               className={`timeline-followup${overdue ? " overdue" : ""}${
                                 a.follow_up_done ? " done" : ""
                               }`}
                             >
-                              🔔 Follow-up {formatFollowUp(a.follow_up_date, a.follow_up_time)}
+                              🔔 Nhắc hẹn {formatFollowUp(a.follow_up_date, a.follow_up_time)}
                               {overdue ? " (quá hạn)" : ""}
                               {a.follow_up_done ? " ✓ đã nhắc" : ""}
                             </span>

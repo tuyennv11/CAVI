@@ -27,7 +27,7 @@ function isFollowUpOverdue(followUpDate, followUpTime) {
 
 function fmtFollowUp(followUpDate, followUpTime) {
   const d = new Date(followUpDate).toLocaleDateString("vi-VN");
-  return followUpTime ? `${d} lúc ${followUpTime.slice(0, 5)}` : d;
+  return followUpTime ? `lúc ${followUpTime.slice(0, 5)} ${d}` : d;
 }
 
 function ProgressBar({ pct }) {
@@ -143,7 +143,7 @@ export default function Workspace() {
       key: `fu-${a.id}`,
       urgent: isFollowUpOverdue(a.follow_up_date, a.follow_up_time),
       icon: "🔔",
-      text: `Follow-up: ${a.title}`,
+      text: `Nhắc hẹn: ${a.title}`,
       sub: a.customer_name,
       link: a.customer ? `/partners/${a.customer}` : null,
       at: a.follow_up_date,
