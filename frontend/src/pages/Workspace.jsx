@@ -19,6 +19,17 @@ function fmtPct(pct) {
   return pct === null || pct === undefined ? "—" : `${pct}%`;
 }
 
+function isFollowUpOverdue(followUpDate, followUpTime) {
+  if (!followUpDate) return false;
+  const target = new Date(`${followUpDate}T${followUpTime || "23:59:59"}`);
+  return target < new Date();
+}
+
+function fmtFollowUp(followUpDate, followUpTime) {
+  const d = new Date(followUpDate).toLocaleDateString("vi-VN");
+  return followUpTime ? `${d} lúc ${followUpTime.slice(0, 5)}` : d;
+}
+
 function ProgressBar({ pct }) {
   const width = pct === null || pct === undefined ? 0 : Math.min(100, Math.max(0, pct));
   const over = pct !== null && pct !== undefined && pct >= 100;
@@ -130,12 +141,13 @@ export default function Workspace() {
     })),
     ...today.follow_ups_due.map((a) => ({
       key: `fu-${a.id}`,
-      urgent: a.follow_up_date < new Date().toISOString().slice(0, 10),
+      urgent: isFollowUpOverdue(a.follow_up_date, a.follow_up_time),
       icon: "🔔",
       text: `Follow-up: ${a.title}`,
       sub: a.customer_name,
       link: a.customer ? `/partners/${a.customer}` : null,
       at: a.follow_up_date,
+      atText: fmtFollowUp(a.follow_up_date, a.follow_up_time),
     })),
     ...today.open_requests.map((a) => ({
       key: `req-${a.id}`,
@@ -236,7 +248,7 @@ export default function Workspace() {
                   {item.link ? <Link to={item.link}>{item.text}</Link> : item.text}
                   {item.sub && <span className="muted"> — {item.sub}</span>}
                 </span>
-                {item.at && <span className="action-time">{fmtDateTime(item.at)}</span>}
+                {item.at && <span className="action-time">{item.atText ?? fmtDateTime(item.at)}</span>}
               </li>
             ))}
           </ul>

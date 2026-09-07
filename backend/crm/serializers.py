@@ -39,6 +39,7 @@ class ActivitySerializer(serializers.ModelSerializer):
             "result",
             "status",
             "follow_up_date",
+            "follow_up_time",
             "follow_up_done",
             "note",
             "attachment",

@@ -39,11 +39,6 @@ function toLocalInputValue(date) {
   )}`;
 }
 
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
 function addDaysStr(n) {
   const d = new Date();
   d.setDate(d.getDate() + n);
@@ -56,6 +51,19 @@ const FOLLOW_UP_PRESETS = [
   { label: "Tuần sau", days: 7 },
   { label: "2 tuần tới", days: 14 },
 ];
+
+// Hẹn có giờ cụ thể (vd "15h gọi lại") thì quá hạn tính đúng theo giờ đó; hẹn chỉ có ngày
+// (vd "thứ 4 tuần sau") thì coi như còn hạn tới hết ngày hôm đó.
+function isFollowUpOverdue(followUpDate, followUpTime) {
+  if (!followUpDate) return false;
+  const target = new Date(`${followUpDate}T${followUpTime || "23:59:59"}`);
+  return target < new Date();
+}
+
+function formatFollowUp(followUpDate, followUpTime) {
+  const d = new Date(followUpDate).toLocaleDateString("vi-VN");
+  return followUpTime ? `${d} lúc ${followUpTime.slice(0, 5)}` : d;
+}
 
 const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 };
 const TIER_ORDER = ["standard", "vip", "super_vip"];
@@ -79,6 +87,7 @@ function emptyActivityForm(currentUserId, activityType = "call") {
     content: "",
     result: "",
     follow_up_date: "",
+    follow_up_time: "",
     attachment: null,
   };
 }
@@ -195,6 +204,9 @@ export default function PartnerDetail() {
       if (activityForm.content) fd.set("content", activityForm.content);
       if (activityForm.result) fd.set("result", activityForm.result);
       if (activityForm.follow_up_date) fd.set("follow_up_date", activityForm.follow_up_date);
+      if (activityForm.follow_up_date && activityForm.follow_up_time) {
+        fd.set("follow_up_time", activityForm.follow_up_time);
+      }
       if (activityForm.attachment) fd.set("attachment", activityForm.attachment);
 
       await apiUpload(`/api/partners/${id}/activities/`, fd);
@@ -474,13 +486,24 @@ export default function PartnerDetail() {
                       onChange={(e) => updateActivityField("follow_up_date", e.target.value)}
                     />
                     {activityForm.follow_up_date && (
-                      <button
-                        type="button"
-                        className="link-btn"
-                        onClick={() => updateActivityField("follow_up_date", "")}
-                      >
-                        Bỏ hẹn
-                      </button>
+                      <>
+                        <input
+                          type="time"
+                          title="Giờ cụ thể (vd khách hẹn 15h gọi lại) — để trống nếu chỉ hẹn ngày"
+                          value={activityForm.follow_up_time}
+                          onChange={(e) => updateActivityField("follow_up_time", e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => {
+                            updateActivityField("follow_up_date", "");
+                            updateActivityField("follow_up_time", "");
+                          }}
+                        >
+                          Bỏ hẹn
+                        </button>
+                      </>
                     )}
                   </div>
                 </label>
@@ -577,7 +600,7 @@ export default function PartnerDetail() {
               <ul className="timeline">
                 {activities.map((a) => {
                   const category = ACTIVITY_TYPE_CATEGORY[a.activity_type] ?? "interaction";
-                  const overdue = a.follow_up_date && a.follow_up_date < todayStr() && !a.follow_up_done;
+                  const overdue = !a.follow_up_done && isFollowUpOverdue(a.follow_up_date, a.follow_up_time);
                   return (
                     <li className="timeline-item" key={a.id}>
                       <div className="timeline-marker">
@@ -610,7 +633,7 @@ export default function PartnerDetail() {
                                 a.follow_up_done ? " done" : ""
                               }`}
                             >
-                              🔔 Follow-up {new Date(a.follow_up_date).toLocaleDateString("vi-VN")}
+                              🔔 Follow-up {formatFollowUp(a.follow_up_date, a.follow_up_time)}
                               {overdue ? " (quá hạn)" : ""}
                               {a.follow_up_done ? " ✓ đã nhắc" : ""}
                             </span>
