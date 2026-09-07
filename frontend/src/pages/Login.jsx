@@ -28,7 +28,7 @@ export default function Login() {
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="brand-row">
-          <span className="mark">V</span>
+          <img src="/logo.jpg" alt="CAVI" className="mark-logo" />
           <h1>Đăng nhập</h1>
         </div>
         <label>

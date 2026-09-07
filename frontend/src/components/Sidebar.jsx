@@ -80,8 +80,8 @@ export default function Sidebar({ user }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="mark">V</span>
-        Vận Tải CRM
+        <img src="/logo.jpg" alt="CAVI" className="mark-logo" />
+        CAVI
       </div>
       <nav className="sidebar-nav">
         <NavItem to="/" end icon={ICONS.dashboard}>

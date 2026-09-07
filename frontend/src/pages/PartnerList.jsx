@@ -5,21 +5,23 @@ import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import { formatMoney, PARTNER_TYPE_LABEL, TIER_LABEL } from "../constants";
 
-const EMPTY_FORM = {
-  name: "",
-  contact_person: "",
-  phone: "",
-  note: "",
-  partner_type: "customer",
-};
+const TABS = [
+  { key: "customer", label: "Khách hàng" },
+  { key: "supplier", label: "Nhà cung cấp" },
+];
+
+function emptyForm(partnerType) {
+  return { name: "", contact_person: "", phone: "", note: "", partner_type: partnerType };
+}
 
 export default function PartnerList() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState("customer");
   const [partners, setPartners] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(emptyForm("customer"));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,13 +47,17 @@ export default function PartnerList() {
     load(search);
   }
 
+  function openNew() {
+    setForm(emptyForm(tab));
+    setShowNew(true);
+  }
+
   async function handleCreate(e) {
     e.preventDefault();
     setError("");
     setSaving(true);
     try {
       await apiFetch("/api/partners/", { method: "POST", body: JSON.stringify(form) });
-      setForm(EMPTY_FORM);
       setShowNew(false);
       load(search);
     } catch (err) {
@@ -61,14 +67,24 @@ export default function PartnerList() {
     }
   }
 
+  const visible = partners.filter((p) => p.partner_type === tab || p.partner_type === "both");
+
   return (
     <div>
       <div className="page-head">
         <div>
           <h1>Đối tác</h1>
-          <div className="page-head-sub">{partners.length} đối tác đang quản lý</div>
+          <div className="page-head-sub">{visible.length} {tab === "customer" ? "khách hàng" : "nhà cung cấp"}</div>
         </div>
-        <button onClick={() => setShowNew(true)}>+ Thêm đối tác</button>
+        <button onClick={openNew}>+ Thêm {tab === "customer" ? "khách hàng" : "nhà cung cấp"}</button>
+      </div>
+
+      <div className="tabs">
+        {TABS.map((t) => (
+          <button key={t.key} className={`tab-btn${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className="toolbar">
@@ -89,9 +105,9 @@ export default function PartnerList() {
 
       {loading ? (
         <p className="muted">Đang tải...</p>
-      ) : partners.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="panel">
-          <p className="muted">Chưa có đối tác nào.</p>
+          <p className="muted">Chưa có {tab === "customer" ? "khách hàng" : "nhà cung cấp"} nào.</p>
         </div>
       ) : (
         <div className="table-wrap">
@@ -99,14 +115,13 @@ export default function PartnerList() {
             <thead>
               <tr>
                 <th>Đối tác</th>
-                <th>Loại</th>
-                <th>Hạng</th>
-                <th>Công nợ</th>
+                {tab === "customer" && <th>Hạng</th>}
+                {tab === "customer" && <th>Công nợ</th>}
                 <th>Phụ trách</th>
               </tr>
             </thead>
             <tbody>
-              {partners.map((p) => {
+              {visible.map((p) => {
                 const overLimit = Number(p.debt) > Number(p.credit_limit);
                 return (
                   <tr key={p.id} className="clickable" onClick={() => navigate(`/partners/${p.id}`)}>
@@ -114,7 +129,14 @@ export default function PartnerList() {
                       <div className="row-name">
                         <Avatar name={p.name} />
                         <div>
-                          <div>{p.name}</div>
+                          <div>
+                            {p.name}
+                            {p.partner_type === "both" && (
+                              <span className="badge badge-neutral" style={{ marginLeft: 8 }}>
+                                {PARTNER_TYPE_LABEL.both}
+                              </span>
+                            )}
+                          </div>
                           {p.contact_person && (
                             <div className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>
                               {p.contact_person}
@@ -123,13 +145,14 @@ export default function PartnerList() {
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <span className="badge badge-neutral">{PARTNER_TYPE_LABEL[p.partner_type]}</span>
-                    </td>
-                    <td>
-                      <span className={`badge badge-tier-${p.tier}`}>{TIER_LABEL[p.tier]}</span>
-                    </td>
-                    <td className={overLimit ? "error" : ""}>{formatMoney(p.debt)}</td>
+                    {tab === "customer" && (
+                      <td>
+                        <span className={`badge badge-tier-${p.tier}`}>{TIER_LABEL[p.tier]}</span>
+                      </td>
+                    )}
+                    {tab === "customer" && (
+                      <td className={overLimit ? "error" : ""}>{formatMoney(p.debt)}</td>
+                    )}
                     <td>{p.assigned_to_detail?.username ?? "—"}</td>
                   </tr>
                 );
@@ -140,7 +163,7 @@ export default function PartnerList() {
       )}
 
       {showNew && (
-        <Modal title="Thêm đối tác" onClose={() => setShowNew(false)}>
+        <Modal title={`Thêm ${tab === "customer" ? "khách hàng" : "nhà cung cấp"}`} onClose={() => setShowNew(false)}>
           <form className="field-grid" onSubmit={handleCreate}>
             <label>
               Tên *
@@ -178,7 +201,7 @@ export default function PartnerList() {
                 Huỷ
               </button>
               <button type="submit" disabled={saving}>
-                {saving ? "Đang lưu..." : "Lưu đối tác"}
+                {saving ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
           </form>
