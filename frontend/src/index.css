@@ -319,6 +319,11 @@ a:hover { text-decoration: underline; }
 .kanban-card .kc-customer { font-weight: 700; margin-bottom: 5px; }
 .kanban-card .kc-total { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 
+/* ---------- Phone input (mã vùng + số) ---------- */
+.phone-input { display: flex; gap: 8px; }
+.phone-input-dial { flex: 0 0 150px; min-width: 0; }
+.phone-input input { flex: 1; min-width: 0; }
+
 /* ---------- Order items / detail forms ---------- */
 .order-item-row { display: grid; grid-template-columns: 1fr 90px 140px; gap: 8px; }
 .stakes { display: flex; gap: 8px; flex-wrap: wrap; }

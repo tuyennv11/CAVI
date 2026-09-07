@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api";
 import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
+import PhoneInput from "../components/PhoneInput";
 import { formatMoney, PARTNER_TYPE_LABEL, TIER_LABEL } from "../constants";
 
 const TABS = [
@@ -189,7 +190,7 @@ export default function PartnerList() {
             </label>
             <label>
               Số điện thoại
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <PhoneInput value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
             </label>
             <label>
               Mô tả thêm
