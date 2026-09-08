@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiFetch, apiUpload, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
 import Avatar from "../components/Avatar";
@@ -128,7 +128,9 @@ export default function PartnerDetail() {
   // Lỗi riêng cho thao tác dòng báo giá — không dùng chung `error` vì trang này
   // return sớm cả trang khi `error` có giá trị, làm mất hết dữ liệu đang xem.
   const [lineError, setLineError] = useState("");
-  const [tab, setTab] = useState("activity");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get("tab") || "activity");
+  const highlightInquiryId = searchParams.get("inquiry");
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
   const [paid, setPaid] = useState(false);
@@ -246,6 +248,14 @@ export default function PartnerDetail() {
     loadActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, filters]);
+
+  // Đến từ link duyệt đề xuất (?tab=inquiries&inquiry=<id>) — cuộn tới đúng Hỏi giá liên quan.
+  useEffect(() => {
+    if (!highlightInquiryId || inquiries.length === 0) return;
+    const el = document.getElementById(`inquiry-${highlightInquiryId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inquiries.length, highlightInquiryId]);
 
   function updateFilter(field, value) {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -775,7 +785,11 @@ export default function PartnerDetail() {
           ) : (
             <div className="inquiry-list">
               {inquiries.map((inq) => (
-                <div className="inquiry-card" key={inq.id}>
+                <div
+                  className={`inquiry-card${String(inq.id) === highlightInquiryId ? " highlighted" : ""}`}
+                  id={`inquiry-${inq.id}`}
+                  key={inq.id}
+                >
                   <div className="inquiry-head">
                     <StatusBadge status={inq.status} />
                     <span className="muted" style={{ fontSize: 12 }}>

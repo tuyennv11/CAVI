@@ -111,7 +111,18 @@ export default function ApprovalsPage() {
               {requests.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{r.title}</div>
+                    {r.related_url ? (
+                      <a
+                        href={r.related_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontWeight: 600 }}
+                      >
+                        {r.title}
+                      </a>
+                    ) : (
+                      <div style={{ fontWeight: 600 }}>{r.title}</div>
+                    )}
                     {r.note && <div className="muted" style={{ fontSize: 12.5 }}>{r.note}</div>}
                   </td>
                   <td>{r.category || "—"}</td>

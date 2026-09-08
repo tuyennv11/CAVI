@@ -21,6 +21,9 @@ class ApprovalRequest(models.Model):
     category = models.CharField("Danh mục", max_length=255, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)
     note = models.TextField("Ghi chú", blank=True)
+    # Đường dẫn tới đối tượng liên quan (vd báo giá) để người duyệt bấm vào xem đầy đủ ngữ cảnh
+    # (lịch sử tương tác, báo giá...) trước khi ra quyết định, thay vì chỉ thấy 1 dòng tóm tắt.
+    related_url = models.CharField("Đường dẫn liên quan", max_length=255, blank=True)
     amount = models.DecimalField("Số tiền", max_digits=16, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.VND)
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")

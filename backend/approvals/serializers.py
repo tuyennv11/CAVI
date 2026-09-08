@@ -15,6 +15,7 @@ class ApprovalRequestSerializer(serializers.ModelSerializer):
             "category",
             "title",
             "note",
+            "related_url",
             "amount",
             "currency",
             "requested_by",

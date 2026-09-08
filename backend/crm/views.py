@@ -307,6 +307,9 @@ class QuotationViewSet(
                 f"Báo giá #{quotation.id} (Hỏi giá #{inquiry.id}) — Giá đề xuất: {total} "
                 f"(giá sàn {floor}, giá trần {ceiling})."
             ),
+            # Cho người duyệt bấm thẳng vào đây để xem lịch sử tương tác/báo giá trước khi quyết định,
+            # thay vì chỉ thấy 1 dòng tóm tắt trên trang Ký duyệt.
+            related_url=f"/partners/{inquiry.customer_id}?tab=inquiries&inquiry={inquiry.id}",
             amount=total,
             requested_by=request.user,
         )
