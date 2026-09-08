@@ -62,10 +62,11 @@ function groupPriceList(priceList) {
   const groups = [];
   const byName = new Map();
   for (const item of priceList) {
-    let group = byName.get(item.group_name);
+    const key = `${item.category}|${item.group_name}`;
+    let group = byName.get(key);
     if (!group) {
-      group = { label: item.group_name, options: [] };
-      byName.set(item.group_name, group);
+      group = { label: `Nhóm ${item.category} — ${item.group_name}`, options: [] };
+      byName.set(key, group);
       groups.push(group);
     }
     group.options.push({ value: item.id, label: `${item.item_code} — ${item.name}`, category: item.category });
