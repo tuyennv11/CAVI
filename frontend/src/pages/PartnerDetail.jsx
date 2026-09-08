@@ -1223,27 +1223,29 @@ export default function PartnerDetail() {
                             <button
                               type="button"
                               className="secondary"
-                              onClick={() => handleExportQuotationPdf(inq.quotation.id, inq.customer_name)}
-                            >
-                              Xuất PDF
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleCreateOrderFromQuotation(inq.quotation.id)}
-                            >
-                              Tạo đơn
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary"
                               onClick={() => handleDeleteQuotation(inq.id, inq.quotation.id)}
                             >
                               Xoá báo giá
                             </button>
                             {quotationSaved[inq.id] && (
-                              <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
-                                Đã lưu báo giá
-                              </span>
+                              <>
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  onClick={() => handleExportQuotationPdf(inq.quotation.id, inq.customer_name)}
+                                >
+                                  Xuất PDF
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCreateOrderFromQuotation(inq.quotation.id)}
+                                >
+                                  Tạo đơn
+                                </button>
+                                <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
+                                  Đã lưu báo giá
+                                </span>
+                              </>
                             )}
                           </div>
                         </div>
