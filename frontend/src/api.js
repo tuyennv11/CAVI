@@ -43,6 +43,16 @@ async function refreshAccessToken() {
   return data.access;
 }
 
+// DRF trả lỗi ở nhiều dạng khác nhau tuỳ nguồn (detail / non_field_errors / lỗi theo field) —
+// gom về 1 thông điệp dễ hiểu thay vì luôn rơi về "Lỗi 400" chung chung.
+function extractErrorMessage(body, status) {
+  if (body.detail) return body.detail;
+  if (Array.isArray(body.non_field_errors) && body.non_field_errors.length) return body.non_field_errors[0];
+  const firstArray = Object.values(body).find((v) => Array.isArray(v) && v.length);
+  if (firstArray) return firstArray[0];
+  return `Lỗi ${status}`;
+}
+
 // Gọi API kèm sẵn token; nếu access token hết hạn thì tự làm mới rồi thử lại 1 lần.
 export async function apiFetch(path, options = {}) {
   const { access } = getTokens();
@@ -69,7 +79,7 @@ export async function apiFetch(path, options = {}) {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Lỗi ${res.status}`);
+    throw new Error(extractErrorMessage(body, res.status));
   }
   if (res.status === 204) return null;
   return res.json();
@@ -99,7 +109,7 @@ export async function apiUpload(path, formData, method = "POST") {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Lỗi ${res.status}`);
+    throw new Error(extractErrorMessage(body, res.status));
   }
   if (res.status === 204) return null;
   return res.json();

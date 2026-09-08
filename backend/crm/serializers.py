@@ -134,11 +134,13 @@ class PriceListItemSerializer(serializers.ModelSerializer):
 
 class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
     item_code = serializers.CharField(source="item.item_code", read_only=True)
+    category = serializers.CharField(source="item.category", read_only=True, default=None)
     # Không bắt buộc ở đây — khi có chọn `item` thì create() tự điền lại từ bảng giá gốc bên dưới.
     item_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
     unit = serializers.CharField(required=False, allow_blank=True, max_length=50)
     floor_pct = serializers.DecimalField(max_digits=6, decimal_places=2, required=False)
     ceiling_pct = serializers.DecimalField(max_digits=6, decimal_places=2, required=False)
+    note = serializers.CharField(required=False, allow_blank=True)
     line_cost = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
     line_floor = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
     line_ceiling = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
@@ -150,12 +152,14 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
             "inquiry",
             "item",
             "item_code",
+            "category",
             "item_name",
             "unit",
             "floor_pct",
             "ceiling_pct",
             "quantity",
             "unit_cost",
+            "note",
             "line_cost",
             "line_floor",
             "line_ceiling",
@@ -166,6 +170,11 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if not attrs.get("item") and not attrs.get("item_name"):
             raise serializers.ValidationError("Cần chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.")
+        item = attrs.get("item")
+        inquiry = self.context.get("inquiry")
+        if item and item.category == PriceListItem.Category.I and inquiry is not None:
+            if inquiry.quote_lines.filter(item__category=PriceListItem.Category.I).exists():
+                raise serializers.ValidationError("Một đơn hàng chỉ được chọn 1 dịch vụ thuộc nhóm I.")
         return attrs
 
     def create(self, validated_data):

@@ -68,7 +68,7 @@ function groupPriceList(priceList) {
       byName.set(item.group_name, group);
       groups.push(group);
     }
-    group.options.push({ value: item.id, label: `${item.item_code} — ${item.name}` });
+    group.options.push({ value: item.id, label: `${item.item_code} — ${item.name}`, category: item.category });
   }
   return groups;
 }
@@ -85,7 +85,7 @@ function sumLines(lines) {
 }
 
 function emptyLineForm() {
-  return { item: "", item_name: "", unit: "", floor_pct: "", ceiling_pct: "", quantity: 1, unit_cost: "" };
+  return { item: "", item_name: "", unit: "", floor_pct: "", ceiling_pct: "", quantity: 1, unit_cost: "", note: "" };
 }
 
 function emptyActivityForm(currentUserId) {
@@ -108,6 +108,9 @@ export default function PartnerDetail() {
   const [orders, setOrders] = useState([]);
   const [tierRequests, setTierRequests] = useState([]);
   const [error, setError] = useState("");
+  // Lỗi riêng cho thao tác dòng báo giá — không dùng chung `error` vì trang này
+  // return sớm cả trang khi `error` có giá trị, làm mất hết dữ liệu đang xem.
+  const [lineError, setLineError] = useState("");
   const [tab, setTab] = useState("activity");
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
@@ -289,20 +292,21 @@ export default function PartnerDetail() {
   function toggleLineForm(inquiryId) {
     setLineFormFor((prev) => (prev === inquiryId ? null : inquiryId));
     setLineForms((prev) => ({ ...prev, [inquiryId]: prev[inquiryId] || emptyLineForm() }));
+    setLineError("");
   }
 
   async function handleAddLine(inquiryId) {
     const form = lineForms[inquiryId] || emptyLineForm();
     if (!form.item && !form.item_name) {
-      setError("Chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.");
+      setLineError("Chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.");
       return;
     }
     if (!form.quantity || !form.unit_cost) {
-      setError("Cần nhập Số lượng và Đơn giá vốn.");
+      setLineError("Cần nhập Số lượng và Đơn giá vốn.");
       return;
     }
     const payload = form.item
-      ? { item: Number(form.item), quantity: form.quantity, unit_cost: form.unit_cost }
+      ? { item: Number(form.item), quantity: form.quantity, unit_cost: form.unit_cost, note: form.note || "" }
       : {
           item_name: form.item_name,
           unit: form.unit,
@@ -310,6 +314,7 @@ export default function PartnerDetail() {
           ceiling_pct: form.ceiling_pct || 0,
           quantity: form.quantity,
           unit_cost: form.unit_cost,
+          note: form.note || "",
         };
     try {
       await apiFetch(`/api/price-inquiries/${inquiryId}/lines/`, {
@@ -317,9 +322,10 @@ export default function PartnerDetail() {
         body: JSON.stringify(payload),
       });
       setLineForms((prev) => ({ ...prev, [inquiryId]: emptyLineForm() }));
+      setLineError("");
       loadInquiries();
     } catch (err) {
-      setError(err.message);
+      setLineError(err.message);
     }
   }
 
@@ -328,7 +334,7 @@ export default function PartnerDetail() {
       await apiFetch(`/api/quote-lines/${lineId}/`, { method: "DELETE" });
       loadInquiries();
     } catch (err) {
-      setError(err.message);
+      setLineError(err.message);
     }
   }
 
@@ -338,7 +344,7 @@ export default function PartnerDetail() {
       setLineFormFor(null);
       loadInquiries();
     } catch (err) {
-      setError(err.message);
+      setLineError(err.message);
     }
   }
 
@@ -682,11 +688,16 @@ export default function PartnerDetail() {
                         <option value="">— Dịch vụ khác (tự nhập) —</option>
                         {groupPriceList(priceList).map((g) => (
                           <optgroup label={g.label} key={g.label}>
-                            {g.options.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
+                            {g.options.map((o) => {
+                              const groupIUsed =
+                                o.category === "I" && inq.quote_lines.some((l) => l.category === "I");
+                              return (
+                                <option key={o.value} value={o.value} disabled={groupIUsed}>
+                                  {o.label}
+                                  {groupIUsed ? " (đơn đã có dịch vụ nhóm I)" : ""}
+                                </option>
+                              );
+                            })}
                           </optgroup>
                         ))}
                       </select>
@@ -735,6 +746,12 @@ export default function PartnerDetail() {
                         })()
                       )}
                       <input
+                        className="line-note"
+                        placeholder="Mô tả"
+                        value={lineForms[inq.id]?.note || ""}
+                        onChange={(e) => updateLineField(inq.id, "note", e.target.value)}
+                      />
+                      <input
                         type="number"
                         placeholder="Số lượng"
                         style={{ width: 90 }}
@@ -754,6 +771,8 @@ export default function PartnerDetail() {
                     </div>
                   )}
 
+                  {lineFormFor === inq.id && lineError && <p className="error">{lineError}</p>}
+
                   {inq.quote_lines.length > 0 &&
                     (() => {
                       const totals = sumLines(inq.quote_lines);
@@ -763,6 +782,7 @@ export default function PartnerDetail() {
                             <thead>
                               <tr>
                                 <th>Dịch vụ cấu thành đơn hàng</th>
+                                <th>Mô tả</th>
                                 <th>ĐVT</th>
                                 <th>SL</th>
                                 <th>Đơn giá vốn</th>
@@ -776,6 +796,7 @@ export default function PartnerDetail() {
                               {inq.quote_lines.map((l) => (
                                 <tr key={l.id}>
                                   <td>{l.item_name}</td>
+                                  <td className="muted">{l.note}</td>
                                   <td>{l.unit}</td>
                                   <td>{l.quantity}</td>
                                   <td>{formatMoney(l.unit_cost)}</td>
@@ -798,7 +819,7 @@ export default function PartnerDetail() {
                             </tbody>
                             <tfoot>
                               <tr>
-                                <td colSpan={4}>
+                                <td colSpan={5}>
                                   <b>Tổng</b>
                                 </td>
                                 <td>

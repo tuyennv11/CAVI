@@ -319,6 +319,7 @@ class PriceInquiryQuoteLine(models.Model):
     ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
     unit_cost = models.DecimalField("Đơn giá vốn", max_digits=14, decimal_places=2, default=0)
+    note = models.TextField("Mô tả", blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
 

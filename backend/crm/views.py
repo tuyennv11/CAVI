@@ -217,7 +217,7 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         inquiry = self.get_object()
         if request.method == "GET":
             return Response(PriceInquiryQuoteLineSerializer(inquiry.quote_lines.all(), many=True).data)
-        serializer = PriceInquiryQuoteLineSerializer(data=request.data)
+        serializer = PriceInquiryQuoteLineSerializer(data=request.data, context={"inquiry": inquiry})
         serializer.is_valid(raise_exception=True)
         serializer.save(inquiry=inquiry, created_by=request.user)
         return Response(serializer.data, status=201)
