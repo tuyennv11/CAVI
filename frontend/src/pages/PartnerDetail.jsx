@@ -690,7 +690,7 @@ export default function PartnerDetail() {
                           </optgroup>
                         ))}
                       </select>
-                      {!lineForms[inq.id]?.item && (
+                      {!lineForms[inq.id]?.item ? (
                         <>
                           <input
                             className="line-item-name"
@@ -719,6 +719,20 @@ export default function PartnerDetail() {
                             onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
                           />
                         </>
+                      ) : (
+                        (() => {
+                          const selectedItem = priceList.find(
+                            (p) => String(p.id) === String(lineForms[inq.id].item)
+                          );
+                          if (!selectedItem) return null;
+                          return (
+                            <>
+                              <input value={selectedItem.unit} disabled style={{ width: 70 }} />
+                              <input value={`Sàn ${selectedItem.floor_pct}%`} disabled style={{ width: 90 }} />
+                              <input value={`Trần ${selectedItem.ceiling_pct}%`} disabled style={{ width: 90 }} />
+                            </>
+                          );
+                        })()
                       )}
                       <input
                         type="number"
