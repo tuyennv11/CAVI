@@ -1,7 +1,9 @@
 import base64
+import io
 from datetime import timedelta
 from decimal import Decimal
 
+import qrcode
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.db.models import DecimalField, F, Q, Sum
@@ -472,6 +474,52 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["get"], url_path="label")
+    def label(self, request, pk=None):
+        # Import ở đây cùng lý do với PDF báo giá — weasyprint cần thư viện hệ thống chỉ có trên
+        # server Linux lúc deploy, import ở module-level sẽ làm cả app không chạy nổi trên máy dev.
+        from weasyprint import HTML
+
+        order = self.get_object()
+        order_code = f"CAVI-{order.id:06d}"
+
+        qr_buf = io.BytesIO()
+        qrcode.make(order_code).save(qr_buf, format="PNG")
+        qr_data_uri = "data:image/png;base64," + base64.b64encode(qr_buf.getvalue()).decode()
+
+        logo_data_uri = ""
+        logo_path = finders.find("crm/logo.jpg")
+        if logo_path:
+            with open(logo_path, "rb") as f:
+                logo_data_uri = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+
+        html = render_to_string(
+            "crm/order_label_pdf.html",
+            {
+                "order_code": order_code,
+                "created_date": order.created_at.strftime("%d/%m/%Y"),
+                "customer_name": order.customer.name,
+                "contact_person": order.customer.contact_person,
+                "phone": order.customer.phone,
+                "pickup_point": order.pickup_point,
+                "delivery_point": order.delivery_point,
+                "items": [
+                    {"description": item.description, "quantity": _format_qty_vn(item.quantity)}
+                    for item in order.items.all()
+                ],
+                "weight_display": f"{_format_qty_vn(order.weight_kg)} kg" if order.weight_kg is not None else "",
+                "cod_display": _format_money_vn(order.cod_amount) if order.cod_amount else "",
+                "note": order.note,
+                "hotline": settings.COMPANY_HOTLINE,
+                "logo_data_uri": logo_data_uri,
+                "qr_data_uri": qr_data_uri,
+            },
+        )
+        pdf_bytes = HTML(string=html).write_pdf()
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{order_code}.pdf"'
+        return response
 
 
 class NoticeViewSet(viewsets.ModelViewSet):

@@ -137,6 +137,7 @@ export default function PartnerDetail() {
   const { user: currentUser } = useAuth();
   const [partner, setPartner] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [orderLabelForms, setOrderLabelForms] = useState({});
   const [tierRequests, setTierRequests] = useState([]);
   const [error, setError] = useState("");
   // Lỗi riêng cho thao tác dòng báo giá — không dùng chung `error` vì trang này
@@ -257,6 +258,26 @@ export default function PartnerDetail() {
       return changed ? next : prev;
     });
   }, [inquiries]);
+
+  // Nạp form điền thông tin bill (điểm lấy/giao, khối lượng, COD) 1 lần khi đơn xuất hiện.
+  useEffect(() => {
+    setOrderLabelForms((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const o of orders) {
+        if (!next[o.id]) {
+          next[o.id] = {
+            pickup_point: o.pickup_point || "",
+            delivery_point: o.delivery_point || "",
+            weight_kg: o.weight_kg || "",
+            cod_amount: o.cod_amount || "",
+          };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [orders]);
 
   useEffect(() => {
     loadActivities();
@@ -512,6 +533,38 @@ export default function PartnerDetail() {
     }
   }
 
+  function updateOrderLabelField(orderId, field, value) {
+    setOrderLabelForms((prev) => ({ ...prev, [orderId]: { ...prev[orderId], [field]: value } }));
+  }
+
+  async function handleSaveOrderLabel(orderId) {
+    const form = orderLabelForms[orderId];
+    try {
+      await apiFetch(`/api/orders/${orderId}/`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          pickup_point: form.pickup_point,
+          delivery_point: form.delivery_point,
+          weight_kg: form.weight_kg || null,
+          cod_amount: form.cod_amount || null,
+        }),
+      });
+      loadAll();
+    } catch (err) {
+      // Không dùng `error` dùng chung toàn trang — trang này return sớm cả trang khi `error` có
+      // giá trị (xem lineError ở trên), sẽ xoá mất cả tab Đơn hàng đang xem.
+      setLineError(err.message);
+    }
+  }
+
+  async function handlePrintOrderLabel(orderId) {
+    try {
+      await apiDownload(`/api/orders/${orderId}/label/`, `CAVI-${String(orderId).padStart(6, "0")}.pdf`);
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
   function updateItem(index, field, value) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, [field]: value } : it)));
   }
@@ -530,7 +583,8 @@ export default function PartnerDetail() {
       setTab("orders");
       loadAll();
     } catch (err) {
-      setError(err.message);
+      // Không dùng `error` dùng chung toàn trang — sẽ xoá mất cả trang khi có lỗi (xem lineError).
+      setLineError(err.message);
     }
   }
 
@@ -1243,6 +1297,8 @@ export default function PartnerDetail() {
             <button onClick={() => setShowNewOrder((v) => !v)}>{showNewOrder ? "Đóng" : "+ Tạo đơn hàng"}</button>
           </div>
 
+          {lineError && <p className="error">{lineError}</p>}
+
           {showNewOrder && (
             <form className="field-grid" onSubmit={handleCreateOrder} style={{ marginBottom: 12 }}>
               {items.map((it, i) => (
@@ -1313,24 +1369,81 @@ export default function PartnerDetail() {
                     <th>Thanh toán</th>
                     <th>Doanh thu</th>
                     <th>Lợi nhuận gộp</th>
+                    <th>Điểm lấy hàng</th>
+                    <th>Điểm giao hàng</th>
+                    <th>KL (kg)</th>
+                    <th>COD</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id}>
-                      <td>#{o.id}</td>
-                      <td>
-                        <StatusBadge status={o.status} />
-                      </td>
-                      <td>
-                        <span className={`badge ${o.paid ? "badge-done" : "badge-processing"}`}>
-                          {o.paid ? "Đã trả" : "Chưa trả"}
-                        </span>
-                      </td>
-                      <td>{formatMoney(o.total)}</td>
-                      <td>{formatMoney(o.gross_profit)}</td>
-                    </tr>
-                  ))}
+                  {orders.map((o) => {
+                    const form = orderLabelForms[o.id] || {
+                      pickup_point: "",
+                      delivery_point: "",
+                      weight_kg: "",
+                      cod_amount: "",
+                    };
+                    return (
+                      <tr key={o.id}>
+                        <td>#{o.id}</td>
+                        <td>
+                          <StatusBadge status={o.status} />
+                        </td>
+                        <td>
+                          <span className={`badge ${o.paid ? "badge-done" : "badge-processing"}`}>
+                            {o.paid ? "Đã trả" : "Chưa trả"}
+                          </span>
+                        </td>
+                        <td>{formatMoney(o.total)}</td>
+                        <td>{formatMoney(o.gross_profit)}</td>
+                        <td>
+                          <input
+                            style={{ width: 110 }}
+                            value={form.pickup_point}
+                            onChange={(e) => updateOrderLabelField(o.id, "pickup_point", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            style={{ width: 110 }}
+                            value={form.delivery_point}
+                            onChange={(e) => updateOrderLabelField(o.id, "delivery_point", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            style={{ width: 60 }}
+                            value={form.weight_kg}
+                            onChange={(e) => updateOrderLabelField(o.id, "weight_kg", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            style={{ width: 90 }}
+                            value={form.cod_amount}
+                            onChange={(e) => updateOrderLabelField(o.id, "cod_amount", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button type="button" className="link-btn" onClick={() => handleSaveOrderLabel(o.id)}>
+                              Lưu
+                            </button>
+                            <button
+                              type="button"
+                              className="link-btn"
+                              onClick={() => handlePrintOrderLabel(o.id)}
+                            >
+                              In bill
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

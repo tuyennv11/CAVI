@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: 100mm 150mm; margin: 4mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans", "DejaVu Sans", sans-serif; font-size: 11px; color: #111; margin: 0; }
+  .label { border: 1.5px solid #111; padding: 6px; height: 100%; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #111; padding-bottom: 6px; margin-bottom: 6px; }
+  .brand { display: flex; align-items: center; gap: 6px; }
+  .brand img { width: 26px; height: 26px; }
+  .brand-name { font-size: 15px; font-weight: 700; color: #1f7a4d; }
+  .code-box { text-align: right; }
+  .code-box .code { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  .code-box .date { font-size: 10px; color: #555; }
+  .qr { text-align: center; margin-bottom: 6px; }
+  .qr img { width: 92px; height: 92px; }
+  .qr .code-text { font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-top: 2px; }
+  .party { border: 1px solid #999; border-radius: 3px; padding: 5px 7px; margin-bottom: 6px; }
+  .party .label { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .party .name { font-size: 13px; font-weight: 700; margin: 1px 0; }
+  .party .detail { font-size: 10.5px; }
+  .route { display: flex; gap: 6px; margin-bottom: 6px; }
+  .route > div { flex: 1; border: 1px solid #999; border-radius: 3px; padding: 5px 7px; }
+  .route .label { font-size: 9px; color: #666; text-transform: uppercase; }
+  .route .value { font-size: 11px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  th, td { border: 1px solid #999; padding: 4px 5px; font-size: 10px; }
+  th { background: #f1f6f3; text-align: left; }
+  td.num, th.num { text-align: right; }
+  .meta-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .meta-row > div { flex: 1; border: 1px solid #999; border-radius: 3px; padding: 5px 7px; }
+  .meta-row .label { font-size: 9px; color: #666; text-transform: uppercase; }
+  .meta-row .value { font-size: 12px; font-weight: 700; }
+  .cod .value { color: #b3261e; }
+  .note-box { font-size: 10px; color: #333; border-top: 1px dashed #999; padding-top: 5px; }
+</style>
+</head>
+<body>
+  <div class="label">
+    <div class="top">
+      <div class="brand">
+        {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="CAVI">{% endif %}
+        <div>
+          <div class="brand-name">CAVI</div>
+          {% if hotline %}<div style="font-size:9px;color:#555;">Hotline: {{ hotline }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="code-box">
+        <div class="code">{{ order_code }}</div>
+        <div class="date">Ngày: {{ created_date }}</div>
+      </div>
+    </div>
+
+    <div class="qr">
+      <img src="{{ qr_data_uri }}" alt="QR">
+      <div class="code-text">{{ order_code }}</div>
+    </div>
+
+    <div class="party">
+      <div class="label">Người gửi</div>
+      <div class="name">CAVI</div>
+      {% if hotline %}<div class="detail">{{ hotline }}</div>{% endif %}
+    </div>
+
+    <div class="party">
+      <div class="label">Người nhận</div>
+      <div class="name">{{ customer_name }}</div>
+      {% if contact_person %}<div class="detail">Liên hệ: {{ contact_person }}</div>{% endif %}
+      {% if phone %}<div class="detail">SĐT: {{ phone }}</div>{% endif %}
+    </div>
+
+    {% if pickup_point or delivery_point %}
+    <div class="route">
+      <div>
+        <div class="label">Điểm lấy hàng</div>
+        <div class="value">{{ pickup_point|default:"—" }}</div>
+      </div>
+      <div>
+        <div class="label">Điểm giao hàng</div>
+        <div class="value">{{ delivery_point|default:"—" }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr><th>Nội dung hàng hoá</th><th class="num" style="width:34px;">SL</th></tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr><td>{{ item.description }}</td><td class="num">{{ item.quantity }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="meta-row">
+      <div>
+        <div class="label">Khối lượng</div>
+        <div class="value">{{ weight_display|default:"—" }}</div>
+      </div>
+      <div class="cod">
+        <div class="label">Thu hộ (COD)</div>
+        <div class="value">{{ cod_display|default:"0 đ" }}</div>
+      </div>
+    </div>
+
+    {% if note %}
+    <div class="note-box">Ghi chú: {{ note }}</div>
+    {% endif %}
+  </div>
+</body>
+</html>

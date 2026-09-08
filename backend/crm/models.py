@@ -124,6 +124,11 @@ class Order(models.Model):
     note = models.CharField("Ghi chú", max_length=500, blank=True)
     paid = models.BooleanField("Đã thanh toán", default=False)
     on_platform = models.BooleanField("Qua sàn", default=False)
+    # Phục vụ in bill dán lên kiện hàng (dạng Viettel Post/GHN/GHTK/DHL) — Vận hành điền khi nhận hàng.
+    pickup_point = models.CharField("Điểm lấy hàng", max_length=255, blank=True)
+    delivery_point = models.CharField("Điểm giao hàng", max_length=255, blank=True)
+    weight_kg = models.DecimalField("Khối lượng (kg)", max_digits=10, decimal_places=2, null=True, blank=True)
+    cod_amount = models.DecimalField("Thu hộ (COD)", max_digits=14, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
