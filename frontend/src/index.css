@@ -502,6 +502,7 @@ a:hover { text-decoration: underline; }
 .inquiry-message.quote { background: var(--gold-soft); border-color: var(--gold); font-weight: 600; }
 .inquiry-reply-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .inquiry-reply-row input { flex: 1; min-width: 140px; padding: 7px 10px; font-size: 13px; }
+.inquiry-line-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .inquiry-line-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
 .inquiry-line-form input, .inquiry-line-form select { padding: 7px 10px; font-size: 13px; }
 .inquiry-line-form select { flex: 1 1 220px; }

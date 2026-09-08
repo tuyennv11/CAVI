@@ -662,6 +662,83 @@ export default function PartnerDetail() {
                     </a>
                   )}
 
+                  {inq.status === "open" && inq.quote_lines.length > 0 && (
+                    <div className="inquiry-line-actions">
+                      <button type="button" className="secondary" onClick={() => toggleLineForm(inq.id)}>
+                        {lineFormFor === inq.id ? "Đóng" : "Thêm dịch vụ"}
+                      </button>
+                      <button type="button" onClick={() => handleConfirmQuote(inq.id)}>
+                        Xác nhận báo giá
+                      </button>
+                    </div>
+                  )}
+
+                  {lineFormFor === inq.id && (
+                    <div className="inquiry-line-form">
+                      <select
+                        value={lineForms[inq.id]?.item || ""}
+                        onChange={(e) => updateLineField(inq.id, "item", e.target.value)}
+                      >
+                        <option value="">— Dịch vụ khác (tự nhập) —</option>
+                        {groupPriceList(priceList).map((g) => (
+                          <optgroup label={g.label} key={g.label}>
+                            {g.options.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {!lineForms[inq.id]?.item && (
+                        <>
+                          <input
+                            placeholder="Tên dịch vụ"
+                            value={lineForms[inq.id]?.item_name || ""}
+                            onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}
+                          />
+                          <input
+                            placeholder="ĐVT"
+                            style={{ width: 70 }}
+                            value={lineForms[inq.id]?.unit || ""}
+                            onChange={(e) => updateLineField(inq.id, "unit", e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Sàn %"
+                            style={{ width: 80 }}
+                            value={lineForms[inq.id]?.floor_pct || ""}
+                            onChange={(e) => updateLineField(inq.id, "floor_pct", e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Trần %"
+                            style={{ width: 80 }}
+                            value={lineForms[inq.id]?.ceiling_pct || ""}
+                            onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
+                          />
+                        </>
+                      )}
+                      <input
+                        type="number"
+                        placeholder="Số lượng"
+                        style={{ width: 90 }}
+                        value={lineForms[inq.id]?.quantity ?? 1}
+                        onChange={(e) => updateLineField(inq.id, "quantity", e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Đơn giá vốn"
+                        style={{ width: 120 }}
+                        value={lineForms[inq.id]?.unit_cost || ""}
+                        onChange={(e) => updateLineField(inq.id, "unit_cost", e.target.value)}
+                      />
+                      <button type="button" onClick={() => handleAddLine(inq.id)}>
+                        Thêm dòng
+                      </button>
+                    </div>
+                  )}
+
                   {inq.quote_lines.length > 0 &&
                     (() => {
                       const totals = sumLines(inq.quote_lines);
@@ -761,87 +838,12 @@ export default function PartnerDetail() {
                     <button type="button" onClick={() => handleSendMessage(inq.id)}>
                       Gửi
                     </button>
-                    {inq.status === "open" && (
+                    {inq.status === "open" && inq.quote_lines.length === 0 && (
                       <button type="button" className="secondary" onClick={() => toggleLineForm(inq.id)}>
-                        {lineFormFor === inq.id
-                          ? "Đóng"
-                          : inq.quote_lines.length === 0
-                          ? "Phân tích giá vốn"
-                          : "Thêm dịch vụ"}
-                      </button>
-                    )}
-                    {inq.status === "open" && inq.quote_lines.length > 0 && (
-                      <button type="button" onClick={() => handleConfirmQuote(inq.id)}>
-                        Xác nhận báo giá
+                        {lineFormFor === inq.id ? "Đóng" : "Phân tích giá vốn"}
                       </button>
                     )}
                   </div>
-
-                  {lineFormFor === inq.id && (
-                    <div className="inquiry-line-form">
-                      <select
-                        value={lineForms[inq.id]?.item || ""}
-                        onChange={(e) => updateLineField(inq.id, "item", e.target.value)}
-                      >
-                        <option value="">— Dịch vụ khác (tự nhập) —</option>
-                        {groupPriceList(priceList).map((g) => (
-                          <optgroup label={g.label} key={g.label}>
-                            {g.options.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                      {!lineForms[inq.id]?.item && (
-                        <>
-                          <input
-                            placeholder="Tên dịch vụ"
-                            value={lineForms[inq.id]?.item_name || ""}
-                            onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}
-                          />
-                          <input
-                            placeholder="ĐVT"
-                            style={{ width: 70 }}
-                            value={lineForms[inq.id]?.unit || ""}
-                            onChange={(e) => updateLineField(inq.id, "unit", e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            placeholder="Sàn %"
-                            style={{ width: 80 }}
-                            value={lineForms[inq.id]?.floor_pct || ""}
-                            onChange={(e) => updateLineField(inq.id, "floor_pct", e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            placeholder="Trần %"
-                            style={{ width: 80 }}
-                            value={lineForms[inq.id]?.ceiling_pct || ""}
-                            onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
-                          />
-                        </>
-                      )}
-                      <input
-                        type="number"
-                        placeholder="Số lượng"
-                        style={{ width: 90 }}
-                        value={lineForms[inq.id]?.quantity ?? 1}
-                        onChange={(e) => updateLineField(inq.id, "quantity", e.target.value)}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Đơn giá vốn"
-                        style={{ width: 120 }}
-                        value={lineForms[inq.id]?.unit_cost || ""}
-                        onChange={(e) => updateLineField(inq.id, "unit_cost", e.target.value)}
-                      />
-                      <button type="button" onClick={() => handleAddLine(inq.id)}>
-                        Thêm dòng
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
