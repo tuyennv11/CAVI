@@ -23,6 +23,8 @@ from .models import (
     PriceInquiry,
     PriceInquiryQuoteLine,
     PriceListItem,
+    Quotation,
+    QuotationLine,
     Task,
     TierUpgradeRequest,
 )
@@ -36,6 +38,7 @@ from .serializers import (
     PriceInquiryQuoteLineSerializer,
     PriceInquirySerializer,
     PriceListItemSerializer,
+    QuotationSerializer,
     TaskSerializer,
     TierUpgradeRequestSerializer,
 )
@@ -245,6 +248,40 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
             content=f"📌 Đã chốt giá — Giá vốn: {total_cost} · Giá sàn: {total_floor} · Giá trần: {total_ceiling}",
         )
         return Response(PriceInquirySerializer(inquiry).data)
+
+    @action(detail=True, methods=["post"], url_path="create-quotation")
+    def create_quotation(self, request, pk=None):
+        inquiry = self.get_object()
+        if inquiry.status != PriceInquiry.Status.QUOTED:
+            raise ValidationError("Chỉ có thể tạo báo giá sau khi đã chốt giá.")
+        quotation = getattr(inquiry, "quotation", None)
+        if quotation is None:
+            quotation = Quotation.objects.create(inquiry=inquiry, note=inquiry.description, created_by=request.user)
+            QuotationLine.objects.bulk_create(
+                QuotationLine(
+                    quotation=quotation,
+                    item_name=line.item_name,
+                    unit=line.unit,
+                    floor_pct=line.floor_pct,
+                    ceiling_pct=line.ceiling_pct,
+                    quantity=line.quantity,
+                    unit_cost=line.unit_cost,
+                    note=line.note,
+                )
+                for line in inquiry.quote_lines.all()
+            )
+        return Response(QuotationSerializer(quotation).data, status=201)
+
+
+class QuotationViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    serializer_class = QuotationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Quotation.objects.select_related("inquiry__customer").prefetch_related("lines")
+        if is_manager(self.request.user):
+            return qs
+        return qs.filter(inquiry__customer__assigned_to=self.request.user)
 
 
 class PriceInquiryQuoteLineViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):

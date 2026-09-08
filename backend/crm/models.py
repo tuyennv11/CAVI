@@ -342,6 +342,54 @@ class PriceInquiryQuoteLine(models.Model):
         return self.line_cost * (1 + self.ceiling_pct / 100)
 
 
+class Quotation(models.Model):
+    """Báo giá chính thức gửi khách hàng — tạo từ 1 Hỏi giá đã chốt giá nội bộ, copy lại dữ liệu
+    đã có (mô tả + các dòng dịch vụ) và cho chỉnh sửa tiếp trước khi gửi khách, độc lập với Hỏi giá gốc."""
+
+    inquiry = models.OneToOneField(PriceInquiry, on_delete=models.CASCADE, related_name="quotation")
+    note = models.TextField("Mô tả", blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Báo giá #{self.pk} — {self.inquiry.customer}"
+
+
+class QuotationLine(models.Model):
+    """Một dòng dịch vụ trong báo giá — copy từ PriceInquiryQuoteLine lúc tạo, sau đó chỉnh sửa độc lập."""
+
+    quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name="lines")
+    item_name = models.CharField("Tên dịch vụ", max_length=255)
+    unit = models.CharField("ĐVT", max_length=50, blank=True)
+    floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
+    ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
+    unit_cost = models.DecimalField("Đơn giá vốn", max_digits=14, decimal_places=2, default=0)
+    note = models.TextField("Mô tả", blank=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.item_name} x{self.quantity}"
+
+    @property
+    def line_cost(self):
+        return self.quantity * self.unit_cost
+
+    @property
+    def line_floor(self):
+        return self.line_cost * (1 + self.floor_pct / 100)
+
+    @property
+    def line_ceiling(self):
+        return self.line_cost * (1 + self.ceiling_pct / 100)
+
+
 class Task(models.Model):
     """Công việc — có thể tạo độc lập, từ một Hoạt động khách hàng, hoặc từ Chat."""
 

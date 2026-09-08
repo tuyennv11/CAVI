@@ -11,6 +11,8 @@ from .models import (
     PriceInquiryMessage,
     PriceInquiryQuoteLine,
     PriceListItem,
+    Quotation,
+    QuotationLine,
     Task,
     TierUpgradeRequest,
 )
@@ -189,12 +191,65 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class QuotationLineSerializer(serializers.ModelSerializer):
+    line_cost = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    line_floor = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    line_ceiling = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = QuotationLine
+        fields = [
+            "id",
+            "item_name",
+            "unit",
+            "floor_pct",
+            "ceiling_pct",
+            "quantity",
+            "unit_cost",
+            "note",
+            "line_cost",
+            "line_floor",
+            "line_ceiling",
+        ]
+
+
+class QuotationSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source="inquiry.customer.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    lines = QuotationLineSerializer(many=True)
+
+    class Meta:
+        model = Quotation
+        fields = [
+            "id",
+            "inquiry",
+            "customer_name",
+            "note",
+            "lines",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at"]
+
+    def update(self, instance, validated_data):
+        lines_data = validated_data.pop("lines", None)
+        instance.note = validated_data.get("note", instance.note)
+        instance.save()
+        if lines_data is not None:
+            instance.lines.all().delete()
+            QuotationLine.objects.bulk_create(QuotationLine(quotation=instance, **line) for line in lines_data)
+        return instance
+
+
 class PriceInquirySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     quoted_by_name = serializers.CharField(source="quoted_by.username", read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     messages = PriceInquiryMessageSerializer(many=True, read_only=True)
     quote_lines = PriceInquiryQuoteLineSerializer(many=True, read_only=True)
+    quotation = QuotationSerializer(read_only=True, required=False)
 
     class Meta:
         model = PriceInquiry
@@ -217,6 +272,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "updated_at",
             "messages",
             "quote_lines",
+            "quotation",
         ]
         read_only_fields = [
             "status",

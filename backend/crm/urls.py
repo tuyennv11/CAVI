@@ -10,6 +10,7 @@ from .views import (
     PriceInquiryQuoteLineViewSet,
     PriceInquiryViewSet,
     PriceListItemViewSet,
+    QuotationViewSet,
     TaskViewSet,
     TierUpgradeRequestViewSet,
 )
@@ -22,6 +23,7 @@ router.register("activities", ActivityViewSet, basename="activity")
 router.register("tasks", TaskViewSet, basename="task")
 router.register("price-inquiries", PriceInquiryViewSet, basename="price-inquiry")
 router.register("quote-lines", PriceInquiryQuoteLineViewSet, basename="quote-line")
+router.register("quotations", QuotationViewSet, basename="quotation")
 router.register("price-list-items", PriceListItemViewSet, basename="price-list-item")
 router.register("tier-requests", TierUpgradeRequestViewSet, basename="tier-request")
 router.register("notices", NoticeViewSet, basename="notice")

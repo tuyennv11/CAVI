@@ -11,6 +11,8 @@ from .models import (
     PriceInquiryMessage,
     PriceInquiryQuoteLine,
     PriceListItem,
+    Quotation,
+    QuotationLine,
     Task,
     TierUpgradeRequest,
 )
@@ -92,6 +94,17 @@ class PriceInquiryAdmin(admin.ModelAdmin):
     list_display = ("id", "customer", "status", "cost_price", "floor_price", "ceiling_price", "quoted_by", "created_at")
     list_filter = ("status",)
     inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
+
+
+class QuotationLineInline(admin.TabularInline):
+    model = QuotationLine
+    extra = 0
+
+
+@admin.register(Quotation)
+class QuotationAdmin(admin.ModelAdmin):
+    list_display = ("id", "inquiry", "created_by", "created_at")
+    inlines = [QuotationLineInline]
 
 
 @admin.register(PriceListItem)

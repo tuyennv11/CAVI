@@ -93,6 +93,21 @@ function emptyLineForm() {
   return { item: "", item_name: "", unit: "", floor_pct: "", ceiling_pct: "", quantity: 1, unit_cost: "", note: "" };
 }
 
+function emptyQuotationForm(quotation) {
+  return {
+    note: quotation.note || "",
+    lines: quotation.lines.map((l) => ({
+      item_name: l.item_name,
+      unit: l.unit,
+      quantity: l.quantity,
+      unit_cost: l.unit_cost,
+      floor_pct: l.floor_pct,
+      ceiling_pct: l.ceiling_pct,
+      note: l.note || "",
+    })),
+  };
+}
+
 function emptyActivityForm(currentUserId) {
   return {
     activity_type: "note",
@@ -141,6 +156,7 @@ export default function PartnerDetail() {
   const [priceList, setPriceList] = useState([]);
   const [lineFormFor, setLineFormFor] = useState(null);
   const [lineForms, setLineForms] = useState({});
+  const [quotationForms, setQuotationForms] = useState({});
 
   async function loadAll() {
     try {
@@ -211,6 +227,21 @@ export default function PartnerDetail() {
     loadPriceList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Nạp form chỉnh sửa báo giá 1 lần khi báo giá xuất hiện — không ghi đè nếu người dùng đang gõ dở.
+  useEffect(() => {
+    setQuotationForms((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const inq of inquiries) {
+        if (inq.quotation && !next[inq.id]) {
+          next[inq.id] = emptyQuotationForm(inq.quotation);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [inquiries]);
 
   useEffect(() => {
     loadActivities();
@@ -347,6 +378,40 @@ export default function PartnerDetail() {
     try {
       await apiFetch(`/api/price-inquiries/${inquiryId}/confirm-quote/`, { method: "POST" });
       setLineFormFor(null);
+      loadInquiries();
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
+  async function handleCreateQuotation(inquiryId) {
+    try {
+      await apiFetch(`/api/price-inquiries/${inquiryId}/create-quotation/`, { method: "POST" });
+      loadInquiries();
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
+  function updateQuotationNote(inquiryId, value) {
+    setQuotationForms((prev) => ({ ...prev, [inquiryId]: { ...prev[inquiryId], note: value } }));
+  }
+
+  function updateQuotationLine(inquiryId, lineIndex, field, value) {
+    setQuotationForms((prev) => {
+      const form = prev[inquiryId];
+      const lines = form.lines.map((l, i) => (i === lineIndex ? { ...l, [field]: value } : l));
+      return { ...prev, [inquiryId]: { ...form, lines } };
+    });
+  }
+
+  async function handleSaveQuotation(inquiryId, quotationId) {
+    const form = quotationForms[inquiryId];
+    try {
+      await apiFetch(`/api/quotations/${quotationId}/`, {
+        method: "PATCH",
+        body: JSON.stringify(form),
+      });
       loadInquiries();
     } catch (err) {
       setLineError(err.message);
@@ -869,6 +934,99 @@ export default function PartnerDetail() {
                       Giá vốn: <b>{formatMoney(inq.cost_price)}</b> · Giá sàn: <b>{formatMoney(inq.floor_price)}</b> ·
                       Giá trần: <b>{formatMoney(inq.ceiling_price)}</b>
                       <span className="muted"> — chốt bởi {inq.quoted_by_name}</span>
+                      {!inq.quotation && (
+                        <button type="button" className="secondary" onClick={() => handleCreateQuotation(inq.id)}>
+                          Tạo báo giá
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {inq.quotation && quotationForms[inq.id] && (
+                    <div className="quotation-panel">
+                      <div className="quotation-head">
+                        <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={quotationForms[inq.id].note}
+                        onChange={(e) => updateQuotationNote(inq.id, e.target.value)}
+                      />
+                      <div className="table-wrap">
+                        <table className="data-table quotation-lines-table">
+                          <thead>
+                            <tr>
+                              <th>Dịch vụ</th>
+                              <th>Mô tả</th>
+                              <th>ĐVT</th>
+                              <th>SL</th>
+                              <th>Đơn giá vốn</th>
+                              <th>Sàn %</th>
+                              <th>Trần %</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {quotationForms[inq.id].lines.map((l, i) => (
+                              <tr key={i}>
+                                <td>
+                                  <input
+                                    value={l.item_name}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "item_name", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    value={l.note}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "note", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    style={{ width: 60 }}
+                                    value={l.unit}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "unit", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    style={{ width: 70 }}
+                                    value={l.quantity}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "quantity", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    style={{ width: 110 }}
+                                    value={l.unit_cost}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "unit_cost", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    style={{ width: 70 }}
+                                    value={l.floor_pct}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "floor_pct", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    style={{ width: 70 }}
+                                    value={l.ceiling_pct}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "ceiling_pct", e.target.value)}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>
+                        Lưu báo giá
+                      </button>
                     </div>
                   )}
 
