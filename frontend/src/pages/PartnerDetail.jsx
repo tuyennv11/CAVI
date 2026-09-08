@@ -154,6 +154,8 @@ export default function PartnerDetail() {
   const [lineFormFor, setLineFormFor] = useState(null);
   const [lineForms, setLineForms] = useState({});
   const [quotationForms, setQuotationForms] = useState({});
+  const [quotationSaving, setQuotationSaving] = useState({});
+  const [quotationSaved, setQuotationSaved] = useState({});
 
   async function loadAll() {
     try {
@@ -392,6 +394,7 @@ export default function PartnerDetail() {
 
   function updateQuotationNote(inquiryId, value) {
     setQuotationForms((prev) => ({ ...prev, [inquiryId]: { ...prev[inquiryId], note: value } }));
+    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
   function updateQuotationLine(inquiryId, lineIndex, field, value) {
@@ -400,6 +403,7 @@ export default function PartnerDetail() {
       const lines = form.lines.map((l, i) => (i === lineIndex ? { ...l, [field]: value } : l));
       return { ...prev, [inquiryId]: { ...form, lines } };
     });
+    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
   function removeQuotationLine(inquiryId, lineIndex) {
@@ -408,6 +412,7 @@ export default function PartnerDetail() {
       const lines = form.lines.filter((_, i) => i !== lineIndex);
       return { ...prev, [inquiryId]: { ...form, lines } };
     });
+    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
   function addQuotationLine(inquiryId) {
@@ -416,18 +421,25 @@ export default function PartnerDetail() {
       const lines = [...form.lines, { item_name: "", unit: "", quantity: 1, price: 0 }];
       return { ...prev, [inquiryId]: { ...form, lines } };
     });
+    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
   async function handleSaveQuotation(inquiryId, quotationId) {
     const form = quotationForms[inquiryId];
+    setQuotationSaving((prev) => ({ ...prev, [inquiryId]: true }));
+    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
     try {
       await apiFetch(`/api/quotations/${quotationId}/`, {
         method: "PATCH",
         body: JSON.stringify(form),
       });
+      setLineError("");
+      setQuotationSaved((prev) => ({ ...prev, [inquiryId]: true }));
       loadInquiries();
     } catch (err) {
       setLineError(err.message);
+    } finally {
+      setQuotationSaving((prev) => ({ ...prev, [inquiryId]: false }));
     }
   }
 
@@ -1089,8 +1101,12 @@ export default function PartnerDetail() {
                           )}
                           <div className="quotation-actions">
                             {canSave && (
-                              <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>
-                                Lưu báo giá
+                              <button
+                                type="button"
+                                disabled={!!quotationSaving[inq.id]}
+                                onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}
+                              >
+                                {quotationSaving[inq.id] ? "Đang lưu..." : "Lưu báo giá"}
                               </button>
                             )}
                             {!withinBounds && approvalStatus !== "pending" && approvalStatus !== "approved" && (
@@ -1108,6 +1124,11 @@ export default function PartnerDetail() {
                             >
                               Xoá báo giá
                             </button>
+                            {quotationSaved[inq.id] && (
+                              <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
+                                Đã lưu báo giá
+                              </span>
+                            )}
                           </div>
                         </div>
                       );

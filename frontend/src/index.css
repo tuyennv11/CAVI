@@ -523,7 +523,7 @@ a:hover { text-decoration: underline; }
 .quotation-panel textarea { font-size: 13px; padding: 7px 10px; resize: vertical; }
 .quotation-lines-table th, .quotation-lines-table td { padding: 5px 6px; font-size: 12.5px; }
 .quotation-lines-table input { width: 100%; padding: 5px 6px; font-size: 12.5px; }
-.quotation-actions { display: flex; gap: 8px; }
+.quotation-actions { display: flex; gap: 8px; align-items: center; }
 
 /* ---------- Modal ---------- */
 .modal-overlay {
