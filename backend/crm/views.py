@@ -272,7 +272,9 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         return Response(QuotationSerializer(quotation).data, status=201)
 
 
-class QuotationViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class QuotationViewSet(
+    mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet
+):
     serializer_class = QuotationSerializer
     permission_classes = [IsAuthenticated]
 

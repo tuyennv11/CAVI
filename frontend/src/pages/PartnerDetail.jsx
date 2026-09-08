@@ -410,12 +410,34 @@ export default function PartnerDetail() {
     });
   }
 
+  function addQuotationLine(inquiryId) {
+    setQuotationForms((prev) => {
+      const form = prev[inquiryId];
+      const lines = [...form.lines, { item_name: "", unit: "", quantity: 1, price: 0 }];
+      return { ...prev, [inquiryId]: { ...form, lines } };
+    });
+  }
+
   async function handleSaveQuotation(inquiryId, quotationId) {
     const form = quotationForms[inquiryId];
     try {
       await apiFetch(`/api/quotations/${quotationId}/`, {
         method: "PATCH",
         body: JSON.stringify(form),
+      });
+      loadInquiries();
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
+  async function handleDeleteQuotation(inquiryId, quotationId) {
+    try {
+      await apiFetch(`/api/quotations/${quotationId}/`, { method: "DELETE" });
+      setQuotationForms((prev) => {
+        const next = { ...prev };
+        delete next[inquiryId];
+        return next;
       });
       loadInquiries();
     } catch (err) {
@@ -1031,9 +1053,21 @@ export default function PartnerDetail() {
                           </tfoot>
                         </table>
                       </div>
-                      <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>
-                        Lưu báo giá
+                      <button type="button" className="link-btn" onClick={() => addQuotationLine(inq.id)}>
+                        + Thêm dòng
                       </button>
+                      <div className="quotation-actions">
+                        <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>
+                          Lưu báo giá
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => handleDeleteQuotation(inq.id, inq.quotation.id)}
+                        >
+                          Xoá báo giá
+                        </button>
+                      </div>
                     </div>
                   )}
 
