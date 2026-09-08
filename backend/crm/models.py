@@ -360,16 +360,15 @@ class Quotation(models.Model):
 
 
 class QuotationLine(models.Model):
-    """Một dòng dịch vụ trong báo giá — copy từ PriceInquiryQuoteLine lúc tạo, sau đó chỉnh sửa độc lập."""
+    """Một dòng trong báo giá gửi khách — chỉ giữ những gì khách cần thấy (mô tả/ĐVT/SL/giá),
+    bỏ hết chi tiết giá vốn/% nội bộ vì về sau chỉ cần quan tâm giá tổng của báo giá.
+    `price` mặc định lấy từ giá sàn của dòng Hỏi giá gốc lúc tạo, sau đó chỉnh sửa độc lập."""
 
     quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name="lines")
-    item_name = models.CharField("Tên dịch vụ", max_length=255)
+    item_name = models.CharField("Mô tả", max_length=255)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
-    floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
-    ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
-    unit_cost = models.DecimalField("Đơn giá vốn", max_digits=14, decimal_places=2, default=0)
-    note = models.TextField("Mô tả", blank=True)
+    price = models.DecimalField("Giá", max_digits=14, decimal_places=2, default=0)
 
     class Meta:
         ordering = ["id"]
@@ -378,16 +377,8 @@ class QuotationLine(models.Model):
         return f"{self.item_name} x{self.quantity}"
 
     @property
-    def line_cost(self):
-        return self.quantity * self.unit_cost
-
-    @property
-    def line_floor(self):
-        return self.line_cost * (1 + self.floor_pct / 100)
-
-    @property
-    def line_ceiling(self):
-        return self.line_cost * (1 + self.ceiling_pct / 100)
+    def line_total(self):
+        return self.quantity * self.price
 
 
 class Task(models.Model):

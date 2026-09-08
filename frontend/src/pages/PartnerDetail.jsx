@@ -100,10 +100,7 @@ function emptyQuotationForm(quotation) {
       item_name: l.item_name,
       unit: l.unit,
       quantity: l.quantity,
-      unit_cost: l.unit_cost,
-      floor_pct: l.floor_pct,
-      ceiling_pct: l.ceiling_pct,
-      note: l.note || "",
+      price: l.price,
     })),
   };
 }
@@ -401,6 +398,14 @@ export default function PartnerDetail() {
     setQuotationForms((prev) => {
       const form = prev[inquiryId];
       const lines = form.lines.map((l, i) => (i === lineIndex ? { ...l, [field]: value } : l));
+      return { ...prev, [inquiryId]: { ...form, lines } };
+    });
+  }
+
+  function removeQuotationLine(inquiryId, lineIndex) {
+    setQuotationForms((prev) => {
+      const form = prev[inquiryId];
+      const lines = form.lines.filter((_, i) => i !== lineIndex);
       return { ...prev, [inquiryId]: { ...form, lines } };
     });
   }
@@ -956,13 +961,11 @@ export default function PartnerDetail() {
                         <table className="data-table quotation-lines-table">
                           <thead>
                             <tr>
-                              <th>Dịch vụ</th>
                               <th>Mô tả</th>
                               <th>ĐVT</th>
                               <th>SL</th>
-                              <th>Đơn giá vốn</th>
-                              <th>Sàn %</th>
-                              <th>Trần %</th>
+                              <th>Giá</th>
+                              <th></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -972,12 +975,6 @@ export default function PartnerDetail() {
                                   <input
                                     value={l.item_name}
                                     onChange={(e) => updateQuotationLine(inq.id, i, "item_name", e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    value={l.note}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "note", e.target.value)}
                                   />
                                 </td>
                                 <td>
@@ -998,30 +995,40 @@ export default function PartnerDetail() {
                                 <td>
                                   <input
                                     type="number"
-                                    style={{ width: 110 }}
-                                    value={l.unit_cost}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "unit_cost", e.target.value)}
+                                    style={{ width: 120 }}
+                                    value={l.price}
+                                    onChange={(e) => updateQuotationLine(inq.id, i, "price", e.target.value)}
                                   />
                                 </td>
                                 <td>
-                                  <input
-                                    type="number"
-                                    style={{ width: 70 }}
-                                    value={l.floor_pct}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "floor_pct", e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    style={{ width: 70 }}
-                                    value={l.ceiling_pct}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "ceiling_pct", e.target.value)}
-                                  />
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => removeQuotationLine(inq.id, i)}
+                                  >
+                                    Xoá
+                                  </button>
                                 </td>
                               </tr>
                             ))}
                           </tbody>
+                          <tfoot>
+                            <tr>
+                              <td colSpan={3}>
+                                <b>Tổng giá báo giá</b>
+                              </td>
+                              <td colSpan={2}>
+                                <b>
+                                  {formatMoney(
+                                    quotationForms[inq.id].lines.reduce(
+                                      (sum, l) => sum + Number(l.quantity || 0) * Number(l.price || 0),
+                                      0
+                                    )
+                                  )}
+                                </b>
+                              </td>
+                            </tr>
+                          </tfoot>
                         </table>
                       </div>
                       <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>

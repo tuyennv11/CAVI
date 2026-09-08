@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -192,31 +194,18 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
 
 
 class QuotationLineSerializer(serializers.ModelSerializer):
-    line_cost = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
-    line_floor = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
-    line_ceiling = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    line_total = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
 
     class Meta:
         model = QuotationLine
-        fields = [
-            "id",
-            "item_name",
-            "unit",
-            "floor_pct",
-            "ceiling_pct",
-            "quantity",
-            "unit_cost",
-            "note",
-            "line_cost",
-            "line_floor",
-            "line_ceiling",
-        ]
+        fields = ["id", "item_name", "unit", "quantity", "price", "line_total"]
 
 
 class QuotationSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source="inquiry.customer.name", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     lines = QuotationLineSerializer(many=True)
+    total = serializers.SerializerMethodField()
 
     class Meta:
         model = Quotation
@@ -226,12 +215,16 @@ class QuotationSerializer(serializers.ModelSerializer):
             "customer_name",
             "note",
             "lines",
+            "total",
             "created_by",
             "created_by_name",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["inquiry", "created_by", "created_at", "updated_at"]
+
+    def get_total(self, obj):
+        return sum((line.line_total for line in obj.lines.all()), Decimal("0"))
 
     def update(self, instance, validated_data):
         lines_data = validated_data.pop("lines", None)

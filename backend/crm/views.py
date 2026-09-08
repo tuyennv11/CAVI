@@ -260,13 +260,12 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
             QuotationLine.objects.bulk_create(
                 QuotationLine(
                     quotation=quotation,
-                    item_name=line.item_name,
+                    item_name=f"{line.item_name} — {line.note}" if line.note else line.item_name,
                     unit=line.unit,
-                    floor_pct=line.floor_pct,
-                    ceiling_pct=line.ceiling_pct,
                     quantity=line.quantity,
-                    unit_cost=line.unit_cost,
-                    note=line.note,
+                    # Mặc định lấy giá sàn — về sau chỉ cần quan tâm giá tổng của báo giá,
+                    # không cần giữ lại chi tiết giá vốn/% trong báo giá gửi khách.
+                    price=(line.unit_cost * (1 + line.floor_pct / 100)),
                 )
                 for line in inquiry.quote_lines.all()
             )
