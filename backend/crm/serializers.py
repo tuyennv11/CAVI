@@ -408,12 +408,13 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
             "total",
             "gross_profit",
+            "source_quotation",
             "created_by",
             "created_by_name",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_by", "created_at", "updated_at"]
+        read_only_fields = ["created_by", "created_at", "updated_at", "source_quotation"]
 
     def create(self, validated_data):
         items_data = validated_data.pop("items")

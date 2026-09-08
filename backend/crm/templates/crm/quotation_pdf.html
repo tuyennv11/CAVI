@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Noto Sans", "DejaVu Sans", sans-serif; font-size: 12px; color: #1a2e22; margin: 0; }
+  .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1f7a4d; padding-bottom: 12px; margin-bottom: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { width: 46px; height: 46px; }
+  .brand-name { font-size: 20px; font-weight: 700; color: #1f7a4d; }
+  .brand-hotline { font-size: 11px; color: #555; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { font-size: 22px; margin: 0; letter-spacing: 1px; color: #1a2e22; }
+  .doc-title .meta { font-size: 11px; color: #555; }
+  .info-row { margin-bottom: 14px; font-size: 12.5px; }
+  .description-box { white-space: pre-wrap; border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; margin-bottom: 16px; font-size: 12px; background: #fafafa; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th, td { border: 1px solid #ccc; padding: 7px 8px; font-size: 12px; }
+  th { background: #1f7a4d; color: #fff; text-align: left; font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  tfoot td { font-weight: 700; background: #f1f6f3; }
+  .footer { margin-top: 30px; font-size: 11px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="CAVI">{% endif %}
+      <div>
+        <div class="brand-name">CAVI</div>
+        {% if hotline %}<div class="brand-hotline">Hotline: {{ hotline }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>BÁO GIÁ</h1>
+      <div class="meta">Số: BG-{{ quotation.id }} &middot; Ngày: {{ issue_date }}</div>
+    </div>
+  </div>
+
+  <div class="info-row">Kính gửi: <b>{{ customer_name }}</b></div>
+
+  {% if quotation.note %}
+  <div class="description-box">{{ quotation.note }}</div>
+  {% endif %}
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:34px;">STT</th>
+        <th>Mô tả</th>
+        <th style="width:60px;">ĐVT</th>
+        <th class="num" style="width:50px;">SL</th>
+        <th class="num" style="width:100px;">Giá</th>
+        <th class="num" style="width:110px;">Thành tiền</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ line.item_name }}</td>
+        <td>{{ line.unit }}</td>
+        <td class="num">{{ line.quantity_display }}</td>
+        <td class="num">{{ line.price_display }}</td>
+        <td class="num">{{ line.total_display }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" style="text-align:right;">Tổng cộng</td>
+        <td class="num">{{ total_display }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="footer">
+    Cảm ơn quý khách đã tin tưởng CAVI.
+    {% if hotline %}Mọi thắc mắc vui lòng liên hệ hotline {{ hotline }}.{% endif %}
+  </div>
+</body>
+</html>

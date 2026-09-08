@@ -4,7 +4,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev gcc \
+# libpango/cairo/gdk-pixbuf: cần cho WeasyPrint render HTML/CSS ra PDF báo giá.
+# fonts-noto-core: font Unicode đầy đủ dấu tiếng Việt (PDF font mặc định không có dấu).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
+    libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libcairo2 shared-mime-info \
+    fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

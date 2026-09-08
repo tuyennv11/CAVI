@@ -141,6 +141,9 @@ CORS_ALLOWED_ORIGINS = [
 GROUP_MANAGER = "Quản lý"
 GROUP_SALES = "Nhân viên kinh doanh"
 
+# --- Thông tin công ty in trên PDF báo giá — chưa có hotline chính thức, để trống, điền qua env sau ---
+COMPANY_HOTLINE = os.environ.get("COMPANY_HOTLINE", "")
+
 # --- Hạn mức công nợ theo hạng đối tác (đơn vị: VNĐ) — sửa số ở đây nếu công ty đổi chính sách ---
 TIER_CREDIT_LIMITS = {
     "standard": 50_000_000,

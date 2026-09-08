@@ -115,4 +115,39 @@ export async function apiUpload(path, formData, method = "POST") {
   return res.json();
 }
 
+// Tải file nhị phân (PDF...) kèm JWT rồi tự kích hoạt download trong trình duyệt — không dùng được
+// thẻ <a href> thường vì cần gắn Authorization header. Cùng cơ chế tự làm mới token như apiFetch.
+export async function apiDownload(path, filename) {
+  const { access } = getTokens();
+  const doFetch = (token) =>
+    fetch(`${API_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+  let res = await doFetch(access);
+  if (res.status === 401) {
+    const newAccess = await refreshAccessToken();
+    if (newAccess) {
+      res = await doFetch(newAccess);
+    } else {
+      clearTokens();
+      window.location.href = "/login";
+      throw new Error("Phiên đăng nhập đã hết hạn");
+    }
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(body, res.status));
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export { API_URL };

@@ -1,10 +1,16 @@
+import base64
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
+from django.contrib.staticfiles import finders
 from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.text import slugify
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -20,6 +26,7 @@ from .models import (
     Activity,
     Notice,
     Order,
+    OrderItem,
     Partner,
     PriceInquiry,
     PriceInquiryQuoteLine,
@@ -45,6 +52,14 @@ from .serializers import (
 )
 
 MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
+
+
+def _format_money_vn(value):
+    return f"{Decimal(value):,.0f}".replace(",", ".") + " đ"
+
+
+def _format_qty_vn(value):
+    return f"{Decimal(value):.2f}".rstrip("0").rstrip(".") or "0"
 
 
 def _sum_revenue(queryset):
@@ -320,6 +335,70 @@ class QuotationViewSet(
         quotation.pending_snapshot = {"note": note, "lines": lines_data}
         quotation.save()
         return Response(QuotationSerializer(quotation).data, status=201)
+
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def pdf(self, request, pk=None):
+        # Import ở đây, không để trên đầu file — WeasyPrint cần thư viện hệ thống (pango/cairo/gdk-pixbuf)
+        # chỉ có trên máy chủ Linux lúc deploy, import ở module-level sẽ làm cả app không chạy nổi trên
+        # máy dev không có các thư viện đó.
+        from weasyprint import HTML
+
+        quotation = self.get_object()
+        lines = quotation.lines.all()
+        line_rows = [
+            {
+                "item_name": line.item_name,
+                "unit": line.unit,
+                "quantity_display": _format_qty_vn(line.quantity),
+                "price_display": _format_money_vn(line.price),
+                "total_display": _format_money_vn(line.line_total),
+            }
+            for line in lines
+        ]
+        total = sum((line.line_total for line in lines), Decimal("0"))
+
+        logo_data_uri = ""
+        logo_path = finders.find("crm/logo.jpg")
+        if logo_path:
+            with open(logo_path, "rb") as f:
+                logo_data_uri = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+
+        html = render_to_string(
+            "crm/quotation_pdf.html",
+            {
+                "quotation": quotation,
+                "customer_name": quotation.inquiry.customer.name,
+                "lines": line_rows,
+                "total_display": _format_money_vn(total),
+                "issue_date": quotation.updated_at.strftime("%d/%m/%Y"),
+                "hotline": settings.COMPANY_HOTLINE,
+                "logo_data_uri": logo_data_uri,
+            },
+        )
+        pdf_bytes = HTML(string=html).write_pdf()
+        filename = slugify(f"bao-gia-{quotation.id}-{quotation.inquiry.customer.name}") + ".pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=["post"], url_path="create-order")
+    def create_order(self, request, pk=None):
+        quotation = self.get_object()
+        order = Order.objects.create(
+            customer=quotation.inquiry.customer,
+            created_by=request.user,
+            source_quotation=quotation,
+        )
+        OrderItem.objects.bulk_create(
+            OrderItem(
+                order=order,
+                description=line.item_name,
+                quantity=line.quantity,
+                unit_price=line.price,
+            )
+            for line in quotation.lines.all()
+        )
+        return Response(OrderSerializer(order).data, status=201)
 
 
 class PriceInquiryQuoteLineViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):

@@ -116,6 +116,10 @@ class Order(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
+    # Đơn được tạo từ báo giá nào (nếu có) — để Vận hành/đối chiếu sau này biết đơn bắt nguồn từ đâu.
+    source_quotation = models.ForeignKey(
+        "Quotation", on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     note = models.CharField("Ghi chú", max_length=500, blank=True)
     paid = models.BooleanField("Đã thanh toán", default=False)

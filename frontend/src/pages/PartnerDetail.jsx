@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { apiFetch, apiUpload, API_URL } from "../api";
+import { apiDownload, apiFetch, apiUpload, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
 import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
@@ -489,6 +489,24 @@ export default function PartnerDetail() {
         return next;
       });
       loadInquiries();
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
+  async function handleExportQuotationPdf(quotationId, customerName) {
+    try {
+      await apiDownload(`/api/quotations/${quotationId}/pdf/`, `bao-gia-${quotationId}-${customerName}.pdf`);
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
+  async function handleCreateOrderFromQuotation(quotationId) {
+    try {
+      await apiFetch(`/api/quotations/${quotationId}/create-order/`, { method: "POST" });
+      setTab("orders");
+      loadAll();
     } catch (err) {
       setLineError(err.message);
     }
@@ -1148,6 +1166,19 @@ export default function PartnerDetail() {
                                 Gửi đề xuất duyệt
                               </button>
                             )}
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => handleExportQuotationPdf(inq.quotation.id, inq.customer_name)}
+                            >
+                              Xuất PDF
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCreateOrderFromQuotation(inq.quotation.id)}
+                            >
+                              Tạo đơn
+                            </button>
                             <button
                               type="button"
                               className="secondary"
