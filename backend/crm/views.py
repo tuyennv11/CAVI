@@ -256,18 +256,26 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
             raise ValidationError("Chỉ có thể tạo báo giá sau khi đã chốt giá.")
         quotation = getattr(inquiry, "quotation", None)
         if quotation is None:
-            quotation = Quotation.objects.create(inquiry=inquiry, note=inquiry.description, created_by=request.user)
+            lines = list(inquiry.quote_lines.all())
+
+            def describe(line):
+                return f"{line.item_name} — {line.note}" if line.note else line.item_name
+
+            # Mô tả tổng của báo giá chính là mô tả gộp lại của các dịch vụ cấu thành đơn hàng —
+            # không lấy mô tả gốc lúc tạo Hỏi giá nữa, vì nó không phản ánh đúng nội dung báo giá.
+            note = "\n".join(describe(line) for line in lines)
+            quotation = Quotation.objects.create(inquiry=inquiry, note=note, created_by=request.user)
             QuotationLine.objects.bulk_create(
                 QuotationLine(
                     quotation=quotation,
-                    item_name=f"{line.item_name} — {line.note}" if line.note else line.item_name,
+                    item_name=describe(line),
                     unit=line.unit,
                     quantity=line.quantity,
                     # Mặc định lấy giá sàn — về sau chỉ cần quan tâm giá tổng của báo giá,
                     # không cần giữ lại chi tiết giá vốn/% trong báo giá gửi khách.
                     price=(line.unit_cost * (1 + line.floor_pct / 100)),
                 )
-                for line in inquiry.quote_lines.all()
+                for line in lines
             )
         return Response(QuotationSerializer(quotation).data, status=201)
 
