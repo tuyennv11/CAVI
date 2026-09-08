@@ -291,10 +291,10 @@ class PriceListItem(models.Model):
         III = "III", "Loại III"
 
     category = models.CharField("Phân loại", max_length=5, choices=Category.choices)
-    group_name = models.CharField("Nhóm mặt hàng", max_length=255)
+    group_name = models.CharField("Nhóm dịch vụ", max_length=255)
     group_code = models.CharField("Mã nhóm", max_length=10)
-    item_code = models.CharField("Mã mặt hàng", max_length=20, unique=True)
-    name = models.CharField("Tên mặt hàng", max_length=255)
+    item_code = models.CharField("Mã dịch vụ", max_length=20, unique=True)
+    name = models.CharField("Tên dịch vụ", max_length=255)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
     ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
@@ -313,7 +313,7 @@ class PriceInquiryQuoteLine(models.Model):
     inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="quote_lines")
     item = models.ForeignKey(PriceListItem, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     # Snapshot lại tại thời điểm thêm dòng — bảng giá gốc có đổi sau này cũng không ảnh hưởng báo giá đã lập.
-    item_name = models.CharField("Tên mặt hàng", max_length=255)
+    item_name = models.CharField("Tên dịch vụ", max_length=255)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
     ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)

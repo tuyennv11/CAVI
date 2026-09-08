@@ -165,7 +165,7 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if not attrs.get("item") and not attrs.get("item_name"):
-            raise serializers.ValidationError("Cần chọn mặt hàng từ bảng giá hoặc nhập tên mặt hàng.")
+            raise serializers.ValidationError("Cần chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.")
         return attrs
 
     def create(self, validated_data):

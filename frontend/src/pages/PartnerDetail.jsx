@@ -294,7 +294,7 @@ export default function PartnerDetail() {
   async function handleAddLine(inquiryId) {
     const form = lineForms[inquiryId] || emptyLineForm();
     if (!form.item && !form.item_name) {
-      setError("Chọn mặt hàng từ bảng giá hoặc nhập tên mặt hàng.");
+      setError("Chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.");
       return;
     }
     if (!form.quantity || !form.unit_cost) {
@@ -670,7 +670,7 @@ export default function PartnerDetail() {
                           <table className="data-table inquiry-lines-table">
                             <thead>
                               <tr>
-                                <th>Mặt hàng</th>
+                                <th>Dịch vụ</th>
                                 <th>ĐVT</th>
                                 <th>SL</th>
                                 <th>Đơn giá vốn</th>
@@ -779,7 +779,7 @@ export default function PartnerDetail() {
                         value={lineForms[inq.id]?.item || ""}
                         onChange={(e) => updateLineField(inq.id, "item", e.target.value)}
                       >
-                        <option value="">— Mặt hàng khác (tự nhập) —</option>
+                        <option value="">— Dịch vụ khác (tự nhập) —</option>
                         {groupPriceList(priceList).map((g) => (
                           <optgroup label={g.label} key={g.label}>
                             {g.options.map((o) => (
@@ -793,7 +793,7 @@ export default function PartnerDetail() {
                       {!lineForms[inq.id]?.item && (
                         <>
                           <input
-                            placeholder="Tên mặt hàng"
+                            placeholder="Tên dịch vụ"
                             value={lineForms[inq.id]?.item_name || ""}
                             onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}
                           />
