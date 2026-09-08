@@ -74,6 +74,10 @@ function groupPriceList(priceList) {
   return groups;
 }
 
+function formatPct(value) {
+  return `${parseFloat(Number(value ?? 0).toFixed(2))}%`;
+}
+
 function sumLines(lines) {
   return lines.reduce(
     (acc, l) => ({
@@ -702,49 +706,13 @@ export default function PartnerDetail() {
                           </optgroup>
                         ))}
                       </select>
-                      {!lineForms[inq.id]?.item ? (
-                        <>
-                          <input
-                            className="line-item-name"
-                            placeholder="Tên dịch vụ"
-                            value={lineForms[inq.id]?.item_name || ""}
-                            onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}
-                          />
-                          <input
-                            placeholder="ĐVT"
-                            style={{ width: 70 }}
-                            value={lineForms[inq.id]?.unit || ""}
-                            onChange={(e) => updateLineField(inq.id, "unit", e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            placeholder="Sàn %"
-                            style={{ width: 80 }}
-                            value={lineForms[inq.id]?.floor_pct || ""}
-                            onChange={(e) => updateLineField(inq.id, "floor_pct", e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            placeholder="Trần %"
-                            style={{ width: 80 }}
-                            value={lineForms[inq.id]?.ceiling_pct || ""}
-                            onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
-                          />
-                        </>
-                      ) : (
-                        (() => {
-                          const selectedItem = priceList.find(
-                            (p) => String(p.id) === String(lineForms[inq.id].item)
-                          );
-                          if (!selectedItem) return null;
-                          return (
-                            <>
-                              <input value={selectedItem.unit} disabled style={{ width: 70 }} />
-                              <input value={`Sàn ${selectedItem.floor_pct}%`} disabled style={{ width: 90 }} />
-                              <input value={`Trần ${selectedItem.ceiling_pct}%`} disabled style={{ width: 90 }} />
-                            </>
-                          );
-                        })()
+                      {!lineForms[inq.id]?.item && (
+                        <input
+                          className="line-item-name"
+                          placeholder="Tên dịch vụ"
+                          value={lineForms[inq.id]?.item_name || ""}
+                          onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}
+                        />
                       )}
                       <input
                         className="line-note"
@@ -755,17 +723,73 @@ export default function PartnerDetail() {
                       <input
                         type="number"
                         placeholder="Số lượng"
-                        style={{ width: 90 }}
+                        style={{ width: 80 }}
                         value={lineForms[inq.id]?.quantity ?? 1}
                         onChange={(e) => updateLineField(inq.id, "quantity", e.target.value)}
                       />
+                      {!lineForms[inq.id]?.item ? (
+                        <input
+                          placeholder="ĐVT"
+                          style={{ width: 60 }}
+                          value={lineForms[inq.id]?.unit || ""}
+                          onChange={(e) => updateLineField(inq.id, "unit", e.target.value)}
+                        />
+                      ) : (
+                        (() => {
+                          const selectedItem = priceList.find(
+                            (p) => String(p.id) === String(lineForms[inq.id].item)
+                          );
+                          return <input value={selectedItem?.unit || ""} disabled style={{ width: 60 }} />;
+                        })()
+                      )}
                       <input
                         type="number"
                         placeholder="Đơn giá vốn"
-                        style={{ width: 120 }}
+                        style={{ width: 110 }}
                         value={lineForms[inq.id]?.unit_cost || ""}
                         onChange={(e) => updateLineField(inq.id, "unit_cost", e.target.value)}
                       />
+                      {!lineForms[inq.id]?.item ? (
+                        <>
+                          <span className="line-pct-group">
+                            <span className="line-pct-label">Sàn</span>
+                            <input
+                              type="number"
+                              className="line-pct"
+                              value={lineForms[inq.id]?.floor_pct || ""}
+                              onChange={(e) => updateLineField(inq.id, "floor_pct", e.target.value)}
+                            />
+                          </span>
+                          <span className="line-pct-group">
+                            <span className="line-pct-label">Trần</span>
+                            <input
+                              type="number"
+                              className="line-pct"
+                              value={lineForms[inq.id]?.ceiling_pct || ""}
+                              onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
+                            />
+                          </span>
+                        </>
+                      ) : (
+                        (() => {
+                          const selectedItem = priceList.find(
+                            (p) => String(p.id) === String(lineForms[inq.id].item)
+                          );
+                          if (!selectedItem) return null;
+                          return (
+                            <>
+                              <span className="line-pct-group">
+                                <span className="line-pct-label">Sàn</span>
+                                <input className="line-pct" value={formatPct(selectedItem.floor_pct)} disabled />
+                              </span>
+                              <span className="line-pct-group">
+                                <span className="line-pct-label">Trần</span>
+                                <input className="line-pct" value={formatPct(selectedItem.ceiling_pct)} disabled />
+                              </span>
+                            </>
+                          );
+                        })()
+                      )}
                       <button type="button" onClick={() => handleAddLine(inq.id)}>
                         Thêm dòng
                       </button>

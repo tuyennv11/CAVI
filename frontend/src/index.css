@@ -508,6 +508,9 @@ a:hover { text-decoration: underline; }
 .inquiry-line-form select { flex: 0 1 220px; min-width: 0; }
 .inquiry-line-form .line-item-name { flex: 0 1 160px; width: 160px; }
 .inquiry-line-form .line-note { flex: 1 1 160px; min-width: 120px; }
+.line-pct-group { display: inline-flex; align-items: center; gap: 3px; }
+.line-pct-label { font-size: 10px; color: var(--muted); }
+.inquiry-line-form input.line-pct { width: 46px; padding: 7px 4px; text-align: center; }
 .inquiry-lines-table th, .inquiry-lines-table td { padding: 7px 10px; font-size: 12.5px; }
 .inquiry-lines-table tfoot td { border-top: 1px solid var(--line); background: var(--surface-muted); }
 
