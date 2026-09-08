@@ -763,7 +763,11 @@ export default function PartnerDetail() {
                     </button>
                     {inq.status === "open" && (
                       <button type="button" className="secondary" onClick={() => toggleLineForm(inq.id)}>
-                        {lineFormFor === inq.id ? "Đóng" : "Phân tích giá vốn"}
+                        {lineFormFor === inq.id
+                          ? "Đóng"
+                          : inq.quote_lines.length === 0
+                          ? "Phân tích giá vốn"
+                          : "Thêm dịch vụ"}
                       </button>
                     )}
                     {inq.status === "open" && inq.quote_lines.length > 0 && (
