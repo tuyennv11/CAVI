@@ -693,6 +693,7 @@ export default function PartnerDetail() {
                       {!lineForms[inq.id]?.item && (
                         <>
                           <input
+                            className="line-item-name"
                             placeholder="Tên dịch vụ"
                             value={lineForms[inq.id]?.item_name || ""}
                             onChange={(e) => updateLineField(inq.id, "item_name", e.target.value)}

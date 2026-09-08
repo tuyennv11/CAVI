@@ -505,7 +505,8 @@ a:hover { text-decoration: underline; }
 .inquiry-line-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .inquiry-line-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
 .inquiry-line-form input, .inquiry-line-form select { padding: 7px 10px; font-size: 13px; }
-.inquiry-line-form select { flex: 1 1 220px; }
+.inquiry-line-form select { flex: 0 1 220px; min-width: 0; }
+.inquiry-line-form .line-item-name { flex: 0 1 160px; width: 160px; }
 .inquiry-lines-table th, .inquiry-lines-table td { padding: 7px 10px; font-size: 12.5px; }
 .inquiry-lines-table tfoot td { border-top: 1px solid var(--line); background: var(--surface-muted); }
 
