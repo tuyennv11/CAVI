@@ -431,6 +431,19 @@ export default function PartnerDetail() {
     }
   }
 
+  async function handleSubmitQuotationApproval(inquiryId, quotationId) {
+    const form = quotationForms[inquiryId];
+    try {
+      await apiFetch(`/api/quotations/${quotationId}/submit-for-approval/`, {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      loadInquiries();
+    } catch (err) {
+      setLineError(err.message);
+    }
+  }
+
   async function handleDeleteQuotation(inquiryId, quotationId) {
     try {
       await apiFetch(`/api/quotations/${quotationId}/`, { method: "DELETE" });
@@ -969,107 +982,136 @@ export default function PartnerDetail() {
                     </div>
                   )}
 
-                  {inq.quotation && quotationForms[inq.id] && (
-                    <div className="quotation-panel">
-                      <div className="quotation-head">
-                        <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b>
-                      </div>
-                      <textarea
-                        rows={3}
-                        value={quotationForms[inq.id].note}
-                        onChange={(e) => updateQuotationNote(inq.id, e.target.value)}
-                      />
-                      <div className="table-wrap">
-                        <table className="data-table quotation-lines-table">
-                          <thead>
-                            <tr>
-                              <th>Mô tả</th>
-                              <th>ĐVT</th>
-                              <th>SL</th>
-                              <th>Giá</th>
-                              <th></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {quotationForms[inq.id].lines.map((l, i) => (
-                              <tr key={i}>
-                                <td>
-                                  <input
-                                    value={l.item_name}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "item_name", e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    style={{ width: 60 }}
-                                    value={l.unit}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "unit", e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    style={{ width: 70 }}
-                                    value={l.quantity}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "quantity", e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    style={{ width: 120 }}
-                                    value={l.price}
-                                    onChange={(e) => updateQuotationLine(inq.id, i, "price", e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="link-btn"
-                                    onClick={() => removeQuotationLine(inq.id, i)}
-                                  >
-                                    Xoá
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot>
-                            <tr>
-                              <td colSpan={3}>
-                                <b>Tổng giá báo giá</b>
-                              </td>
-                              <td colSpan={2}>
-                                <b>
-                                  {formatMoney(
-                                    quotationForms[inq.id].lines.reduce(
-                                      (sum, l) => sum + Number(l.quantity || 0) * Number(l.price || 0),
-                                      0
-                                    )
-                                  )}
-                                </b>
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                      <button type="button" className="link-btn" onClick={() => addQuotationLine(inq.id)}>
-                        + Thêm dòng
-                      </button>
-                      <div className="quotation-actions">
-                        <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>
-                          Lưu báo giá
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={() => handleDeleteQuotation(inq.id, inq.quotation.id)}
-                        >
-                          Xoá báo giá
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {inq.quotation &&
+                    quotationForms[inq.id] &&
+                    (() => {
+                      const form = quotationForms[inq.id];
+                      const total = form.lines.reduce(
+                        (sum, l) => sum + Number(l.quantity || 0) * Number(l.price || 0),
+                        0
+                      );
+                      const floor = Number(inq.quotation.floor_price ?? 0);
+                      const ceiling =
+                        inq.quotation.ceiling_price === null || inq.quotation.ceiling_price === undefined
+                          ? null
+                          : Number(inq.quotation.ceiling_price);
+                      const approvalStatus = inq.quotation.pending_approval_status;
+                      const withinBounds = total >= floor && (ceiling === null || total <= ceiling);
+                      const canSave = withinBounds || approvalStatus === "approved";
+                      return (
+                        <div className="quotation-panel">
+                          <div className="quotation-head">
+                            <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b>
+                          </div>
+                          <textarea
+                            rows={3}
+                            value={form.note}
+                            onChange={(e) => updateQuotationNote(inq.id, e.target.value)}
+                          />
+                          <div className="table-wrap">
+                            <table className="data-table quotation-lines-table">
+                              <thead>
+                                <tr>
+                                  <th>Mô tả</th>
+                                  <th>ĐVT</th>
+                                  <th>SL</th>
+                                  <th>Giá</th>
+                                  <th></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {form.lines.map((l, i) => (
+                                  <tr key={i}>
+                                    <td>
+                                      <input
+                                        value={l.item_name}
+                                        onChange={(e) => updateQuotationLine(inq.id, i, "item_name", e.target.value)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        style={{ width: 60 }}
+                                        value={l.unit}
+                                        onChange={(e) => updateQuotationLine(inq.id, i, "unit", e.target.value)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        style={{ width: 70 }}
+                                        value={l.quantity}
+                                        onChange={(e) => updateQuotationLine(inq.id, i, "quantity", e.target.value)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        style={{ width: 120 }}
+                                        value={l.price}
+                                        onChange={(e) => updateQuotationLine(inq.id, i, "price", e.target.value)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => removeQuotationLine(inq.id, i)}
+                                      >
+                                        Xoá
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr>
+                                  <td colSpan={3}>
+                                    <b>Tổng giá báo giá</b>
+                                  </td>
+                                  <td colSpan={2}>
+                                    <b>{formatMoney(total)}</b>
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                          <button type="button" className="link-btn" onClick={() => addQuotationLine(inq.id)}>
+                            + Thêm dòng
+                          </button>
+                          {!withinBounds && (
+                            <p className="error">
+                              Giá tổng phải nằm trong khoảng giá sàn ({formatMoney(floor)}) - giá trần (
+                              {ceiling === null ? "—" : formatMoney(ceiling)}) mới lưu trực tiếp được.
+                              {approvalStatus === "pending" && " Đang chờ Cung ứng duyệt đề xuất..."}
+                              {approvalStatus === "approved" && " Đề xuất đã được duyệt — bấm Lưu báo giá để lưu."}
+                              {approvalStatus === "rejected" && " Đề xuất đã bị từ chối — điều chỉnh giá hoặc gửi đề xuất khác."}
+                            </p>
+                          )}
+                          <div className="quotation-actions">
+                            {canSave && (
+                              <button type="button" onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}>
+                                Lưu báo giá
+                              </button>
+                            )}
+                            {!withinBounds && approvalStatus !== "pending" && approvalStatus !== "approved" && (
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitQuotationApproval(inq.id, inq.quotation.id)}
+                              >
+                                Gửi đề xuất duyệt
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => handleDeleteQuotation(inq.id, inq.quotation.id)}
+                            >
+                              Xoá báo giá
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                   {inq.messages.length > 0 && (
                     <div className="inquiry-thread">

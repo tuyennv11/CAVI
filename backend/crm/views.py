@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.roles import is_manager
+from approvals.models import ApprovalRequest
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -284,6 +285,34 @@ class QuotationViewSet(
         if is_manager(self.request.user):
             return qs
         return qs.filter(inquiry__customer__assigned_to=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="submit-for-approval")
+    def submit_for_approval(self, request, pk=None):
+        quotation = self.get_object()
+        lines_data = request.data.get("lines", [])
+        total = sum(
+            (Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("price", 0))) for line in lines_data),
+            Decimal("0"),
+        )
+        inquiry = quotation.inquiry
+        floor = inquiry.floor_price if inquiry.floor_price is not None else Decimal("0")
+        ceiling = inquiry.ceiling_price
+        if total >= floor and (ceiling is None or total <= ceiling):
+            raise ValidationError("Giá tổng đã nằm trong khoảng giá sàn - giá trần, không cần gửi đề xuất.")
+        approval = ApprovalRequest.objects.create(
+            request_type=ApprovalRequest.RequestType.PROPOSAL,
+            category=f"Báo giá #{quotation.id}",
+            title=f"Đề xuất báo giá ngoài khoảng giá sàn/trần — {inquiry.customer.name}",
+            note=(
+                f"Báo giá #{quotation.id} (Hỏi giá #{inquiry.id}) — Giá đề xuất: {total} "
+                f"(giá sàn {floor}, giá trần {ceiling})."
+            ),
+            amount=total,
+            requested_by=request.user,
+        )
+        quotation.pending_approval = approval
+        quotation.save()
+        return Response(QuotationSerializer(quotation).data, status=201)
 
 
 class PriceInquiryQuoteLineViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):

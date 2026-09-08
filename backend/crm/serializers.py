@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from approvals.models import ApprovalRequest
+
 from .models import (
     Activity,
     Notice,
@@ -206,6 +208,14 @@ class QuotationSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     lines = QuotationLineSerializer(many=True)
     total = serializers.SerializerMethodField()
+    floor_price = serializers.DecimalField(
+        source="inquiry.floor_price", max_digits=14, decimal_places=2, read_only=True
+    )
+    ceiling_price = serializers.DecimalField(
+        source="inquiry.ceiling_price", max_digits=14, decimal_places=2, read_only=True
+    )
+    pending_approval_id = serializers.IntegerField(source="pending_approval.id", read_only=True, default=None)
+    pending_approval_status = serializers.CharField(source="pending_approval.status", read_only=True, default=None)
 
     class Meta:
         model = Quotation
@@ -216,6 +226,10 @@ class QuotationSerializer(serializers.ModelSerializer):
             "note",
             "lines",
             "total",
+            "floor_price",
+            "ceiling_price",
+            "pending_approval_id",
+            "pending_approval_status",
             "created_by",
             "created_by_name",
             "created_at",
@@ -228,6 +242,22 @@ class QuotationSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         lines_data = validated_data.pop("lines", None)
+        if lines_data is not None:
+            total = sum((line["quantity"] * line["price"] for line in lines_data), Decimal("0"))
+            inquiry = instance.inquiry
+            floor = inquiry.floor_price if inquiry.floor_price is not None else Decimal("0")
+            ceiling = inquiry.ceiling_price
+            within_bounds = total >= floor and (ceiling is None or total <= ceiling)
+            if not within_bounds:
+                approval = instance.pending_approval
+                if approval and approval.status == ApprovalRequest.Status.APPROVED:
+                    # Đề xuất đã được Cung ứng duyệt — cho lưu lần này, sửa tiếp thì phải xin duyệt lại.
+                    instance.pending_approval = None
+                else:
+                    raise serializers.ValidationError(
+                        "Giá tổng báo giá phải nằm trong khoảng giá sàn - giá trần của phần dịch vụ cấu "
+                        "thành đơn hàng. Gửi đề xuất để Cung ứng duyệt trước khi lưu."
+                    )
         instance.note = validated_data.get("note", instance.note)
         instance.save()
         if lines_data is not None:

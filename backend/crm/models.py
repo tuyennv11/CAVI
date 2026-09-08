@@ -348,6 +348,11 @@ class Quotation(models.Model):
 
     inquiry = models.OneToOneField(PriceInquiry, on_delete=models.CASCADE, related_name="quotation")
     note = models.TextField("Mô tả", blank=True)
+    # Giá tổng báo giá phải nằm trong [giá sàn, giá trần] của Hỏi giá gốc mới lưu được trực tiếp —
+    # nếu không, phải gửi đề xuất qua đây cho Cung ứng duyệt trước, duyệt xong mới lưu tiếp được.
+    pending_approval = models.ForeignKey(
+        "approvals.ApprovalRequest", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -365,7 +370,7 @@ class QuotationLine(models.Model):
     `price` mặc định lấy từ giá sàn của dòng Hỏi giá gốc lúc tạo, sau đó chỉnh sửa độc lập."""
 
     quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name="lines")
-    item_name = models.CharField("Mô tả", max_length=255)
+    item_name = models.CharField("Mô tả", max_length=255, blank=True)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
     price = models.DecimalField("Giá", max_digits=14, decimal_places=2, default=0)
