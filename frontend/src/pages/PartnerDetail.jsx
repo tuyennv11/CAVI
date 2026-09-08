@@ -94,6 +94,20 @@ function emptyLineForm() {
 }
 
 function emptyQuotationForm(quotation) {
+  // Nếu đang có đề xuất chưa được tiêu thụ (chờ duyệt / đã duyệt nhưng chưa lưu), mở lại đúng nội dung
+  // đã gửi kèm đề xuất đó — không phải bản đã lưu lần gần nhất — để không có cảm giác "mất hết" khi
+  // tải lại trang hoặc quay lại từ link duyệt.
+  if (quotation.pending_snapshot) {
+    return {
+      note: quotation.pending_snapshot.note || "",
+      lines: quotation.pending_snapshot.lines.map((l) => ({
+        item_name: l.item_name || "",
+        unit: l.unit || "",
+        quantity: l.quantity,
+        price: l.price,
+      })),
+    };
+  }
   return {
     note: quotation.note || "",
     lines: quotation.lines.map((l) => ({
@@ -1028,6 +1042,9 @@ export default function PartnerDetail() {
                         <div className="quotation-panel">
                           <div className="quotation-head">
                             <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b>
+                            {inq.quotation.pending_snapshot && (
+                              <span className="muted"> — đang xem nội dung đề xuất, chưa lưu chính thức</span>
+                            )}
                           </div>
                           <textarea
                             rows={3}

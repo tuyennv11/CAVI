@@ -290,6 +290,7 @@ class QuotationViewSet(
     def submit_for_approval(self, request, pk=None):
         quotation = self.get_object()
         lines_data = request.data.get("lines", [])
+        note = request.data.get("note", quotation.note)
         total = sum(
             (Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("price", 0))) for line in lines_data),
             Decimal("0"),
@@ -314,6 +315,9 @@ class QuotationViewSet(
             requested_by=request.user,
         )
         quotation.pending_approval = approval
+        # Giữ lại đúng nội dung đã gửi kèm đề xuất — không có chỗ nào khác lưu nội dung đang chờ duyệt,
+        # nên nếu chỉ dựa vào state phía trình duyệt thì tải lại trang là mất, nhìn như chưa lưu gì.
+        quotation.pending_snapshot = {"note": note, "lines": lines_data}
         quotation.save()
         return Response(QuotationSerializer(quotation).data, status=201)
 

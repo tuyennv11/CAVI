@@ -230,12 +230,13 @@ class QuotationSerializer(serializers.ModelSerializer):
             "ceiling_price",
             "pending_approval_id",
             "pending_approval_status",
+            "pending_snapshot",
             "created_by",
             "created_by_name",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at", "pending_snapshot"]
 
     def get_total(self, obj):
         return sum((line.line_total for line in obj.lines.all()), Decimal("0"))
@@ -250,14 +251,15 @@ class QuotationSerializer(serializers.ModelSerializer):
             within_bounds = total >= floor and (ceiling is None or total <= ceiling)
             if not within_bounds:
                 approval = instance.pending_approval
-                if approval and approval.status == ApprovalRequest.Status.APPROVED:
-                    # Đề xuất đã được Cung ứng duyệt — cho lưu lần này, sửa tiếp thì phải xin duyệt lại.
-                    instance.pending_approval = None
-                else:
+                if not (approval and approval.status == ApprovalRequest.Status.APPROVED):
                     raise serializers.ValidationError(
                         "Giá tổng báo giá phải nằm trong khoảng giá sàn - giá trần của phần dịch vụ cấu "
                         "thành đơn hàng. Gửi đề xuất để Cung ứng duyệt trước khi lưu."
                     )
+            # Lưu thành công (trong khoảng, hoặc đề xuất ngoài khoảng đã được duyệt) — dọn sạch đề xuất
+            # cũ, vì nội dung vừa lưu giờ đã là bản chính thức, không còn gì "đang chờ" nữa.
+            instance.pending_approval = None
+            instance.pending_snapshot = None
         instance.note = validated_data.get("note", instance.note)
         instance.save()
         if lines_data is not None:

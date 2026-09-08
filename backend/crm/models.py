@@ -353,6 +353,10 @@ class Quotation(models.Model):
     pending_approval = models.ForeignKey(
         "approvals.ApprovalRequest", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+    # Snapshot nội dung (note + lines) đã gửi kèm đề xuất — không có chỗ nào khác lưu lại nội dung
+    # đang chờ duyệt, nên trước đây sau khi gửi đề xuất rồi tải lại trang thì y như mất hết, chỉ còn
+    # thấy bản đã lưu lần gần nhất. Giữ snapshot này để mở lại đúng nội dung đang chờ/đã duyệt.
+    pending_snapshot = models.JSONField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
