@@ -670,7 +670,7 @@ export default function PartnerDetail() {
                           <table className="data-table inquiry-lines-table">
                             <thead>
                               <tr>
-                                <th>Dịch vụ</th>
+                                <th>Dịch vụ cấu thành đơn hàng</th>
                                 <th>ĐVT</th>
                                 <th>SL</th>
                                 <th>Đơn giá vốn</th>
