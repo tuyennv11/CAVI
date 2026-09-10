@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -34,7 +36,35 @@ class ApprovalRequestViewSet(viewsets.ModelViewSet):
         obj.reviewed_by = request.user
         obj.reviewed_at = timezone.now()
         obj.save()
+        # Đề xuất báo giá ngoài giá sàn/trần: duyệt xong áp dụng luôn nội dung đã gửi kèm đề xuất —
+        # không bắt Kinh doanh phải quay lại bấm Lưu báo giá thêm 1 lần nữa cho cùng nội dung đó.
+        if obj.request_type == ApprovalRequest.RequestType.PROPOSAL:
+            self._apply_approved_quotation_proposal(obj)
         return Response(ApprovalRequestSerializer(obj).data)
+
+    def _apply_approved_quotation_proposal(self, approval):
+        from crm.models import Quotation, QuotationLine
+
+        quotation = Quotation.objects.filter(pending_approval=approval).first()
+        if quotation is None or not quotation.pending_snapshot:
+            return
+        snapshot = quotation.pending_snapshot
+        quotation.note = snapshot.get("note", quotation.note)
+        quotation.pending_approval = None
+        quotation.pending_snapshot = None
+        quotation.saved_at = timezone.now()
+        quotation.save()
+        quotation.lines.all().delete()
+        QuotationLine.objects.bulk_create(
+            QuotationLine(
+                quotation=quotation,
+                item_name=line.get("item_name", ""),
+                unit=line.get("unit", ""),
+                quantity=Decimal(str(line.get("quantity", 1))),
+                price=Decimal(str(line.get("price", 0))),
+            )
+            for line in snapshot.get("lines", [])
+        )
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):

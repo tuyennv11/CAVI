@@ -1230,7 +1230,6 @@ export default function PartnerDetail() {
                               Giá tổng phải nằm trong khoảng giá sàn ({formatMoney(floor)}) - giá trần (
                               {ceiling === null ? "—" : formatMoney(ceiling)}) mới lưu trực tiếp được.
                               {approvalStatus === "pending" && " Đang chờ Cung ứng duyệt đề xuất..."}
-                              {approvalStatus === "approved" && " Đề xuất đã được duyệt — bấm Lưu báo giá để lưu."}
                               {approvalStatus === "rejected" && " Đề xuất đã bị từ chối — điều chỉnh giá hoặc gửi đề xuất khác."}
                             </p>
                           )}
