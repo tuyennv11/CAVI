@@ -147,6 +147,11 @@ export default function PartnerDetail() {
   const [tab, setTab] = useState(() => searchParams.get("tab") || "activity");
   const highlightInquiryId = searchParams.get("inquiry");
   const [showNewOrder, setShowNewOrder] = useState(false);
+  // Nội dung mô tả lô hàng cho phiếu tạo tay — giống hệt mẫu Mô tả bên Hỏi giá, để Vận hành có đủ
+  // thông tin xử lý (đơn tạo từ báo giá thì copy sẵn từ Hỏi giá gốc, không cần nhập lại — xem
+  // QuotationViewSet.create_order phía backend).
+  const [orderDescription, setOrderDescription] = useState(PRICE_INQUIRY_TEMPLATE);
+  const [orderImage, setOrderImage] = useState(null);
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
   const [paid, setPaid] = useState(false);
   const [onPlatform, setOnPlatform] = useState(false);
@@ -582,11 +587,26 @@ export default function PartnerDetail() {
   async function handleCreateOrder(e) {
     e.preventDefault();
     try {
-      await apiFetch("/api/orders/", {
+      // Không set status — để mặc định pending_receipt, đơn tạo tay cũng phải qua đúng quy trình
+      // Vận hành ghi nhận thực tế + Kinh doanh xác nhận, không có ngoại lệ.
+      const order = await apiFetch("/api/orders/", {
         method: "POST",
-        body: JSON.stringify({ customer: Number(id), status: "new", items, paid, on_platform: onPlatform }),
+        body: JSON.stringify({
+          customer: Number(id),
+          description: orderDescription,
+          items,
+          paid,
+          on_platform: onPlatform,
+        }),
       });
+      if (orderImage) {
+        const fd = new FormData();
+        fd.set("image", orderImage);
+        await apiUpload(`/api/orders/${order.id}/`, fd, "PATCH");
+      }
       setItems([{ ...EMPTY_ITEM }]);
+      setOrderDescription(PRICE_INQUIRY_TEMPLATE);
+      setOrderImage(null);
       setPaid(false);
       setOnPlatform(false);
       setShowNewOrder(false);
@@ -1351,6 +1371,15 @@ export default function PartnerDetail() {
 
           {showNewOrder && (
             <form className="field-grid" onSubmit={handleCreateOrder} style={{ marginBottom: 12 }}>
+              <textarea
+                rows={9}
+                value={orderDescription}
+                onChange={(e) => setOrderDescription(e.target.value)}
+              />
+              <label>
+                Hình ảnh
+                <input type="file" accept="image/*" onChange={(e) => setOrderImage(e.target.files[0] ?? null)} />
+              </label>
               {items.map((it, i) => (
                 <div className="order-item-row" style={{ gridTemplateColumns: "1fr 70px 110px 110px" }} key={i}>
                   <input

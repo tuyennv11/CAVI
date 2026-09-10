@@ -415,6 +415,10 @@ class QuotationViewSet(
             customer=inquiry.customer,
             created_by=request.user,
             source_quotation=quotation,
+            # Nội dung mô tả lô hàng cho Vận hành phải giống hệt Hỏi giá gốc — copy thẳng từ đó,
+            # không tự nhập lại (Kinh doanh đã mô tả đầy đủ ngay từ lúc hỏi giá rồi).
+            description=inquiry.description,
+            image=inquiry.image if inquiry.image else None,
             # Xác định sẵn giá sàn/trần của đơn ngay lúc tạo, lấy từ Hỏi giá gốc — đã chốt theo đúng
             # quy tắc tỷ lệ sàn cao nhất/trần thấp nhất trong các dịch vụ thành phần.
             floor_pct=inquiry.floor_pct,

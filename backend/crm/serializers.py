@@ -417,6 +417,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "customer",
             "customer_name",
             "status",
+            "description",
+            "image",
             "note",
             "paid",
             "on_platform",

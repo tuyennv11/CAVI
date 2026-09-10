@@ -137,6 +137,12 @@ class Order(models.Model):
         on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     confirmed_at = models.DateTimeField("Thời điểm xác nhận", null=True, blank=True)
+    # Nội dung mô tả lô hàng cho Vận hành — giống hệt phần "Mô tả"/"Hình ảnh" bên Hỏi giá (Tên hàng,
+    # Số lượng, Kích thước, Cân nặng, Hình thức vận chuyển, Điểm lấy/giao, Giá trị hàng hoá, Ghi chú),
+    # chỉ bỏ phần giá — Vận hành cần biết đủ thông tin để xử lý lô hàng, không cần thấy giá bán/giá vốn.
+    # Đơn tạo từ báo giá copy thẳng từ inquiry.description/image; đơn tạo tay thì Kinh doanh nhập trực tiếp.
+    description = models.TextField("Mô tả lô hàng", blank=True)
+    image = models.FileField("Hình ảnh", upload_to="orders/%Y/%m/", null=True, blank=True)
     note = models.CharField("Ghi chú", max_length=500, blank=True)
     paid = models.BooleanField("Đã thanh toán", default=False)
     on_platform = models.BooleanField("Qua sàn", default=False)

@@ -123,6 +123,12 @@ export default function OrderReceiving() {
                 <span className="muted"> — Vận hành ghi nhận bởi {o.received_by_name}</span>
               )}
             </div>
+            {o.description && <div className="inquiry-description">{o.description}</div>}
+            {o.image && (
+              <a href={o.image} target="_blank" rel="noreferrer" className="inquiry-image-link">
+                <img src={o.image} alt="Hình ảnh lô hàng" className="inquiry-image" />
+              </a>
+            )}
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
