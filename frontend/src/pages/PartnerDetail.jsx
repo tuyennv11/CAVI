@@ -174,6 +174,8 @@ export default function PartnerDetail() {
   // nhiều báo giá đã lưu song song, mỗi cái sửa/lưu độc lập.
   const [quotationForms, setQuotationForms] = useState({});
   const [quotationSaving, setQuotationSaving] = useState({});
+  // Báo giá đã lưu nào đang bấm "Xem báo giá" để mở ra xem lại nội dung (chỉ xem, không sửa).
+  const [expandedQuotations, setExpandedQuotations] = useState({});
 
   async function loadAll() {
     try {
@@ -508,10 +510,19 @@ export default function PartnerDetail() {
         delete next[quotationId];
         return next;
       });
+      setExpandedQuotations((prev) => {
+        const next = { ...prev };
+        delete next[quotationId];
+        return next;
+      });
       loadInquiries();
     } catch (err) {
       setLineError(err.message);
     }
+  }
+
+  function toggleViewQuotation(quotationId) {
+    setExpandedQuotations((prev) => ({ ...prev, [quotationId]: !prev[quotationId] }));
   }
 
   async function handleExportQuotationPdf(quotationId, customerName) {
@@ -1108,7 +1119,35 @@ export default function PartnerDetail() {
                           <b>{formatMoney(q.total)}</b>
                           <span className="muted"> — đã lưu {formatDateTime(q.saved_at)}</span>
                         </div>
+                        {expandedQuotations[q.id] && (
+                          <div className="table-wrap">
+                            {q.note && <p className="muted" style={{ whiteSpace: "pre-wrap" }}>{q.note}</p>}
+                            <table className="data-table quotation-lines-table">
+                              <thead>
+                                <tr>
+                                  <th>Mô tả</th>
+                                  <th>ĐVT</th>
+                                  <th>SL</th>
+                                  <th>Giá</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {q.lines.map((l) => (
+                                  <tr key={l.id}>
+                                    <td>{l.item_name}</td>
+                                    <td>{l.unit}</td>
+                                    <td>{l.quantity}</td>
+                                    <td>{formatMoney(l.price)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                         <div className="quotation-actions">
+                          <button type="button" className="secondary" onClick={() => toggleViewQuotation(q.id)}>
+                            {expandedQuotations[q.id] ? "Ẩn báo giá" : "Xem báo giá"}
+                          </button>
                           <button
                             type="button"
                             className="secondary"

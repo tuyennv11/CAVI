@@ -296,12 +296,14 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
                 item_name=line.note,
                 unit=line.unit,
                 quantity=line.quantity,
-                # Mặc định lấy đúng giá sàn của dòng dịch vụ đó (line_floor = giá vốn dòng × tỷ lệ sàn
-                # riêng của dòng đó) — đúng số đã hiển thị ở cột "Giá sàn" của bảng dịch vụ cấu thành ở
-                # trên. Tổng các dòng có thể thấp hơn giá sàn CHUNG của cả Hỏi giá (tỷ lệ sàn cao nhất
-                # áp 1 lần lên tổng) khi các dịch vụ có tỷ lệ sàn khác nhau — lúc đó phải Gửi đề xuất
-                # duyệt, đúng theo quy định.
-                price=line.line_floor,
+                # QuotationLine.price là đơn giá (line_total = quantity × price), còn line_floor là
+                # TỔNG giá sàn của cả dòng (đã nhân số lượng) — phải chia lại cho số lượng mới ra đúng
+                # đơn giá, nếu không tổng dòng báo giá sẽ bị nhân trùng số lượng 1 lần nữa. Kết quả cuối
+                # (line_total) khớp đúng số đã hiển thị ở cột "Giá sàn" của bảng dịch vụ cấu thành ở trên.
+                # Tổng các dòng có thể thấp hơn giá sàn CHUNG của cả Hỏi giá (tỷ lệ sàn cao nhất áp 1 lần
+                # lên tổng) khi các dịch vụ có tỷ lệ sàn khác nhau — lúc đó phải Gửi đề xuất duyệt, đúng
+                # theo quy định.
+                price=line.line_floor / line.quantity,
             )
             for line in inquiry.quote_lines.all()
         )
