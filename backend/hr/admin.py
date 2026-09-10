@@ -1,16 +1,33 @@
 from django.contrib import admin
 
-from .models import AttendanceRecord, LeaveBalance, Profile
+from .models import AttendanceRecord, EmergencyContact, EmployeeDocument, LeaveBalance, Profile
+
+
+class EmployeeDocumentInline(admin.TabularInline):
+    model = EmployeeDocument
+    extra = 0
+    readonly_fields = ("created_by", "created_at")
+
+
+class EmergencyContactInline(admin.TabularInline):
+    model = EmergencyContact
+    extra = 0
 
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "job_title", "department", "phone", "employment_status", "hired_at")
-    list_filter = ("department", "employment_status")
-    search_fields = ("user__username", "user__first_name", "user__last_name", "phone", "id_number")
+    list_display = (
+        "employee_code", "user", "preferred_name", "job_title", "department", "manager",
+        "work_status", "employment_type", "hired_at",
+    )
+    list_filter = ("department", "work_status", "employment_type")
+    search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
+    readonly_fields = ("employee_code",)
+    inlines = [EmployeeDocumentInline, EmergencyContactInline]
     # Quận/Huyện, Phường/Xã có hàng trăm/hàng chục nghìn dòng — bắt buộc phải là ô tìm kiếm (autocomplete)
-    # thay vì dropdown liệt kê hết, không thì không dùng nổi.
-    autocomplete_fields = ["country", "province", "district", "ward"]
+    # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
+    # người dùng có thể lớn dần.
+    autocomplete_fields = ["country", "province", "district", "ward", "manager"]
 
 
 @admin.register(LeaveBalance)

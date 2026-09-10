@@ -610,6 +610,9 @@ a:hover { text-decoration: underline; }
 .phone-input-hint { font-size: 11.5px; color: var(--faint); margin-top: 4px; }
 .phone-input-hint.error { color: var(--danger); }
 
+.address-fields { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1.4fr; gap: 8px; }
+@media (max-width: 900px) { .address-fields { grid-template-columns: 1fr 1fr; } }
+
 /* ---------- Order items / detail forms ---------- */
 .order-item-row { display: grid; grid-template-columns: 1fr 90px 140px; gap: 8px; }
 .stakes { display: flex; gap: 8px; flex-wrap: wrap; }

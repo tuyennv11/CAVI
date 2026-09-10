@@ -6,6 +6,13 @@ function initials(name) {
   return (first + last).toUpperCase();
 }
 
-export default function Avatar({ name, size = "md" }) {
+export default function Avatar({ name, size = "md", photo }) {
+  if (photo) {
+    return (
+      <div className={`avatar${size === "lg" ? " lg" : ""}`} style={{ padding: 0, overflow: "hidden" }}>
+        <img src={photo} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    );
+  }
   return <div className={`avatar${size === "lg" ? " lg" : ""}`}>{initials(name)}</div>;
 }

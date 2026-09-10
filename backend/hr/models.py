@@ -14,16 +14,43 @@ class Profile(models.Model):
         HR = "hr", "Nhân sự"
         MANAGEMENT = "management", "Quản lý"
 
-    class EmploymentStatus(models.TextChoices):
-        PROBATION = "probation", "Đang thử việc"
-        ACTIVE = "active", "Đang làm việc"
-        RESIGNED = "resigned", "Đã nghỉ việc"
+    # Tách riêng 2 khái niệm khác nhau (trước đây gộp nhầm vào 1 field employment_status):
+    # WorkStatus = đang/tạm/thôi làm việc; EmploymentType = hình thức hợp đồng lao động.
+    class WorkStatus(models.TextChoices):
+        ACTIVE = "active", "Đang làm"
+        ON_LEAVE = "on_leave", "Tạm nghỉ"
+        RESIGNED = "resigned", "Đã nghỉ"
+
+    class EmploymentType(models.TextChoices):
+        OFFICIAL = "official", "Chính thức"
+        PROBATION = "probation", "Thử việc"
+        COLLABORATOR = "collaborator", "Cộng tác viên"
+
+    class Gender(models.TextChoices):
+        MALE = "male", "Nam"
+        FEMALE = "female", "Nữ"
+        OTHER = "other", "Khác"
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name="Người dùng", on_delete=models.CASCADE, related_name="profile"
     )
+    # Mã nhân viên tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
+    employee_code = models.CharField("Mã nhân viên", max_length=20, unique=True, blank=True, editable=False)
+    preferred_name = models.CharField("Tên thường gọi", max_length=100, blank=True)
+    gender = models.CharField("Giới tính", max_length=10, choices=Gender.choices, blank=True)
+    avatar = models.FileField("Ảnh đại diện", upload_to="avatars/%Y/%m/", null=True, blank=True)
     company_code = models.CharField("Mã công ty", max_length=50, default="CAVI")
     job_title = models.CharField("Chức vụ", max_length=100, blank=True)
+    level = models.CharField("Cấp bậc", max_length=100, blank=True)
+    manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người quản lý trực tiếp",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="direct_reports"
+    )
+    work_location = models.CharField("Địa điểm làm việc", max_length=255, blank=True)
+    job_description = models.TextField("Mô tả công việc", blank=True)
+    contract_type = models.CharField("Loại hợp đồng", max_length=100, blank=True)
+    contract_started_at = models.DateField("Ngày bắt đầu hợp đồng", null=True, blank=True)
+    contract_expires_at = models.DateField("Ngày hết hạn hợp đồng", null=True, blank=True)
     # Phòng ban — chưa gắn với quyền hạn kỹ thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền
     # riêng, xem accounts/roles.py và project_supply_role_deferred), chỉ là dữ liệu phân loại nhân
     # viên trước, làm nền cho khi cần tách quyền riêng theo phòng ban sau này.
@@ -49,16 +76,89 @@ class Profile(models.Model):
     )
     street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
     hired_at = models.DateField("Ngày vào làm", null=True, blank=True)
-    employment_status = models.CharField(
-        "Trạng thái làm việc", max_length=20, choices=EmploymentStatus.choices, default=EmploymentStatus.ACTIVE
+    resigned_at = models.DateField("Ngày nghỉ việc", null=True, blank=True)
+    work_status = models.CharField(
+        "Tình trạng nhân sự", max_length=20, choices=WorkStatus.choices, default=WorkStatus.ACTIVE
+    )
+    employment_type = models.CharField(
+        "Loại nhân sự", max_length=20, choices=EmploymentType.choices, default=EmploymentType.OFFICIAL
     )
 
     class Meta:
+        ordering = ["employee_code"]
         verbose_name = "Hồ sơ nhân viên"
         verbose_name_plural = "Hồ sơ nhân viên"
 
     def __str__(self):
         return f"Hồ sơ {self.user.username}"
+
+    def save(self, *args, **kwargs):
+        if not self.employee_code:
+            # NV-00001 kiểu tăng dần đơn giản — đủ dùng cho quy mô công ty này, không cần cơ chế
+            # counter riêng phức tạp hơn.
+            last = Profile.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            # Dùng id kế tiếp làm số thứ tự — không trùng vì id tự tăng, dù đã có bản ghi bị xoá.
+            while Profile.objects.filter(employee_code=f"NV-{next_number:05d}").exists():
+                next_number += 1
+            self.employee_code = f"NV-{next_number:05d}"
+        super().save(*args, **kwargs)
+
+
+class EmployeeDocument(models.Model):
+    """Giấy tờ/hồ sơ đính kèm nhân viên — CCCD, hợp đồng, bằng cấp, chứng chỉ... 1 bảng linh hoạt
+    dùng chung, không tách field cứng riêng cho từng loại, vì mỗi nhân viên có thể có nhiều giấy tờ
+    cùng loại (nhiều phụ lục hợp đồng, nhiều chứng chỉ...) và cần theo dõi ngày hết hạn + file đính kèm."""
+
+    class DocType(models.TextChoices):
+        ID_CARD = "id_card", "CCCD/CMND"
+        WORK_CONTRACT = "work_contract", "Hợp đồng lao động"
+        CONTRACT_APPENDIX = "contract_appendix", "Phụ lục hợp đồng"
+        DEGREE = "degree", "Bằng cấp"
+        CERTIFICATE = "certificate", "Chứng chỉ"
+        OTHER = "other", "Khác"
+
+    profile = models.ForeignKey(Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="documents")
+    doc_type = models.CharField("Loại giấy tờ", max_length=20, choices=DocType.choices)
+    title = models.CharField("Tên giấy tờ", max_length=255)
+    number = models.CharField("Số giấy tờ", max_length=100, blank=True)
+    issued_at = models.DateField("Ngày cấp", null=True, blank=True)
+    issued_place = models.CharField("Nơi cấp", max_length=255, blank=True)
+    expires_at = models.DateField("Ngày hết hạn", null=True, blank=True)
+    file = models.FileField("File đính kèm", upload_to="employee_docs/%Y/%m/", null=True, blank=True)
+    note = models.TextField("Ghi chú", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Giấy tờ nhân viên"
+        verbose_name_plural = "Giấy tờ nhân viên"
+
+    def __str__(self):
+        return f"{self.title} — {self.profile.user.username}"
+
+
+class EmergencyContact(models.Model):
+    """Người liên hệ khẩn cấp của nhân viên."""
+
+    profile = models.ForeignKey(
+        Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="emergency_contacts"
+    )
+    name = models.CharField("Họ tên", max_length=255)
+    relationship = models.CharField("Quan hệ", max_length=100, blank=True)
+    phone = models.CharField("Số điện thoại", max_length=32, blank=True)
+    address = models.CharField("Địa chỉ", max_length=255, blank=True)
+    note = models.TextField("Ghi chú", blank=True)
+
+    class Meta:
+        verbose_name = "Người liên hệ khẩn cấp"
+        verbose_name_plural = "Người liên hệ khẩn cấp"
+
+    def __str__(self):
+        return f"{self.name} — {self.profile.user.username}"
 
 
 class LeaveBalance(models.Model):

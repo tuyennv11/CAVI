@@ -202,3 +202,39 @@ export const BATCH_STATUS_LABEL = {
   gathered: "Đã gom hàng đủ",
   shipped: "Đã gửi",
 };
+
+export const DEPARTMENT_LABEL = {
+  sales: "Kinh doanh",
+  supply: "Cung ứng",
+  operations: "Vận hành",
+  accounting: "Kế toán",
+  hr: "Nhân sự",
+  management: "Quản lý",
+};
+
+export const GENDER_LABEL = {
+  male: "Nam",
+  female: "Nữ",
+  other: "Khác",
+};
+
+export const WORK_STATUS_LABEL = {
+  active: "Đang làm",
+  on_leave: "Tạm nghỉ",
+  resigned: "Đã nghỉ",
+};
+
+export const EMPLOYMENT_TYPE_LABEL = {
+  official: "Chính thức",
+  probation: "Thử việc",
+  collaborator: "Cộng tác viên",
+};
+
+export const EMPLOYEE_DOC_TYPE_LABEL = {
+  id_card: "CCCD/CMND",
+  work_contract: "Hợp đồng lao động",
+  contract_appendix: "Phụ lục hợp đồng",
+  degree: "Bằng cấp",
+  certificate: "Chứng chỉ",
+  other: "Khác",
+};

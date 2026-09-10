@@ -79,6 +79,14 @@ const ICONS = {
       <path d="M3.5 17c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" strokeLinecap="round" />
     </svg>
   ),
+  employees: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="7" cy="6" r="2.4" />
+      <circle cx="14" cy="7" r="1.9" />
+      <path d="M2.5 17c0-2.9 2-4.8 4.5-4.8s4.5 1.9 4.5 4.8" strokeLinecap="round" />
+      <path d="M12.5 12.6c2.3.2 3.5 1.9 3.5 4.4" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 function NavItem({ to, icon, children, end }) {
@@ -132,6 +140,15 @@ export default function Sidebar({ user }) {
         <NavItem to="/shipment-batches" icon={ICONS.batches}>
           Quản lý vận hành
         </NavItem>
+
+        {user?.is_manager && (
+          <>
+            <div className="sidebar-section">Nhân sự</div>
+            <NavItem to="/employees" icon={ICONS.employees}>
+              Nhân viên
+            </NavItem>
+          </>
+        )}
 
         <div className="sidebar-section">Cá nhân</div>
         <NavItem to="/attendance" icon={ICONS.attendance}>
