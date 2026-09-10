@@ -360,7 +360,7 @@ export default function Workspace() {
               </span>
             </div>
             <div className="kpi-row">
-              <span className="kpi-label">Đơn hàng</span>
+              <span className="kpi-label">Phiếu nhận hàng</span>
               <ProgressBar pct={kpi.kpi.orders.pct} />
               <span className="kpi-value">
                 {kpi.kpi.orders.actual} / {kpi.kpi.orders.target} · {fmtPct(kpi.kpi.orders.pct)}

@@ -48,7 +48,7 @@ export const ACTIVITY_TYPE_GROUPS = [
     options: [
       { value: "opportunity", label: "Cơ hội kinh doanh" },
       { value: "quote", label: "Báo giá" },
-      { value: "order", label: "Đơn hàng" },
+      { value: "order", label: "Phiếu nhận hàng" },
       { value: "contract", label: "Hợp đồng" },
       { value: "payment", label: "Thanh toán" },
     ],

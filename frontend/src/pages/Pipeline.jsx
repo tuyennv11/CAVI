@@ -65,7 +65,7 @@ export default function Pipeline() {
       <div className="page-head">
         <div>
           <h1>Pipeline bán hàng</h1>
-          <div className="page-head-sub">Kéo thả để đổi trạng thái đơn hàng</div>
+          <div className="page-head-sub">Kéo thả để đổi trạng thái phiếu nhận hàng</div>
         </div>
       </div>
 

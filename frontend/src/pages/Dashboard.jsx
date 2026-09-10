@@ -44,7 +44,7 @@ export default function Dashboard() {
           {stats.new_customers_week > 0 && <span className="delta">+{stats.new_customers_week} tuần này</span>}
         </div>
         <div className="stat-card">
-          <span className="label">Đơn hàng tháng này</span>
+          <span className="label">Phiếu nhận hàng tháng này</span>
           <span className="value">{stats.orders_this_month}</span>
         </div>
         <div className="stat-card">

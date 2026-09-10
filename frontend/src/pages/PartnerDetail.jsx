@@ -562,7 +562,7 @@ export default function PartnerDetail() {
       loadAll();
     } catch (err) {
       // Không dùng `error` dùng chung toàn trang — trang này return sớm cả trang khi `error` có
-      // giá trị (xem lineError ở trên), sẽ xoá mất cả tab Đơn hàng đang xem.
+      // giá trị (xem lineError ở trên), sẽ xoá mất cả tab Phiếu nhận hàng đang xem.
       setLineError(err.message);
     }
   }
@@ -682,7 +682,7 @@ export default function PartnerDetail() {
           Hỏi giá ({inquiries.length})
         </button>
         <button className={`tab-btn${tab === "orders" ? " active" : ""}`} onClick={() => setTab("orders")}>
-          Đơn hàng ({orders.length})
+          Phiếu nhận hàng ({orders.length})
         </button>
       </div>
 
@@ -1109,7 +1109,7 @@ export default function PartnerDetail() {
                   )}
 
                   {/* 1 Hỏi giá có thể có nhiều báo giá đã lưu song song — báo giá đã lưu (saved_at có
-                      giá trị) chỉ hiện gọn 1 dòng tóm tắt + Xuất PDF/Tạo đơn/Xoá; báo giá nháp (chưa lưu)
+                      giá trị) chỉ hiện gọn 1 dòng tóm tắt + Xuất PDF/Tạo phiếu/Xoá; báo giá nháp (chưa lưu)
                       mới hiện bảng chỉnh sửa đầy đủ. */}
                   {inq.quotations.map((q) =>
                     q.saved_at ? (
@@ -1156,7 +1156,7 @@ export default function PartnerDetail() {
                             Xuất PDF
                           </button>
                           <button type="button" onClick={() => handleCreateOrderFromQuotation(q.id)}>
-                            Tạo đơn
+                            Tạo phiếu
                           </button>
                           <button
                             type="button"
@@ -1343,8 +1343,8 @@ export default function PartnerDetail() {
       {tab === "orders" && (
         <div className="panel">
           <div className="page-head" style={{ marginBottom: 14 }}>
-            <h2 style={{ margin: 0 }}>Danh sách đơn hàng</h2>
-            <button onClick={() => setShowNewOrder((v) => !v)}>{showNewOrder ? "Đóng" : "+ Tạo đơn hàng"}</button>
+            <h2 style={{ margin: 0 }}>Danh sách phiếu nhận hàng</h2>
+            <button onClick={() => setShowNewOrder((v) => !v)}>{showNewOrder ? "Đóng" : "+ Tạo phiếu nhận hàng"}</button>
           </div>
 
           {lineError && <p className="error">{lineError}</p>}
@@ -1402,19 +1402,19 @@ export default function PartnerDetail() {
                 </label>
               </div>
               <div className="modal-actions">
-                <button type="submit">Lưu đơn hàng</button>
+                <button type="submit">Lưu phiếu nhận hàng</button>
               </div>
             </form>
           )}
 
           {orders.length === 0 ? (
-            <p className="muted">Chưa có đơn hàng.</p>
+            <p className="muted">Chưa có phiếu nhận hàng.</p>
           ) : (
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Đơn hàng</th>
+                    <th>Phiếu nhận hàng</th>
                     <th>Trạng thái</th>
                     <th>Thanh toán</th>
                     <th>Doanh thu</th>
