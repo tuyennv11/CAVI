@@ -291,9 +291,9 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         QuotationLine.objects.bulk_create(
             QuotationLine(
                 quotation=quotation,
-                # Ưu tiên Mô tả tự nhập (nếu có) — cụ thể hơn cho khách xem; nếu bỏ trống (thường
-                # gặp khi chọn thẳng dịch vụ từ bảng giá) thì lấy tên dịch vụ để dòng không bị trống.
-                item_name=line.note or line.item_name,
+                # Đúng ô "Mô tả" (note) của dòng dịch vụ cấu thành, không lấy tên dịch vụ (item_name)
+                # — 2 khái niệm khác nhau, không dùng cái này thay cho cái kia.
+                item_name=line.note,
                 unit=line.unit,
                 quantity=line.quantity,
                 # Mặc định lấy đúng giá sàn của dòng dịch vụ đó (line_floor = giá vốn dòng × tỷ lệ sàn
