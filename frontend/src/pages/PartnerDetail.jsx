@@ -257,18 +257,17 @@ export default function PartnerDetail() {
       }
       return changed ? next : prev;
     });
-    // Báo giá đã từng được bấm Lưu ít nhất 1 lần (updated_at khác created_at) và không có đề xuất
-    // đang chờ duyệt thì vẫn phải coi là "đã lưu" ngay khi tải trang — trước đây state này chỉ set
-    // true ngay sau khi bấm Lưu trong phiên hiện tại nên cứ tải lại trang (thoát đăng nhập lại, F5...)
-    // là mất, dù báo giá vẫn còn nguyên trên server. Báo giá vừa tạo, chưa từng bấm Lưu lần nào thì
+    // Báo giá có saved_at (đã từng bấm Lưu báo giá ít nhất 1 lần) và không có đề xuất đang chờ duyệt
+    // thì vẫn phải coi là "đã lưu" ngay khi tải trang — trước đây state này chỉ set true ngay sau khi
+    // bấm Lưu trong phiên hiện tại nên cứ tải lại trang (thoát đăng nhập lại, F5...) là mất, dù báo
+    // giá vẫn còn nguyên trên server. Báo giá vừa tạo, chưa từng bấm Lưu lần nào thì saved_at vẫn null,
     // vẫn phải bấm Lưu 1 lần mới hiện Xuất PDF/Tạo đơn, đúng như yêu cầu trước đó.
     setQuotationSaved((prev) => {
       let changed = false;
       const next = { ...prev };
       for (const inq of inquiries) {
         if (inq.quotation && !(inq.id in next)) {
-          const everSaved = inq.quotation.updated_at !== inq.quotation.created_at;
-          next[inq.id] = everSaved && !inq.quotation.pending_snapshot;
+          next[inq.id] = !!inq.quotation.saved_at && !inq.quotation.pending_snapshot;
           changed = true;
         }
       }

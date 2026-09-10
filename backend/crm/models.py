@@ -377,6 +377,10 @@ class Quotation(models.Model):
     # đang chờ duyệt, nên trước đây sau khi gửi đề xuất rồi tải lại trang thì y như mất hết, chỉ còn
     # thấy bản đã lưu lần gần nhất. Giữ snapshot này để mở lại đúng nội dung đang chờ/đã duyệt.
     pending_snapshot = models.JSONField(null=True, blank=True)
+    # Thời điểm bấm "Lưu báo giá" gần nhất — None nghĩa là báo giá vừa tạo, chưa từng lưu lần nào.
+    # Không dùng updated_at != created_at để suy ra việc này được, vì auto_now/auto_now_add gọi
+    # timezone.now() 2 lần riêng biệt ngay lúc tạo, nên gần như luôn khác nhau dù chưa ai bấm Lưu.
+    saved_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

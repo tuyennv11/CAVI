@@ -321,6 +321,11 @@ class QuotationViewSet(
             return qs
         return qs.filter(inquiry__customer__assigned_to=self.request.user)
 
+    def perform_update(self, serializer):
+        # Đây là hành động "Lưu báo giá" thật sự (PATCH trực tiếp lên Quotation) — đánh dấu saved_at
+        # để phân biệt với báo giá vừa tạo/đang chờ duyệt, chưa từng được lưu lần nào.
+        serializer.save(saved_at=timezone.now())
+
     @action(detail=True, methods=["post"], url_path="submit-for-approval")
     def submit_for_approval(self, request, pk=None):
         quotation = self.get_object()

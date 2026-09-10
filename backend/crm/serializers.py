@@ -235,8 +235,9 @@ class QuotationSerializer(serializers.ModelSerializer):
             "created_by_name",
             "created_at",
             "updated_at",
+            "saved_at",
         ]
-        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at", "pending_snapshot"]
+        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at", "pending_snapshot", "saved_at"]
 
     def get_total(self, obj):
         return sum((line.line_total for line in obj.lines.all()), Decimal("0"))
@@ -261,6 +262,8 @@ class QuotationSerializer(serializers.ModelSerializer):
             instance.pending_approval = None
             instance.pending_snapshot = None
         instance.note = validated_data.get("note", instance.note)
+        if "saved_at" in validated_data:
+            instance.saved_at = validated_data["saved_at"]
         instance.save()
         if lines_data is not None:
             instance.lines.all().delete()
