@@ -355,6 +355,8 @@ a:hover { text-decoration: underline; }
 .badge-todo { background: var(--primary-soft); color: var(--primary-dark); }
 .badge-open { background: var(--warning-soft); color: var(--warning); }
 .badge-quoted { background: var(--success-soft); color: var(--success); }
+.badge-pending_receipt { background: var(--warning-soft); color: var(--warning); }
+.badge-pending_confirmation { background: var(--gold-soft); color: var(--gold); }
 
 /* ---------- Workspace (Làm việc) ---------- */
 .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }

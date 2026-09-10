@@ -392,7 +392,13 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ["id", "description", "quantity", "unit_price", "unit_cost", "line_total", "line_profit"]
+        fields = [
+            "id", "description", "quantity", "actual_quantity", "unit_price", "unit_cost",
+            "line_total", "line_profit",
+        ]
+        # actual_quantity chỉ được ghi qua OrderViewSet.record_actual (Vận hành), không sửa tự do
+        # qua form sửa phiếu thường.
+        read_only_fields = ["actual_quantity"]
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -401,6 +407,8 @@ class OrderSerializer(serializers.ModelSerializer):
     gross_profit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    received_by_name = serializers.CharField(source="received_by.username", read_only=True, default=None)
+    confirmed_by_name = serializers.CharField(source="confirmed_by.username", read_only=True, default=None)
 
     class Meta:
         model = Order
@@ -424,6 +432,12 @@ class OrderSerializer(serializers.ModelSerializer):
             "floor_price",
             "ceiling_price",
             "source_quotation",
+            "received_by",
+            "received_by_name",
+            "received_at",
+            "confirmed_by",
+            "confirmed_by_name",
+            "confirmed_at",
             "created_by",
             "created_by_name",
             "created_at",
@@ -434,6 +448,10 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "source_quotation",
+            "received_by",
+            "received_at",
+            "confirmed_by",
+            "confirmed_at",
             "floor_pct",
             "ceiling_pct",
             "floor_price",

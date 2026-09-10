@@ -107,6 +107,12 @@ class TierUpgradeRequest(models.Model):
 
 class Order(models.Model):
     class Status(models.TextChoices):
+        # 2 trạng thái đầu là giai đoạn "Phiếu nhận hàng" — Kinh doanh tạo phiếu với thông số dự kiến
+        # (như báo giá đã chốt), Vận hành ghi nhận số liệu thực tế lúc nhận hàng (có thể lệch dự kiến,
+        # vd báo 500kg nhận thực tế 480kg), rồi Kinh doanh xác nhận lại số liệu đó mới chính thức thành
+        # "Đơn hàng" (chuyển sang NEW, vào pipeline vận hành đơn bình thường).
+        PENDING_RECEIPT = "pending_receipt", "Chờ vận hành nhận hàng"
+        PENDING_CONFIRMATION = "pending_confirmation", "Chờ Kinh doanh xác nhận"
         NEW = "new", "Mới"
         PROCESSING = "processing", "Đang xử lý"
         DONE = "done", "Hoàn thành"
@@ -120,7 +126,17 @@ class Order(models.Model):
     source_quotation = models.ForeignKey(
         "Quotation", on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
     )
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_RECEIPT)
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Vận hành ghi nhận",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    received_at = models.DateTimeField("Thời điểm ghi nhận", null=True, blank=True)
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Kinh doanh xác nhận",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    confirmed_at = models.DateTimeField("Thời điểm xác nhận", null=True, blank=True)
     note = models.CharField("Ghi chú", max_length=500, blank=True)
     paid = models.BooleanField("Đã thanh toán", default=False)
     on_platform = models.BooleanField("Qua sàn", default=False)
@@ -157,7 +173,13 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     description = models.CharField("Mô tả", max_length=255)
+    # Số lượng dự kiến lúc tạo Phiếu nhận hàng — Vận hành ghi nhận thực tế vào actual_quantity, rồi
+    # khi Kinh doanh xác nhận, actual_quantity được chốt lại thành quantity chính thức (xem
+    # OrderViewSet.confirm_received). Trước khi xác nhận, quantity vẫn là số liệu dự kiến ban đầu.
     quantity = models.DecimalField("Số lượng", max_digits=10, decimal_places=2, default=1)
+    actual_quantity = models.DecimalField(
+        "Số lượng thực nhận", max_digits=10, decimal_places=2, null=True, blank=True
+    )
     unit_price = models.DecimalField("Đơn giá bán", max_digits=14, decimal_places=2, default=0)
     unit_cost = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, default=0)
 

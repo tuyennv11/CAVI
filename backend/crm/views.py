@@ -499,12 +499,67 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Order.objects.select_related("customer", "created_by").prefetch_related("items").all()
+        # Vận hành ghi nhận số liệu thực tế lúc nhận hàng không gắn với khách hàng cụ thể nào của
+        # Kinh doanh nào — cần thấy được phiếu đang chờ nhận của TẤT CẢ khách, không chỉ khách mình
+        # phụ trách. Xem thêm get_permissions bên dưới.
+        if self.action in ("pending_receipt", "record_actual"):
+            return qs
         if is_manager(self.request.user):
             return qs
         return qs.filter(customer__assigned_to=self.request.user)
 
+    def get_permissions(self):
+        if self.action in ("pending_receipt", "record_actual"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=["get"], url_path="pending-receipt")
+    def pending_receipt(self, request):
+        qs = self.get_queryset().filter(
+            status__in=[Order.Status.PENDING_RECEIPT, Order.Status.PENDING_CONFIRMATION]
+        )
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page if page is not None else qs, many=True)
+        return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="record-actual")
+    def record_actual(self, request, pk=None):
+        order = self.get_object()
+        if order.status not in (Order.Status.PENDING_RECEIPT, Order.Status.PENDING_CONFIRMATION):
+            raise ValidationError("Chỉ ghi nhận số liệu thực tế khi phiếu đang chờ vận hành nhận hàng.")
+        actual_by_id = {}
+        for item_data in request.data.get("items", []):
+            item_id = item_data.get("id")
+            actual = item_data.get("actual_quantity")
+            if item_id is not None and actual not in (None, ""):
+                actual_by_id[item_id] = actual
+        for item in order.items.all():
+            if item.id in actual_by_id:
+                item.actual_quantity = actual_by_id[item.id]
+                item.save(update_fields=["actual_quantity"])
+        order.status = Order.Status.PENDING_CONFIRMATION
+        order.received_by = request.user
+        order.received_at = timezone.now()
+        order.save()
+        return Response(OrderSerializer(order).data)
+
+    @action(detail=True, methods=["post"], url_path="confirm-received")
+    def confirm_received(self, request, pk=None):
+        order = self.get_object()
+        if order.status != Order.Status.PENDING_CONFIRMATION:
+            raise ValidationError("Chỉ xác nhận sau khi Vận hành đã ghi nhận số liệu thực tế nhận hàng.")
+        for item in order.items.all():
+            if item.actual_quantity is not None and item.actual_quantity != item.quantity:
+                item.quantity = item.actual_quantity
+                item.save(update_fields=["quantity"])
+        order.status = Order.Status.NEW
+        order.confirmed_by = request.user
+        order.confirmed_at = timezone.now()
+        order.save()
+        return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=["get"], url_path="label")
     def label(self, request, pk=None):

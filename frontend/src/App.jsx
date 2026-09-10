@@ -6,6 +6,7 @@ import Attendance from "./pages/Attendance";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Notices from "./pages/Notices";
+import OrderReceiving from "./pages/OrderReceiving";
 import PartnerDetail from "./pages/PartnerDetail";
 import PartnerList from "./pages/PartnerList";
 import Pipeline from "./pages/Pipeline";
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/tier-requests" element={<TierRequests />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/order-receiving" element={<OrderReceiving />} />
           <Route path="/shipments" element={<Shipments />} />
           <Route path="/shipment-batches" element={<ShipmentBatches />} />
           <Route path="/attendance" element={<Attendance />} />

@@ -53,6 +53,13 @@ const ICONS = {
       <path d="M2.5 6.5V14L10 17.5V10M17.5 6.5V14L10 17.5" strokeLinejoin="round" />
     </svg>
   ),
+  orderReceiving: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3" y="4" width="14" height="12.5" rx="1.4" />
+      <path d="M6.5 8h7M6.5 11h7M6.5 14h4.5" strokeLinecap="round" />
+      <path d="M13.5 12.5l1.5 1.5 2.5-2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
   batches: (
     <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="2.5" y="5" width="6" height="6" rx="1" />
@@ -116,6 +123,9 @@ export default function Sidebar({ user }) {
         </NavItem>
 
         <div className="sidebar-section">Vận hành</div>
+        <NavItem to="/order-receiving" icon={ICONS.orderReceiving}>
+          Chờ nhận hàng
+        </NavItem>
         <NavItem to="/shipments" icon={ICONS.shipments}>
           Kiện hàng
         </NavItem>
