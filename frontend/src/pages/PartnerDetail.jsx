@@ -431,6 +431,13 @@ export default function PartnerDetail() {
   async function handleCreateQuotation(inquiryId) {
     try {
       await apiFetch(`/api/price-inquiries/${inquiryId}/create-quotation/`, { method: "POST" });
+      // Phòng khi còn sót cờ "đã lưu" từ 1 báo giá trước đó của cùng Hỏi giá này (vd Xoá báo giá
+      // thất bại giữa chừng) — báo giá mới tạo luôn phải bắt đầu ở trạng thái "chưa lưu".
+      setQuotationSaved((prev) => {
+        const next = { ...prev };
+        delete next[inquiryId];
+        return next;
+      });
       loadInquiries();
     } catch (err) {
       setLineError(err.message);
@@ -505,6 +512,13 @@ export default function PartnerDetail() {
     try {
       await apiFetch(`/api/quotations/${quotationId}/`, { method: "DELETE" });
       setQuotationForms((prev) => {
+        const next = { ...prev };
+        delete next[inquiryId];
+        return next;
+      });
+      // Xoá luôn cờ "đã lưu" của báo giá cũ — nếu không, báo giá mới tạo lại cho cùng Hỏi giá này
+      // sẽ bị nhầm là "đã lưu" ngay từ đầu (do state này để theo id Hỏi giá, không phải id báo giá).
+      setQuotationSaved((prev) => {
         const next = { ...prev };
         delete next[inquiryId];
         return next;
