@@ -1129,7 +1129,7 @@ export default function PartnerDetail() {
                   )}
 
                   {/* 1 Hỏi giá có thể có nhiều báo giá đã lưu song song — báo giá đã lưu (saved_at có
-                      giá trị) chỉ hiện gọn 1 dòng tóm tắt + Xuất PDF/Tạo phiếu/Xoá; báo giá nháp (chưa lưu)
+                      giá trị) chỉ hiện gọn 1 dòng tóm tắt + Xuất PDF/Tạo phiếu nhận hàng/Xoá; báo giá nháp (chưa lưu)
                       mới hiện bảng chỉnh sửa đầy đủ. */}
                   {inq.quotations.map((q) =>
                     q.saved_at ? (
@@ -1176,7 +1176,7 @@ export default function PartnerDetail() {
                             Xuất PDF
                           </button>
                           <button type="button" onClick={() => handleCreateOrderFromQuotation(q.id)}>
-                            Tạo phiếu
+                            Tạo phiếu nhận hàng
                           </button>
                           <button
                             type="button"
