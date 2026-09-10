@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import AttendanceRecord, EmergencyContact, EmployeeDocument, LeaveBalance, Profile
+from .models import (
+    AttendanceRecord,
+    BonusPenaltyRecord,
+    CompensationRecord,
+    EmergencyContact,
+    EmployeeDocument,
+    LeaveBalance,
+    Profile,
+)
 
 
 class EmployeeDocumentInline(admin.TabularInline):
@@ -40,3 +48,21 @@ class LeaveBalanceAdmin(admin.ModelAdmin):
 class AttendanceRecordAdmin(admin.ModelAdmin):
     list_display = ("user", "date", "checked_in_at")
     list_filter = ("date",)
+
+
+# Lương/Thưởng-phạt đăng ký riêng (không inline trong ProfileAdmin) — dữ liệu nhạy cảm, không nên
+# hiện sẵn mỗi lần mở hồ sơ 1 nhân viên bất kỳ trong trang quản trị.
+@admin.register(CompensationRecord)
+class CompensationRecordAdmin(admin.ModelAdmin):
+    list_display = ("profile", "effective_date", "base_salary", "allowance", "payment_method")
+    list_filter = ("payment_method",)
+    autocomplete_fields = ["profile"]
+    readonly_fields = ("created_by", "created_at")
+
+
+@admin.register(BonusPenaltyRecord)
+class BonusPenaltyRecordAdmin(admin.ModelAdmin):
+    list_display = ("profile", "record_type", "amount", "effective_date", "reason")
+    list_filter = ("record_type",)
+    autocomplete_fields = ["profile"]
+    readonly_fields = ("created_by", "created_at")

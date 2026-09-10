@@ -3,16 +3,19 @@ import { useParams } from "react-router-dom";
 import { apiFetch, apiUpload } from "../api";
 import AddressFields from "../components/AddressFields";
 import Avatar from "../components/Avatar";
+import { useAuth } from "../AuthContext";
 import {
+  BONUS_PENALTY_TYPE_LABEL,
   DEPARTMENT_LABEL,
   EMPLOYEE_DOC_TYPE_LABEL,
   EMPLOYMENT_TYPE_LABEL,
   formatMoney,
   GENDER_LABEL,
+  PAYMENT_METHOD_LABEL,
   WORK_STATUS_LABEL,
 } from "../constants";
 
-const TABS = [
+const BASE_TABS = [
   { key: "overview", label: "Tổng quan" },
   { key: "work", label: "Công việc" },
   { key: "documents", label: "Hồ sơ" },
@@ -23,6 +26,8 @@ const TABS = [
 
 const EMPTY_DOC = { doc_type: "id_card", title: "", number: "", issued_at: "", issued_place: "", expires_at: "", note: "" };
 const EMPTY_CONTACT = { name: "", relationship: "", phone: "", address: "", note: "" };
+const EMPTY_COMP = { effective_date: "", base_salary: "", allowance: "", insurance_base: "", bank_name: "", bank_account: "", payment_method: "bank_transfer", note: "" };
+const EMPTY_BONUS = { record_type: "bonus", amount: "", reason: "", effective_date: "" };
 
 function isExpiringSoon(dateStr) {
   if (!dateStr) return false;
@@ -32,6 +37,7 @@ function isExpiringSoon(dateStr) {
 
 export default function EmployeeDetail() {
   const { id } = useParams();
+  const { user: currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState(null);
   const [tab, setTab] = useState("overview");
@@ -45,6 +51,11 @@ export default function EmployeeDetail() {
 
   const [contacts, setContacts] = useState([]);
   const [contactForm, setContactForm] = useState(EMPTY_CONTACT);
+
+  const [compensationRecords, setCompensationRecords] = useState([]);
+  const [compForm, setCompForm] = useState(EMPTY_COMP);
+  const [bonusRecords, setBonusRecords] = useState([]);
+  const [bonusForm, setBonusForm] = useState(EMPTY_BONUS);
 
   const [attendance, setAttendance] = useState([]);
   const [leaveBalance, setLeaveBalance] = useState(null);
@@ -109,11 +120,27 @@ export default function EmployeeDetail() {
     setKpiHistory(data);
   }
 
+  async function loadCompensation() {
+    // API tự lọc theo quyền (chính mình / Kế toán / Quản lý) — không có quyền thì trả rỗng,
+    // không lỗi, nên gọi thoải mái, tab Lương tự ẩn ở canSeeSalary phía dưới.
+    try {
+      const [comp, bonus] = await Promise.all([
+        apiFetch(`/api/hr/compensation/?profile=${id}`),
+        apiFetch(`/api/hr/bonus-penalty/?profile=${id}`),
+      ]);
+      setCompensationRecords(comp.results ?? comp);
+      setBonusRecords(bonus.results ?? bonus);
+    } catch {
+      // Không có quyền xem — bỏ qua, tab đã ẩn theo canSeeSalary.
+    }
+  }
+
   useEffect(() => {
     load();
     loadDocuments();
     loadContacts();
     loadKpi();
+    loadCompensation();
   }, [id]);
 
   useEffect(() => {
@@ -197,8 +224,56 @@ export default function EmployeeDetail() {
     loadContacts();
   }
 
+  async function handleAddCompensation(e) {
+    e.preventDefault();
+    try {
+      const payload = { ...compForm, profile: id };
+      // base_salary/allowance/insurance_base không cho null (default=0 ở model) — ô để trống phải
+      // gửi "0", gửi "" thì DRF báo "A valid number is required."
+      ["base_salary", "allowance", "insurance_base"].forEach((k) => {
+        if (payload[k] === "") payload[k] = "0";
+      });
+      await apiFetch("/api/hr/compensation/", { method: "POST", body: JSON.stringify(payload) });
+      setCompForm(EMPTY_COMP);
+      loadCompensation();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteCompensation(recordId) {
+    await apiFetch(`/api/hr/compensation/${recordId}/`, { method: "DELETE" });
+    loadCompensation();
+  }
+
+  async function handleAddBonus(e) {
+    e.preventDefault();
+    try {
+      await apiFetch("/api/hr/bonus-penalty/", { method: "POST", body: JSON.stringify({ ...bonusForm, profile: id }) });
+      setBonusForm(EMPTY_BONUS);
+      loadCompensation();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteBonus(recordId) {
+    await apiFetch(`/api/hr/bonus-penalty/${recordId}/`, { method: "DELETE" });
+    loadCompensation();
+  }
+
   if (error && !profile) return <p className="error">{error}</p>;
   if (!profile || !form) return <p className="muted">Đang tải...</p>;
+
+  // Tab Lương chỉ hiện khi thật sự có khả năng xem: chính mình, hoặc Quản lý/Kế toán (API cũng tự
+  // chặn ở server — đây chỉ là để không hiện tab trống gây hiểu lầm cho người không có quyền).
+  const canSeeSalary = currentUser?.is_manager || currentUser?.is_accountant || currentUser?.id === profile.user;
+  const canEditSalary = currentUser?.is_manager || currentUser?.is_accountant;
+  const TABS = canSeeSalary ? [...BASE_TABS, { key: "salary", label: "Lương" }] : BASE_TABS;
+  // Trang này (khác với "Hồ sơ cá nhân") chỉ Quản lý/Nhân sự sửa được — Kế toán và người tự xem hồ
+  // sơ của mình qua đây (để coi Lương) chỉ có quyền xem, "Lưu thay đổi" phải ẩn đi, không thì bấm
+  // Lưu sẽ luôn báo lỗi 403 dù các ô nhìn như sửa được.
+  const canEditProfile = currentUser?.is_manager || currentUser?.is_hr;
 
   return (
     <div>
@@ -216,9 +291,11 @@ export default function EmployeeDetail() {
             </div>
           </div>
         </div>
-        <button onClick={handleSave} disabled={saving}>
-          {saving ? "Đang lưu..." : saved ? "Đã lưu" : "Lưu thay đổi"}
-        </button>
+        {canEditProfile && (
+          <button onClick={handleSave} disabled={saving}>
+            {saving ? "Đang lưu..." : saved ? "Đã lưu" : "Lưu thay đổi"}
+          </button>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -523,6 +600,137 @@ export default function EmployeeDetail() {
                     <td>{k.kpi_pct != null ? `${k.kpi_pct}%` : "—"}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === "salary" && (
+        <div className="panel">
+          <p className="muted" style={{ marginBottom: 10 }}>
+            Chỉ chính người này, Kế toán và Quản lý xem được mục này.
+          </p>
+
+          <h2 style={{ fontSize: 15 }}>Lương</h2>
+          {canEditSalary && (
+            <form className="field-grid" onSubmit={handleAddCompensation} style={{ marginBottom: 12 }}>
+              <label>
+                Ngày áp dụng
+                <input type="date" required value={compForm.effective_date} onChange={(e) => setCompForm({ ...compForm, effective_date: e.target.value })} />
+              </label>
+              <input type="number" placeholder="Lương cơ bản" value={compForm.base_salary} onChange={(e) => setCompForm({ ...compForm, base_salary: e.target.value })} />
+              <input type="number" placeholder="Phụ cấp" value={compForm.allowance} onChange={(e) => setCompForm({ ...compForm, allowance: e.target.value })} />
+              <input type="number" placeholder="Mức đóng bảo hiểm" value={compForm.insurance_base} onChange={(e) => setCompForm({ ...compForm, insurance_base: e.target.value })} />
+              <input placeholder="Ngân hàng" value={compForm.bank_name} onChange={(e) => setCompForm({ ...compForm, bank_name: e.target.value })} />
+              <input placeholder="Số tài khoản" value={compForm.bank_account} onChange={(e) => setCompForm({ ...compForm, bank_account: e.target.value })} />
+              <select value={compForm.payment_method} onChange={(e) => setCompForm({ ...compForm, payment_method: e.target.value })}>
+                {Object.entries(PAYMENT_METHOD_LABEL).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <button type="submit">+ Thêm bản ghi lương</button>
+            </form>
+          )}
+          <div className="table-wrap" style={{ marginBottom: 20 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Ngày áp dụng</th>
+                  <th>Lương cơ bản</th>
+                  <th>Phụ cấp</th>
+                  <th>Bảo hiểm</th>
+                  <th>Tài khoản</th>
+                  <th>Hình thức</th>
+                  {canEditSalary && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {compensationRecords.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.effective_date}</td>
+                    <td>{formatMoney(c.base_salary)}</td>
+                    <td>{formatMoney(c.allowance)}</td>
+                    <td>{formatMoney(c.insurance_base)}</td>
+                    <td>
+                      {c.bank_name} {c.bank_account}
+                    </td>
+                    <td>{PAYMENT_METHOD_LABEL[c.payment_method]}</td>
+                    {canEditSalary && (
+                      <td>
+                        <button type="button" className="link-btn" onClick={() => handleDeleteCompensation(c.id)}>
+                          Xoá
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {compensationRecords.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="muted">
+                      Chưa có bản ghi lương nào.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h2 style={{ fontSize: 15 }}>Thưởng / phạt / hoa hồng</h2>
+          {canEditSalary && (
+            <form className="field-grid" onSubmit={handleAddBonus} style={{ marginBottom: 12 }}>
+              <select value={bonusForm.record_type} onChange={(e) => setBonusForm({ ...bonusForm, record_type: e.target.value })}>
+                {Object.entries(BONUS_PENALTY_TYPE_LABEL).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <input type="number" placeholder="Số tiền" required value={bonusForm.amount} onChange={(e) => setBonusForm({ ...bonusForm, amount: e.target.value })} />
+              <input placeholder="Lý do" value={bonusForm.reason} onChange={(e) => setBonusForm({ ...bonusForm, reason: e.target.value })} />
+              <label>
+                Ngày áp dụng
+                <input type="date" required value={bonusForm.effective_date} onChange={(e) => setBonusForm({ ...bonusForm, effective_date: e.target.value })} />
+              </label>
+              <button type="submit">+ Thêm</button>
+            </form>
+          )}
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Loại</th>
+                  <th>Số tiền</th>
+                  <th>Lý do</th>
+                  <th>Ngày áp dụng</th>
+                  {canEditSalary && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {bonusRecords.map((b) => (
+                  <tr key={b.id}>
+                    <td>{BONUS_PENALTY_TYPE_LABEL[b.record_type]}</td>
+                    <td>{formatMoney(b.amount)}</td>
+                    <td>{b.reason || "—"}</td>
+                    <td>{b.effective_date}</td>
+                    {canEditSalary && (
+                      <td>
+                        <button type="button" className="link-btn" onClick={() => handleDeleteBonus(b.id)}>
+                          Xoá
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {bonusRecords.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="muted">
+                      Chưa có bản ghi nào.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

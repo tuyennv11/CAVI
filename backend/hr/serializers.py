@@ -1,6 +1,14 @@
 from rest_framework import serializers
 
-from .models import AttendanceRecord, EmergencyContact, EmployeeDocument, LeaveBalance, Profile
+from .models import (
+    AttendanceRecord,
+    BonusPenaltyRecord,
+    CompensationRecord,
+    EmergencyContact,
+    EmployeeDocument,
+    LeaveBalance,
+    Profile,
+)
 
 # Field do Quản lý quyết định qua trang quản lý nhân sự — nhân viên không tự sửa được trên trang
 # "Hồ sơ cá nhân" của chính mình.
@@ -104,6 +112,23 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmergencyContact
         fields = ["id", "profile", "name", "relationship", "phone", "address", "note"]
+
+
+class CompensationRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompensationRecord
+        fields = [
+            "id", "profile", "effective_date", "base_salary", "allowance", "insurance_base",
+            "bank_name", "bank_account", "payment_method", "note", "created_by", "created_at",
+        ]
+        read_only_fields = ["created_by", "created_at"]
+
+
+class BonusPenaltyRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BonusPenaltyRecord
+        fields = ["id", "profile", "record_type", "amount", "reason", "effective_date", "created_by", "created_at"]
+        read_only_fields = ["created_by", "created_at"]
 
 
 class LeaveBalanceSerializer(serializers.ModelSerializer):

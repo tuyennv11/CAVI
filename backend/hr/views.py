@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
@@ -5,13 +6,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.roles import is_manager
+from accounts.roles import is_accountant, is_hr, is_manager
 from crm.models import KPITarget, Order
 from crm.workspace_views import _month_bounds, _pct, _sum_revenue
 
-from .models import AttendanceRecord, EmergencyContact, EmployeeDocument, LeaveBalance, Profile
+from .models import (
+    AttendanceRecord,
+    BonusPenaltyRecord,
+    CompensationRecord,
+    EmergencyContact,
+    EmployeeDocument,
+    LeaveBalance,
+    Profile,
+)
+from .permissions import IsAccountantOrManagerForWrite, IsManagerOrHRForWrite
 from .serializers import (
     AttendanceRecordSerializer,
+    BonusPenaltyRecordSerializer,
+    CompensationRecordSerializer,
     EmergencyContactSerializer,
     EmployeeDocumentSerializer,
     LeaveBalanceSerializer,
@@ -39,19 +51,23 @@ class MyProfileView(APIView):
 
 
 class EmployeeViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Trang quản lý nhân sự — chỉ Quản lý xem/sửa được hồ sơ của người khác."""
+    """Trang quản lý nhân sự. Xem: Quản lý/Nhân sự/Kế toán xem hết (Kế toán cần thấy danh sách để
+    chọn đúng người khi quản lý Lương); người khác chỉ thấy chính mình + cấp dưới trực tiếp. Sửa:
+    chỉ Quản lý/Nhân sự (xem IsManagerOrHRForWrite) — Kế toán chỉ xem, không sửa hồ sơ chung."""
 
     serializer_class = ProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsManagerOrHRForWrite]
     search_fields = ["employee_code", "user__username", "user__first_name", "user__last_name", "phone", "preferred_name"]
     pagination_class = None
 
     def get_queryset(self):
-        if not is_manager(self.request.user):
-            return Profile.objects.none()
-        return Profile.objects.select_related(
-            "user", "manager", "country", "province", "district", "ward"
-        ).all()
+        qs = Profile.objects.select_related("user", "manager", "country", "province", "district", "ward")
+        if is_manager(self.request.user) or is_hr(self.request.user) or is_accountant(self.request.user):
+            return qs.all()
+        # Không có vai trò đặc biệt: chỉ thấy chính mình + những người có "Người quản lý trực
+        # tiếp" (Profile.manager) trỏ tới mình — đúng nghĩa "Trưởng phòng xem nhân viên phòng
+        # mình" nhưng suy ra từ quan hệ thật, không cần gán 1 vai trò riêng.
+        return qs.filter(Q(user=self.request.user) | Q(manager=self.request.user))
 
     @action(detail=True, methods=["get"], url_path="kpi-history")
     def kpi_history(self, request, pk=None):
@@ -90,7 +106,7 @@ class EmployeeDocumentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = EmployeeDocument.objects.select_related("profile__user")
-        if is_manager(self.request.user):
+        if is_manager(self.request.user) or is_hr(self.request.user):
             return qs
         return qs.filter(profile__user=self.request.user)
 
@@ -105,9 +121,44 @@ class EmergencyContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = EmergencyContact.objects.select_related("profile__user")
-        if is_manager(self.request.user):
+        if is_manager(self.request.user) or is_hr(self.request.user):
             return qs
         return qs.filter(profile__user=self.request.user)
+
+
+class CompensationRecordViewSet(viewsets.ModelViewSet):
+    """Lương — ai cũng xem được của chính mình, chỉ Kế toán/Quản lý xem được của người khác và
+    tạo/sửa/xoá được (Nhân sự KHÔNG có quyền này, khác với hồ sơ chung)."""
+
+    serializer_class = CompensationRecordSerializer
+    permission_classes = [IsAuthenticated, IsAccountantOrManagerForWrite]
+    filterset_fields = ["profile"]
+
+    def get_queryset(self):
+        qs = CompensationRecord.objects.select_related("profile__user")
+        if is_manager(self.request.user) or is_accountant(self.request.user):
+            return qs
+        return qs.filter(profile__user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class BonusPenaltyRecordViewSet(viewsets.ModelViewSet):
+    """Thưởng/phạt/hoa hồng — cùng quy tắc quyền với Lương."""
+
+    serializer_class = BonusPenaltyRecordSerializer
+    permission_classes = [IsAuthenticated, IsAccountantOrManagerForWrite]
+    filterset_fields = ["profile"]
+
+    def get_queryset(self):
+        qs = BonusPenaltyRecord.objects.select_related("profile__user")
+        if is_manager(self.request.user) or is_accountant(self.request.user):
+            return qs
+        return qs.filter(profile__user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 
 class LeaveBalanceViewSet(viewsets.ReadOnlyModelViewSet):

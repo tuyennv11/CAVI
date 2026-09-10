@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiFetch, apiUpload } from "../api";
 import AddressFields from "../components/AddressFields";
 import Avatar from "../components/Avatar";
@@ -94,6 +95,9 @@ export default function Profile() {
             <span className="profile-pill">👤 {profile.username}</span>
             <span className="profile-pill">✉️ {profile.email}</span>
           </div>
+          <Link to={`/employees/${profile.id}`} className="muted" style={{ display: "inline-block", marginTop: 8, fontSize: 12.5 }}>
+            Xem hồ sơ đầy đủ (gồm cả Lương, chỉ mình bạn xem được) →
+          </Link>
         </div>
       </div>
 

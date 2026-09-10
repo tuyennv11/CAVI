@@ -161,6 +161,72 @@ class EmergencyContact(models.Model):
         return f"{self.name} — {self.profile.user.username}"
 
 
+class CompensationRecord(models.Model):
+    """Lương — dữ liệu nhạy cảm, tách hẳn khỏi Profile/ProfileSerializer để chặn quyền xem theo
+    từng vai trò (Quản lý/Kế toán/chính chủ) dễ dàng, không lẫn với hồ sơ chung. Mỗi lần đổi lương
+    thêm 1 dòng mới theo ngày áp dụng (effective_date) thay vì ghi đè — giữ đúng lịch sử thay đổi."""
+
+    class PaymentMethod(models.TextChoices):
+        BANK_TRANSFER = "bank_transfer", "Chuyển khoản"
+        CASH = "cash", "Tiền mặt"
+
+    profile = models.ForeignKey(
+        Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="compensation_records"
+    )
+    effective_date = models.DateField("Ngày áp dụng")
+    base_salary = models.DecimalField("Mức lương cơ bản", max_digits=14, decimal_places=2, default=0)
+    allowance = models.DecimalField("Phụ cấp", max_digits=14, decimal_places=2, default=0)
+    insurance_base = models.DecimalField("Mức đóng bảo hiểm", max_digits=14, decimal_places=2, default=0)
+    bank_name = models.CharField("Ngân hàng", max_length=255, blank=True)
+    bank_account = models.CharField("Số tài khoản nhận lương", max_length=50, blank=True)
+    payment_method = models.CharField(
+        "Phương thức trả lương", max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.BANK_TRANSFER
+    )
+    note = models.TextField("Ghi chú", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-effective_date"]
+        verbose_name = "Bản ghi lương"
+        verbose_name_plural = "Lương"
+
+    def __str__(self):
+        return f"Lương {self.profile.user.username} — từ {self.effective_date}"
+
+
+class BonusPenaltyRecord(models.Model):
+    """Thưởng/phạt/hoa hồng — phát sinh theo sự kiện (không phải mức cố định như CompensationRecord),
+    cũng là dữ liệu nhạy cảm nên áp dụng đúng quyền xem như Lương."""
+
+    class RecordType(models.TextChoices):
+        BONUS = "bonus", "Thưởng"
+        PENALTY = "penalty", "Phạt"
+        COMMISSION = "commission", "Hoa hồng"
+
+    profile = models.ForeignKey(
+        Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="bonus_penalty_records"
+    )
+    record_type = models.CharField("Loại", max_length=20, choices=RecordType.choices)
+    amount = models.DecimalField("Số tiền", max_digits=14, decimal_places=2)
+    reason = models.CharField("Lý do", max_length=255, blank=True)
+    effective_date = models.DateField("Ngày áp dụng")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-effective_date"]
+        verbose_name = "Thưởng/phạt/hoa hồng"
+        verbose_name_plural = "Thưởng/phạt/hoa hồng"
+
+    def __str__(self):
+        return f"{self.get_record_type_display()} {self.profile.user.username} — {self.amount}"
+
+
 class LeaveBalance(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="leave_balances"

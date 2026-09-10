@@ -141,6 +141,8 @@ CORS_ALLOWED_ORIGINS = [
 # --- App-level role group names (created by: manage.py seed_groups) ---
 GROUP_MANAGER = "Quản lý"
 GROUP_SALES = "Nhân viên kinh doanh"
+GROUP_HR = "Nhân sự"
+GROUP_ACCOUNTING = "Kế toán"
 
 # --- Thông tin công ty in trên PDF báo giá — chưa có hotline chính thức, để trống, điền qua env sau ---
 COMPANY_HOTLINE = os.environ.get("COMPANY_HOTLINE", "")

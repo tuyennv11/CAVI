@@ -141,7 +141,7 @@ export default function Sidebar({ user }) {
           Quản lý vận hành
         </NavItem>
 
-        {user?.is_manager && (
+        {(user?.is_manager || user?.is_hr || user?.is_accountant) && (
           <>
             <div className="sidebar-section">Nhân sự</div>
             <NavItem to="/employees" icon={ICONS.employees}>

@@ -4,10 +4,10 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = "Tạo sẵn 2 nhóm quyền: Quản lý, Nhân viên kinh doanh"
+    help = "Tạo sẵn các nhóm quyền: Quản lý, Nhân viên kinh doanh, Nhân sự, Kế toán"
 
     def handle(self, *args, **options):
-        for name in (settings.GROUP_MANAGER, settings.GROUP_SALES):
+        for name in (settings.GROUP_MANAGER, settings.GROUP_SALES, settings.GROUP_HR, settings.GROUP_ACCOUNTING):
             _, created = Group.objects.get_or_create(name=name)
             status = "đã tạo" if created else "đã có sẵn"
             self.stdout.write(f"Nhóm '{name}': {status}")

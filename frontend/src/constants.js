@@ -238,3 +238,14 @@ export const EMPLOYEE_DOC_TYPE_LABEL = {
   certificate: "Chứng chỉ",
   other: "Khác",
 };
+
+export const PAYMENT_METHOD_LABEL = {
+  bank_transfer: "Chuyển khoản",
+  cash: "Tiền mặt",
+};
+
+export const BONUS_PENALTY_TYPE_LABEL = {
+  bonus: "Thưởng",
+  penalty: "Phạt",
+  commission: "Hoa hồng",
+};
