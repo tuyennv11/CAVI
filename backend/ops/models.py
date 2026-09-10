@@ -11,14 +11,17 @@ class ShipmentBatch(models.Model):
         SHIPPED = "shipped", "Đã gửi"
 
     route = models.CharField("Tuyến", max_length=50)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.GATHERING)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.GATHERING)
     operator = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+        settings.AUTH_USER_MODEL, verbose_name="Người phụ trách",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Chuyến gom hàng"
+        verbose_name_plural = "Chuyến gom hàng"
 
     def __str__(self):
         return f"Chuyến {self.route} — {self.get_status_display()}"
@@ -50,7 +53,7 @@ class Shipment(models.Model):
         VND = "VND", "VNĐ"
         USD = "USD", "USD"
 
-    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="shipments")
+    partner = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="shipments")
     description = models.CharField("Hàng hoá", max_length=255)
     route = models.CharField("Tuyến", max_length=50, blank=True)
     tracking_code = models.CharField("Mã tracking", max_length=50, blank=True, db_index=True)
@@ -62,20 +65,26 @@ class Shipment(models.Model):
         "Kế toán", max_length=20, choices=KtStatus.choices, default=KtStatus.NOT_RECORDED
     )
 
-    currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.VND)
+    currency = models.CharField("Đơn vị tiền tệ", max_length=3, choices=Currency.choices, default=Currency.VND)
     amount = models.DecimalField("Số tiền", max_digits=16, decimal_places=2, default=0)
 
     assigned_operator = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+        settings.AUTH_USER_MODEL, verbose_name="Người phụ trách",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     batch = models.ForeignKey(
-        ShipmentBatch, on_delete=models.SET_NULL, null=True, blank=True, related_name="shipments"
+        ShipmentBatch, verbose_name="Chuyến gom hàng",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="shipments"
     )
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Kiện hàng"
+        verbose_name_plural = "Kiện hàng"
 
     def __str__(self):
         return f"Kiện #{self.pk} — {self.partner.name}"

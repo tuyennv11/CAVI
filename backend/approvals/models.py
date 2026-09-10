@@ -17,7 +17,7 @@ class ApprovalRequest(models.Model):
         REJECTED = "rejected", "Từ chối"
         PAID = "paid", "Đã chi"
 
-    request_type = models.CharField(max_length=20, choices=RequestType.choices)
+    request_type = models.CharField("Loại yêu cầu", max_length=20, choices=RequestType.choices)
     category = models.CharField("Danh mục", max_length=255, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)
     note = models.TextField("Ghi chú", blank=True)
@@ -25,17 +25,22 @@ class ApprovalRequest(models.Model):
     # (lịch sử tương tác, báo giá...) trước khi ra quyết định, thay vì chỉ thấy 1 dòng tóm tắt.
     related_url = models.CharField("Đường dẫn liên quan", max_length=255, blank=True)
     amount = models.DecimalField("Số tiền", max_digits=16, decimal_places=2, null=True, blank=True)
-    currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.VND)
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    currency = models.CharField("Đơn vị tiền tệ", max_length=3, choices=Currency.choices, default=Currency.VND)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người yêu cầu", on_delete=models.CASCADE, related_name="+"
     )
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.PENDING)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người duyệt",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    reviewed_at = models.DateTimeField("Thời điểm duyệt", null=True, blank=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Yêu cầu duyệt"
+        verbose_name_plural = "Yêu cầu duyệt"
 
     def __str__(self):
         return f"{self.get_request_type_display()}: {self.title}"

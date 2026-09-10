@@ -37,6 +37,8 @@ class Partner(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Đối tác"
+        verbose_name_plural = "Đối tác"
 
     def __str__(self):
         return self.name
@@ -87,19 +89,24 @@ class TierUpgradeRequest(models.Model):
         APPROVED = "approved", "Đã duyệt"
         REJECTED = "rejected", "Từ chối"
 
-    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="tier_requests")
+    partner = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="tier_requests")
     requested_tier = models.CharField("Hạng xin lên", max_length=20, choices=Partner.Tier.choices)
     reason = models.TextField("Lý do")
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người yêu cầu", on_delete=models.CASCADE, related_name="+"
     )
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.PENDING)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người duyệt",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    reviewed_at = models.DateTimeField("Thời điểm duyệt", null=True, blank=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Yêu cầu nâng hạng"
+        verbose_name_plural = "Yêu cầu nâng hạng"
 
     def __str__(self):
         return f"{self.partner} → {self.get_requested_tier_display()} ({self.status})"
@@ -118,15 +125,16 @@ class Order(models.Model):
         DONE = "done", "Hoàn thành"
         CANCELLED = "cancelled", "Huỷ"
 
-    customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="orders")
+    customer = models.ForeignKey(Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="orders")
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
     # Đơn được tạo từ báo giá nào (nếu có) — để Vận hành/đối chiếu sau này biết đơn bắt nguồn từ đâu.
     source_quotation = models.ForeignKey(
-        "Quotation", on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
+        "Quotation", verbose_name="Báo giá gốc",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
     )
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_RECEIPT)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.PENDING_RECEIPT)
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Vận hành ghi nhận",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
@@ -158,11 +166,13 @@ class Order(models.Model):
     ceiling_pct = models.DecimalField("Tỷ lệ giá trần (%)", max_digits=6, decimal_places=2, null=True, blank=True)
     floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)
     ceiling_price = models.DecimalField("Giá trần", max_digits=14, decimal_places=2, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Phiếu nhận hàng / Đơn hàng"
+        verbose_name_plural = "Phiếu nhận hàng / Đơn hàng"
 
     def __str__(self):
         return f"Đơn #{self.pk} — {self.customer}"
@@ -177,7 +187,7 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    order = models.ForeignKey(Order, verbose_name="Phiếu nhận hàng", on_delete=models.CASCADE, related_name="items")
     description = models.CharField("Mô tả", max_length=255)
     # Số lượng dự kiến lúc tạo Phiếu nhận hàng — Vận hành ghi nhận thực tế vào actual_quantity, rồi
     # khi Kinh doanh xác nhận, actual_quantity được chốt lại thành quantity chính thức (xem
@@ -188,6 +198,10 @@ class OrderItem(models.Model):
     )
     unit_price = models.DecimalField("Đơn giá bán", max_digits=14, decimal_places=2, default=0)
     unit_cost = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = "Dòng hàng"
+        verbose_name_plural = "Dòng hàng"
 
     @property
     def line_total(self):
@@ -210,7 +224,7 @@ class Activity(models.Model):
         NOTE = "note", "Ghi chú"
         # Công việc
         TASK = "task", "Công việc cần làm"
-        FOLLOW_UP = "follow_up", "Follow-up"
+        FOLLOW_UP = "follow_up", "Việc cần theo dõi lại"
         APPOINTMENT = "appointment", "Lịch hẹn / cuộc họp"
         # Kinh doanh
         OPPORTUNITY = "opportunity", "Cơ hội kinh doanh"
@@ -237,7 +251,7 @@ class Activity(models.Model):
         DONE = "done", "Hoàn thành"
         CANCELLED = "cancelled", "Huỷ"
 
-    customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="activities")
+    customer = models.ForeignKey(Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="activities")
     activity_type = models.CharField("Loại hoạt động", max_length=20, choices=ActivityType.choices)
     title = models.CharField("Tiêu đề", max_length=255)
     activity_at = models.DateTimeField("Ngày giờ", default=timezone.now)
@@ -251,13 +265,13 @@ class Activity(models.Model):
     contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
     content = models.TextField("Nội dung", blank=True)
     result = models.TextField("Kết quả", blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
-    follow_up_date = models.DateField("Ngày cần follow-up", null=True, blank=True)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
+    follow_up_date = models.DateField("Ngày cần theo dõi lại", null=True, blank=True)
     # Tuỳ chọn — vd khách hẹn "15h gọi lại" thì ghi rõ giờ, còn hẹn kiểu "thứ 4 tuần sau" thì để trống.
     follow_up_time = models.TimeField("Giờ hẹn nhắc", null=True, blank=True)
     # Tách riêng khỏi `status` — trạng thái hoạt động gốc (vd cuộc gọi đã "Hoàn thành") không
     # đồng nghĩa với việc đã nhắc/xử lý xong follow-up gắn với nó.
-    follow_up_done = models.BooleanField("Đã nhắc follow-up", default=False)
+    follow_up_done = models.BooleanField("Đã nhắc việc cần theo dõi lại", default=False)
     note = models.TextField("Ghi chú", blank=True)
     attachment = models.FileField("File đính kèm", upload_to="activities/%Y/%m/", null=True, blank=True)
     related_order = models.ForeignKey(
@@ -266,12 +280,16 @@ class Activity(models.Model):
     related_reference = models.CharField(
         "Tham chiếu khác (báo giá/hợp đồng/cơ hội/phiếu hỗ trợ...)", max_length=255, blank=True
     )
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
 
     class Meta:
         ordering = ["-activity_at"]
+        verbose_name = "Hoạt động khách hàng"
+        verbose_name_plural = "Hoạt động khách hàng"
 
     def __str__(self):
         return f"{self.get_activity_type_display()}: {self.title}"
@@ -285,10 +303,12 @@ class PriceInquiry(models.Model):
         QUOTED = "quoted", "Đã chốt giá"
         CANCELLED = "cancelled", "Huỷ"
 
-    customer = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="price_inquiries")
+    customer = models.ForeignKey(
+        Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="price_inquiries"
+    )
     description = models.TextField("Mô tả", blank=True)
     image = models.FileField("Hình ảnh", upload_to="price_inquiries/%Y/%m/", null=True, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.OPEN)
     cost_price = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
     floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)
     ceiling_price = models.DecimalField("Giá trần", max_digits=14, decimal_places=2, null=True, blank=True)
@@ -300,14 +320,17 @@ class PriceInquiry(models.Model):
         settings.AUTH_USER_MODEL, verbose_name="Người chốt giá", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="+"
     )
-    quoted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    quoted_at = models.DateTimeField("Thời điểm chốt giá", null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name_plural = "Price inquiries"
+        verbose_name = "Hỏi giá"
+        verbose_name_plural = "Hỏi giá"
 
     def __str__(self):
         return f"Hỏi giá #{self.pk} — {self.customer}"
@@ -316,15 +339,19 @@ class PriceInquiry(models.Model):
 class PriceInquiryMessage(models.Model):
     """Trao đổi qua lại giữa Kinh doanh và Cung ứng trong một yêu cầu hỏi giá."""
 
-    inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="messages")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    content = models.TextField()
+    inquiry = models.ForeignKey(PriceInquiry, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="messages")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người gửi", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    content = models.TextField("Nội dung")
     # Đánh dấu tin nhắn hệ thống tự sinh khi chốt giá, để hiển thị khác trong luồng trao đổi.
-    is_quote = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    is_quote = models.BooleanField("Là tin chốt giá", default=False)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["created_at"]
+        verbose_name = "Tin nhắn hỏi giá"
+        verbose_name_plural = "Tin nhắn hỏi giá"
 
     def __str__(self):
         return f"{self.author} — {self.content[:40]}"
@@ -346,10 +373,12 @@ class PriceListItem(models.Model):
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     floor_pct = models.DecimalField("Giá sàn (%)", max_digits=6, decimal_places=2, default=0)
     ceiling_pct = models.DecimalField("Giá trần (%)", max_digits=6, decimal_places=2, default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField("Đang sử dụng", default=True)
 
     class Meta:
         ordering = ["group_code", "item_code"]
+        verbose_name = "Bảng giá dịch vụ"
+        verbose_name_plural = "Bảng giá dịch vụ"
 
     def __str__(self):
         return f"{self.item_code} — {self.name}"
@@ -358,8 +387,12 @@ class PriceListItem(models.Model):
 class PriceInquiryQuoteLine(models.Model):
     """Một dòng mặt hàng/dịch vụ trong báo giá chi tiết của một Hỏi giá — Cung ứng nhập sau khi trao đổi xong."""
 
-    inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="quote_lines")
-    item = models.ForeignKey(PriceListItem, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    inquiry = models.ForeignKey(
+        PriceInquiry, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="quote_lines"
+    )
+    item = models.ForeignKey(
+        PriceListItem, verbose_name="Dịch vụ", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     # Snapshot lại tại thời điểm thêm dòng — bảng giá gốc có đổi sau này cũng không ảnh hưởng báo giá đã lập.
     item_name = models.CharField("Tên dịch vụ", max_length=255)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
@@ -368,11 +401,15 @@ class PriceInquiryQuoteLine(models.Model):
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
     unit_cost = models.DecimalField("Đơn giá vốn", max_digits=14, decimal_places=2, default=0)
     note = models.TextField("Mô tả", blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["id"]
+        verbose_name = "Dòng dịch vụ cấu thành"
+        verbose_name_plural = "Dòng dịch vụ cấu thành"
 
     def __str__(self):
         return f"{self.item_name} x{self.quantity}"
@@ -396,27 +433,32 @@ class Quotation(models.Model):
 
     # 1 Hỏi giá có thể có nhiều báo giá đã lưu song song (vd nhiều phương án giá gửi khách) — mỗi cái
     # độc lập, Xuất PDF/Tạo đơn/Xoá riêng từng cái.
-    inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="quotations")
+    inquiry = models.ForeignKey(PriceInquiry, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="quotations")
     note = models.TextField("Mô tả", blank=True)
     # Giá tổng báo giá phải nằm trong [giá sàn, giá trần] của Hỏi giá gốc mới lưu được trực tiếp —
     # nếu không, phải gửi đề xuất qua đây cho Cung ứng duyệt trước, duyệt xong mới lưu tiếp được.
     pending_approval = models.ForeignKey(
-        "approvals.ApprovalRequest", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+        "approvals.ApprovalRequest", verbose_name="Đề xuất đang chờ duyệt",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     # Snapshot nội dung (note + lines) đã gửi kèm đề xuất — không có chỗ nào khác lưu lại nội dung
     # đang chờ duyệt, nên trước đây sau khi gửi đề xuất rồi tải lại trang thì y như mất hết, chỉ còn
     # thấy bản đã lưu lần gần nhất. Giữ snapshot này để mở lại đúng nội dung đang chờ/đã duyệt.
-    pending_snapshot = models.JSONField(null=True, blank=True)
+    pending_snapshot = models.JSONField("Nội dung đề xuất đang chờ", null=True, blank=True)
     # Thời điểm bấm "Lưu báo giá" gần nhất — None nghĩa là báo giá vừa tạo, chưa từng lưu lần nào.
     # Không dùng updated_at != created_at để suy ra việc này được, vì auto_now/auto_now_add gọi
     # timezone.now() 2 lần riêng biệt ngay lúc tạo, nên gần như luôn khác nhau dù chưa ai bấm Lưu.
-    saved_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    saved_at = models.DateTimeField("Thời điểm lưu gần nhất", null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Báo giá"
+        verbose_name_plural = "Báo giá"
 
     def __str__(self):
         return f"Báo giá #{self.pk} — {self.inquiry.customer}"
@@ -427,7 +469,7 @@ class QuotationLine(models.Model):
     bỏ hết chi tiết giá vốn/% nội bộ vì về sau chỉ cần quan tâm giá tổng của báo giá.
     `price` mặc định lấy từ giá sàn của dòng Hỏi giá gốc lúc tạo, sau đó chỉnh sửa độc lập."""
 
-    quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name="lines")
+    quotation = models.ForeignKey(Quotation, verbose_name="Báo giá", on_delete=models.CASCADE, related_name="lines")
     item_name = models.CharField("Mô tả", max_length=255, blank=True)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
@@ -435,6 +477,8 @@ class QuotationLine(models.Model):
 
     class Meta:
         ordering = ["id"]
+        verbose_name = "Dòng báo giá"
+        verbose_name_plural = "Dòng báo giá"
 
     def __str__(self):
         return f"{self.item_name} x{self.quantity}"
@@ -477,14 +521,16 @@ class Task(models.Model):
         null=True, blank=True, related_name="tasks"
     )
     due_at = models.DateTimeField("Hạn hoàn thành", null=True, blank=True)
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
+    priority = models.CharField("Độ ưu tiên", max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.TODO)
     attachment = models.FileField("File liên quan", upload_to="tasks/%Y/%m/", null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
 
     class Meta:
         ordering = ["due_at", "-created_at"]
+        verbose_name = "Công việc"
+        verbose_name_plural = "Công việc"
 
     def __str__(self):
         return self.title
@@ -501,9 +547,11 @@ class Task(models.Model):
 class KPITarget(models.Model):
     """Chỉ tiêu KPI tháng của một nhân viên — hiện tại cấu hình qua trang Admin (do Quản lý đặt)."""
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="kpi_targets")
-    year = models.IntegerField()
-    month = models.IntegerField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="kpi_targets"
+    )
+    year = models.IntegerField("Năm")
+    month = models.IntegerField("Tháng")
     revenue_target = models.DecimalField("Chỉ tiêu doanh thu", max_digits=16, decimal_places=2, default=0)
     new_customer_target = models.IntegerField("Chỉ tiêu khách hàng mới", default=0)
     quote_target = models.IntegerField("Chỉ tiêu báo giá", default=0)
@@ -513,6 +561,8 @@ class KPITarget(models.Model):
     class Meta:
         ordering = ["-year", "-month"]
         unique_together = ["user", "year", "month"]
+        verbose_name = "Chỉ tiêu KPI"
+        verbose_name_plural = "Chỉ tiêu KPI"
 
     def __str__(self):
         return f"KPI {self.user} — {self.month:02d}/{self.year}"
@@ -522,11 +572,15 @@ class Notice(models.Model):
     code = models.CharField("Số hiệu", max_length=50, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)
     body = models.TextField("Nội dung", blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Thông báo nội bộ"
+        verbose_name_plural = "Thông báo nội bộ"
 
     def __str__(self):
         return self.title
