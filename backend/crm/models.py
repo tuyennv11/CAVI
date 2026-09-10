@@ -366,7 +366,9 @@ class Quotation(models.Model):
     """Báo giá chính thức gửi khách hàng — tạo từ 1 Hỏi giá đã chốt giá nội bộ, copy lại dữ liệu
     đã có (mô tả + các dòng dịch vụ) và cho chỉnh sửa tiếp trước khi gửi khách, độc lập với Hỏi giá gốc."""
 
-    inquiry = models.OneToOneField(PriceInquiry, on_delete=models.CASCADE, related_name="quotation")
+    # 1 Hỏi giá có thể có nhiều báo giá đã lưu song song (vd nhiều phương án giá gửi khách) — mỗi cái
+    # độc lập, Xuất PDF/Tạo đơn/Xoá riêng từng cái.
+    inquiry = models.ForeignKey(PriceInquiry, on_delete=models.CASCADE, related_name="quotations")
     note = models.TextField("Mô tả", blank=True)
     # Giá tổng báo giá phải nằm trong [giá sàn, giá trần] của Hỏi giá gốc mới lưu được trực tiếp —
     # nếu không, phải gửi đề xuất qua đây cho Cung ứng duyệt trước, duyệt xong mới lưu tiếp được.

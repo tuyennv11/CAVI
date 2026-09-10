@@ -170,9 +170,10 @@ export default function PartnerDetail() {
   const [priceList, setPriceList] = useState([]);
   const [lineFormFor, setLineFormFor] = useState(null);
   const [lineForms, setLineForms] = useState({});
+  // Tất cả state dưới đây khoá theo id báo giá (không phải id Hỏi giá) — 1 Hỏi giá có thể có
+  // nhiều báo giá đã lưu song song, mỗi cái sửa/lưu độc lập.
   const [quotationForms, setQuotationForms] = useState({});
   const [quotationSaving, setQuotationSaving] = useState({});
-  const [quotationSaved, setQuotationSaved] = useState({});
 
   async function loadAll() {
     try {
@@ -245,30 +246,18 @@ export default function PartnerDetail() {
   }, [id]);
 
   // Nạp form chỉnh sửa báo giá 1 lần khi báo giá xuất hiện — không ghi đè nếu người dùng đang gõ dở.
+  // "Đã lưu chưa" luôn lấy trực tiếp từ saved_at trả về từ server (không giữ cờ riêng ở frontend nữa)
+  // — tránh lặp lại đúng lớp lỗi trước đây (cờ chỉ đúng trong phiên hiện tại, tải lại trang là mất).
   useEffect(() => {
     setQuotationForms((prev) => {
       let changed = false;
       const next = { ...prev };
       for (const inq of inquiries) {
-        if (inq.quotation && !next[inq.id]) {
-          next[inq.id] = emptyQuotationForm(inq.quotation);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-    // Báo giá có saved_at (đã từng bấm Lưu báo giá ít nhất 1 lần) và không có đề xuất đang chờ duyệt
-    // thì vẫn phải coi là "đã lưu" ngay khi tải trang — trước đây state này chỉ set true ngay sau khi
-    // bấm Lưu trong phiên hiện tại nên cứ tải lại trang (thoát đăng nhập lại, F5...) là mất, dù báo
-    // giá vẫn còn nguyên trên server. Báo giá vừa tạo, chưa từng bấm Lưu lần nào thì saved_at vẫn null,
-    // vẫn phải bấm Lưu 1 lần mới hiện Xuất PDF/Tạo đơn, đúng như yêu cầu trước đó.
-    setQuotationSaved((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const inq of inquiries) {
-        if (inq.quotation && !(inq.id in next)) {
-          next[inq.id] = !!inq.quotation.saved_at && !inq.quotation.pending_snapshot;
-          changed = true;
+        for (const q of inq.quotations) {
+          if (!next[q.id]) {
+            next[q.id] = emptyQuotationForm(q);
+            changed = true;
+          }
         }
       }
       return changed ? next : prev;
@@ -447,72 +436,59 @@ export default function PartnerDetail() {
   async function handleCreateQuotation(inquiryId) {
     try {
       await apiFetch(`/api/price-inquiries/${inquiryId}/create-quotation/`, { method: "POST" });
-      // Phòng khi còn sót cờ "đã lưu" từ 1 báo giá trước đó của cùng Hỏi giá này (vd Xoá báo giá
-      // thất bại giữa chừng) — báo giá mới tạo luôn phải bắt đầu ở trạng thái "chưa lưu".
-      setQuotationSaved((prev) => {
-        const next = { ...prev };
-        delete next[inquiryId];
-        return next;
-      });
       loadInquiries();
     } catch (err) {
       setLineError(err.message);
     }
   }
 
-  function updateQuotationNote(inquiryId, value) {
-    setQuotationForms((prev) => ({ ...prev, [inquiryId]: { ...prev[inquiryId], note: value } }));
-    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
+  function updateQuotationNote(quotationId, value) {
+    setQuotationForms((prev) => ({ ...prev, [quotationId]: { ...prev[quotationId], note: value } }));
   }
 
-  function updateQuotationLine(inquiryId, lineIndex, field, value) {
+  function updateQuotationLine(quotationId, lineIndex, field, value) {
     setQuotationForms((prev) => {
-      const form = prev[inquiryId];
+      const form = prev[quotationId];
       const lines = form.lines.map((l, i) => (i === lineIndex ? { ...l, [field]: value } : l));
-      return { ...prev, [inquiryId]: { ...form, lines } };
+      return { ...prev, [quotationId]: { ...form, lines } };
     });
-    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
-  function removeQuotationLine(inquiryId, lineIndex) {
+  function removeQuotationLine(quotationId, lineIndex) {
     setQuotationForms((prev) => {
-      const form = prev[inquiryId];
+      const form = prev[quotationId];
       const lines = form.lines.filter((_, i) => i !== lineIndex);
-      return { ...prev, [inquiryId]: { ...form, lines } };
+      return { ...prev, [quotationId]: { ...form, lines } };
     });
-    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
-  function addQuotationLine(inquiryId) {
+  function addQuotationLine(quotationId) {
     setQuotationForms((prev) => {
-      const form = prev[inquiryId];
+      const form = prev[quotationId];
       const lines = [...form.lines, { item_name: "", unit: "", quantity: 1, price: 0 }];
-      return { ...prev, [inquiryId]: { ...form, lines } };
+      return { ...prev, [quotationId]: { ...form, lines } };
     });
-    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
   }
 
-  async function handleSaveQuotation(inquiryId, quotationId) {
-    const form = quotationForms[inquiryId];
-    setQuotationSaving((prev) => ({ ...prev, [inquiryId]: true }));
-    setQuotationSaved((prev) => ({ ...prev, [inquiryId]: false }));
+  async function handleSaveQuotation(quotationId) {
+    const form = quotationForms[quotationId];
+    setQuotationSaving((prev) => ({ ...prev, [quotationId]: true }));
     try {
       await apiFetch(`/api/quotations/${quotationId}/`, {
         method: "PATCH",
         body: JSON.stringify(form),
       });
       setLineError("");
-      setQuotationSaved((prev) => ({ ...prev, [inquiryId]: true }));
       loadInquiries();
     } catch (err) {
       setLineError(err.message);
     } finally {
-      setQuotationSaving((prev) => ({ ...prev, [inquiryId]: false }));
+      setQuotationSaving((prev) => ({ ...prev, [quotationId]: false }));
     }
   }
 
-  async function handleSubmitQuotationApproval(inquiryId, quotationId) {
-    const form = quotationForms[inquiryId];
+  async function handleSubmitQuotationApproval(quotationId) {
+    const form = quotationForms[quotationId];
     try {
       await apiFetch(`/api/quotations/${quotationId}/submit-for-approval/`, {
         method: "POST",
@@ -524,19 +500,12 @@ export default function PartnerDetail() {
     }
   }
 
-  async function handleDeleteQuotation(inquiryId, quotationId) {
+  async function handleDeleteQuotation(quotationId) {
     try {
       await apiFetch(`/api/quotations/${quotationId}/`, { method: "DELETE" });
       setQuotationForms((prev) => {
         const next = { ...prev };
-        delete next[inquiryId];
-        return next;
-      });
-      // Xoá luôn cờ "đã lưu" của báo giá cũ — nếu không, báo giá mới tạo lại cho cùng Hỏi giá này
-      // sẽ bị nhầm là "đã lưu" ngay từ đầu (do state này để theo id Hỏi giá, không phải id báo giá).
-      setQuotationSaved((prev) => {
-        const next = { ...prev };
-        delete next[inquiryId];
+        delete next[quotationId];
         return next;
       });
       loadInquiries();
@@ -1118,7 +1087,9 @@ export default function PartnerDetail() {
                       trần: <b>{formatMoney(inq.ceiling_price)}</b>{" "}
                       {inq.ceiling_pct != null && <span className="muted">({formatPct(inq.ceiling_pct)})</span>}
                       <span className="muted"> — chốt bởi {inq.quoted_by_name}</span>
-                      {!inq.quotation && (
+                      {/* Cho tạo báo giá mới bất cứ lúc nào, chỉ chặn khi đang có 1 báo giá nháp
+                          (chưa lưu) — tránh tích luỹ nhiều nháp bỏ dở không ai dọn cùng lúc. */}
+                      {!inq.quotations.some((q) => !q.saved_at) && (
                         <button type="button" className="secondary" onClick={() => handleCreateQuotation(inq.id)}>
                           Tạo báo giá
                         </button>
@@ -1126,162 +1097,169 @@ export default function PartnerDetail() {
                     </div>
                   )}
 
-                  {inq.quotation &&
-                    quotationForms[inq.id] &&
-                    (() => {
-                      const form = quotationForms[inq.id];
-                      const total = form.lines.reduce(
-                        (sum, l) => sum + Number(l.quantity || 0) * Number(l.price || 0),
-                        0
-                      );
-                      const floor = Number(inq.quotation.floor_price ?? 0);
-                      const ceiling =
-                        inq.quotation.ceiling_price === null || inq.quotation.ceiling_price === undefined
-                          ? null
-                          : Number(inq.quotation.ceiling_price);
-                      const approvalStatus = inq.quotation.pending_approval_status;
-                      const withinBounds = total >= floor && (ceiling === null || total <= ceiling);
-                      const canSave = withinBounds || approvalStatus === "approved";
-                      return (
-                        <div className="quotation-panel">
-                          <div className="quotation-head">
-                            <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b>
-                            {inq.quotation.pending_snapshot && (
-                              <span className="muted"> — đang xem nội dung đề xuất, chưa lưu chính thức</span>
-                            )}
-                          </div>
-                          <textarea
-                            rows={3}
-                            value={form.note}
-                            onChange={(e) => updateQuotationNote(inq.id, e.target.value)}
-                          />
-                          <div className="table-wrap">
-                            <table className="data-table quotation-lines-table">
-                              <thead>
-                                <tr>
-                                  <th>Mô tả</th>
-                                  <th>ĐVT</th>
-                                  <th>SL</th>
-                                  <th>Giá</th>
-                                  <th></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {form.lines.map((l, i) => (
-                                  <tr key={i}>
-                                    <td>
-                                      <input
-                                        value={l.item_name}
-                                        onChange={(e) => updateQuotationLine(inq.id, i, "item_name", e.target.value)}
-                                      />
+                  {/* 1 Hỏi giá có thể có nhiều báo giá đã lưu song song — báo giá đã lưu (saved_at có
+                      giá trị) chỉ hiện gọn 1 dòng tóm tắt + Xuất PDF/Tạo đơn/Xoá; báo giá nháp (chưa lưu)
+                      mới hiện bảng chỉnh sửa đầy đủ. */}
+                  {inq.quotations.map((q) =>
+                    q.saved_at ? (
+                      <div className="quotation-panel" key={q.id}>
+                        <div className="quotation-head">
+                          <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b> · Tổng:{" "}
+                          <b>{formatMoney(q.total)}</b>
+                          <span className="muted"> — đã lưu {formatDateTime(q.saved_at)}</span>
+                        </div>
+                        <div className="quotation-actions">
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => handleExportQuotationPdf(q.id, inq.customer_name)}
+                          >
+                            Xuất PDF
+                          </button>
+                          <button type="button" onClick={() => handleCreateOrderFromQuotation(q.id)}>
+                            Tạo đơn
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => handleDeleteQuotation(q.id)}
+                          >
+                            Xoá báo giá
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      quotationForms[q.id] &&
+                      (() => {
+                        const form = quotationForms[q.id];
+                        const total = form.lines.reduce(
+                          (sum, l) => sum + Number(l.quantity || 0) * Number(l.price || 0),
+                          0
+                        );
+                        const floor = Number(q.floor_price ?? 0);
+                        const ceiling =
+                          q.ceiling_price === null || q.ceiling_price === undefined
+                            ? null
+                            : Number(q.ceiling_price);
+                        const approvalStatus = q.pending_approval_status;
+                        const withinBounds = total >= floor && (ceiling === null || total <= ceiling);
+                        const canSave = withinBounds || approvalStatus === "approved";
+                        return (
+                          <div className="quotation-panel" key={q.id}>
+                            <div className="quotation-head">
+                              <b>Báo giá</b> — Khách hàng: <b>{inq.customer_name}</b>
+                              {q.pending_snapshot && (
+                                <span className="muted"> — đang xem nội dung đề xuất, chưa lưu chính thức</span>
+                              )}
+                            </div>
+                            <textarea
+                              rows={3}
+                              value={form.note}
+                              onChange={(e) => updateQuotationNote(q.id, e.target.value)}
+                            />
+                            <div className="table-wrap">
+                              <table className="data-table quotation-lines-table">
+                                <thead>
+                                  <tr>
+                                    <th>Mô tả</th>
+                                    <th>ĐVT</th>
+                                    <th>SL</th>
+                                    <th>Giá</th>
+                                    <th></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {form.lines.map((l, i) => (
+                                    <tr key={i}>
+                                      <td>
+                                        <input
+                                          value={l.item_name}
+                                          onChange={(e) => updateQuotationLine(q.id, i, "item_name", e.target.value)}
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          style={{ width: 60 }}
+                                          value={l.unit}
+                                          onChange={(e) => updateQuotationLine(q.id, i, "unit", e.target.value)}
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          style={{ width: 70 }}
+                                          value={l.quantity}
+                                          onChange={(e) => updateQuotationLine(q.id, i, "quantity", e.target.value)}
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          style={{ width: 120 }}
+                                          value={l.price}
+                                          onChange={(e) => updateQuotationLine(q.id, i, "price", e.target.value)}
+                                        />
+                                      </td>
+                                      <td>
+                                        <button
+                                          type="button"
+                                          className="link-btn"
+                                          onClick={() => removeQuotationLine(q.id, i)}
+                                        >
+                                          Xoá
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot>
+                                  <tr>
+                                    <td colSpan={3}>
+                                      <b>Tổng giá báo giá</b>
                                     </td>
-                                    <td>
-                                      <input
-                                        style={{ width: 60 }}
-                                        value={l.unit}
-                                        onChange={(e) => updateQuotationLine(inq.id, i, "unit", e.target.value)}
-                                      />
-                                    </td>
-                                    <td>
-                                      <input
-                                        type="number"
-                                        style={{ width: 70 }}
-                                        value={l.quantity}
-                                        onChange={(e) => updateQuotationLine(inq.id, i, "quantity", e.target.value)}
-                                      />
-                                    </td>
-                                    <td>
-                                      <input
-                                        type="number"
-                                        style={{ width: 120 }}
-                                        value={l.price}
-                                        onChange={(e) => updateQuotationLine(inq.id, i, "price", e.target.value)}
-                                      />
-                                    </td>
-                                    <td>
-                                      <button
-                                        type="button"
-                                        className="link-btn"
-                                        onClick={() => removeQuotationLine(inq.id, i)}
-                                      >
-                                        Xoá
-                                      </button>
+                                    <td colSpan={2}>
+                                      <b>{formatMoney(total)}</b>
                                     </td>
                                   </tr>
-                                ))}
-                              </tbody>
-                              <tfoot>
-                                <tr>
-                                  <td colSpan={3}>
-                                    <b>Tổng giá báo giá</b>
-                                  </td>
-                                  <td colSpan={2}>
-                                    <b>{formatMoney(total)}</b>
-                                  </td>
-                                </tr>
-                              </tfoot>
-                            </table>
-                          </div>
-                          <button type="button" className="link-btn" onClick={() => addQuotationLine(inq.id)}>
-                            + Thêm dòng
-                          </button>
-                          {!withinBounds && (
-                            <p className="error">
-                              Giá tổng phải nằm trong khoảng giá sàn ({formatMoney(floor)}) - giá trần (
-                              {ceiling === null ? "—" : formatMoney(ceiling)}) mới lưu trực tiếp được.
-                              {approvalStatus === "pending" && " Đang chờ Cung ứng duyệt đề xuất..."}
-                              {approvalStatus === "rejected" && " Đề xuất đã bị từ chối — điều chỉnh giá hoặc gửi đề xuất khác."}
-                            </p>
-                          )}
-                          <div className="quotation-actions">
-                            {canSave && (
-                              <button
-                                type="button"
-                                disabled={!!quotationSaving[inq.id]}
-                                onClick={() => handleSaveQuotation(inq.id, inq.quotation.id)}
-                              >
-                                {quotationSaving[inq.id] ? "Đang lưu..." : "Lưu báo giá"}
-                              </button>
-                            )}
-                            {!withinBounds && approvalStatus !== "pending" && approvalStatus !== "approved" && (
-                              <button
-                                type="button"
-                                onClick={() => handleSubmitQuotationApproval(inq.id, inq.quotation.id)}
-                              >
-                                Gửi đề xuất duyệt
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={() => handleDeleteQuotation(inq.id, inq.quotation.id)}
-                            >
-                              Xoá báo giá
+                                </tfoot>
+                              </table>
+                            </div>
+                            <button type="button" className="link-btn" onClick={() => addQuotationLine(q.id)}>
+                              + Thêm dòng
                             </button>
-                            {quotationSaved[inq.id] && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="secondary"
-                                  onClick={() => handleExportQuotationPdf(inq.quotation.id, inq.customer_name)}
-                                >
-                                  Xuất PDF
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCreateOrderFromQuotation(inq.quotation.id)}
-                                >
-                                  Tạo đơn
-                                </button>
-                                <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
-                                  Đã lưu báo giá
-                                </span>
-                              </>
+                            {!withinBounds && (
+                              <p className="error">
+                                Giá tổng phải nằm trong khoảng giá sàn ({formatMoney(floor)}) - giá trần (
+                                {ceiling === null ? "—" : formatMoney(ceiling)}) mới lưu trực tiếp được.
+                                {approvalStatus === "pending" && " Đang chờ Cung ứng duyệt đề xuất..."}
+                                {approvalStatus === "rejected" &&
+                                  " Đề xuất đã bị từ chối — điều chỉnh giá hoặc gửi đề xuất khác."}
+                              </p>
                             )}
+                            <div className="quotation-actions">
+                              {canSave && (
+                                <button
+                                  type="button"
+                                  disabled={!!quotationSaving[q.id]}
+                                  onClick={() => handleSaveQuotation(q.id)}
+                                >
+                                  {quotationSaving[q.id] ? "Đang lưu..." : "Lưu báo giá"}
+                                </button>
+                              )}
+                              {!withinBounds && approvalStatus !== "pending" && approvalStatus !== "approved" && (
+                                <button type="button" onClick={() => handleSubmitQuotationApproval(q.id)}>
+                                  Gửi đề xuất duyệt
+                                </button>
+                              )}
+                              <button type="button" className="secondary" onClick={() => handleDeleteQuotation(q.id)}>
+                                Xoá báo giá
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()
+                    )
+                  )}
 
                   {inq.messages.length > 0 && (
                     <div className="inquiry-thread">

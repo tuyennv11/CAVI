@@ -277,7 +277,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     messages = PriceInquiryMessageSerializer(many=True, read_only=True)
     quote_lines = PriceInquiryQuoteLineSerializer(many=True, read_only=True)
-    quotation = QuotationSerializer(read_only=True, required=False)
+    quotations = QuotationSerializer(many=True, read_only=True)
 
     class Meta:
         model = PriceInquiry
@@ -302,7 +302,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "updated_at",
             "messages",
             "quote_lines",
-            "quotation",
+            "quotations",
         ]
         read_only_fields = [
             "status",
