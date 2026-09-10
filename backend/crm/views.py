@@ -288,13 +288,6 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         if draft is not None:
             return Response(QuotationSerializer(draft).data, status=200)
         quotation = Quotation.objects.create(inquiry=inquiry, note=inquiry.description, created_by=request.user)
-        # Dùng tỷ lệ sàn CHUNG của cả Hỏi giá (không phải % riêng từng dòng) để tổng báo giá mặc
-        # định luôn khớp đúng inquiry.floor_price — nếu không, báo giá mới tạo có thể bị tính
-        # ngay là "ngoài khoảng" dù chưa ai chỉnh sửa gì.
-        # Phải ép kiểu Decimal — `... or 0` trả về int thường (0) khi floor_pct là None (báo giá
-        # chốt trước khi có tính năng sàn/trần), và int 0 / 100 ra float, nhân với Decimal sẽ lỗi
-        # TypeError giữa chừng bulk_create, để lại 1 Quotation rỗng không có dòng nào.
-        floor_pct = inquiry.floor_pct if inquiry.floor_pct is not None else Decimal("0")
         QuotationLine.objects.bulk_create(
             QuotationLine(
                 quotation=quotation,
@@ -303,9 +296,12 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
                 item_name=line.note or line.item_name,
                 unit=line.unit,
                 quantity=line.quantity,
-                # Mặc định lấy giá sàn — về sau chỉ cần quan tâm giá tổng của báo giá,
-                # không cần giữ lại chi tiết giá vốn/% trong báo giá gửi khách.
-                price=(line.unit_cost * (1 + floor_pct / 100)),
+                # Mặc định lấy đúng giá sàn của dòng dịch vụ đó (line_floor = giá vốn dòng × tỷ lệ sàn
+                # riêng của dòng đó) — đúng số đã hiển thị ở cột "Giá sàn" của bảng dịch vụ cấu thành ở
+                # trên. Tổng các dòng có thể thấp hơn giá sàn CHUNG của cả Hỏi giá (tỷ lệ sàn cao nhất
+                # áp 1 lần lên tổng) khi các dịch vụ có tỷ lệ sàn khác nhau — lúc đó phải Gửi đề xuất
+                # duyệt, đúng theo quy định.
+                price=line.line_floor,
             )
             for line in inquiry.quote_lines.all()
         )
