@@ -288,12 +288,16 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
             # Dùng tỷ lệ sàn CHUNG của cả Hỏi giá (không phải % riêng từng dòng) để tổng báo giá mặc
             # định luôn khớp đúng inquiry.floor_price — nếu không, báo giá mới tạo có thể bị tính
             # ngay là "ngoài khoảng" dù chưa ai chỉnh sửa gì.
-            floor_pct = inquiry.floor_pct or 0
+            # Phải ép kiểu Decimal — `... or 0` trả về int thường (0) khi floor_pct là None (báo giá
+            # chốt trước khi có tính năng sàn/trần), và int 0 / 100 ra float, nhân với Decimal sẽ lỗi
+            # TypeError giữa chừng bulk_create, để lại 1 Quotation rỗng không có dòng nào.
+            floor_pct = inquiry.floor_pct if inquiry.floor_pct is not None else Decimal("0")
             QuotationLine.objects.bulk_create(
                 QuotationLine(
                     quotation=quotation,
-                    # Mô tả từng dòng lấy đúng mô tả của dòng dịch vụ cấu thành đơn hàng tương ứng.
-                    item_name=line.note,
+                    # Ưu tiên Mô tả tự nhập (nếu có) — cụ thể hơn cho khách xem; nếu bỏ trống (thường
+                    # gặp khi chọn thẳng dịch vụ từ bảng giá) thì lấy tên dịch vụ để dòng không bị trống.
+                    item_name=line.note or line.item_name,
                     unit=line.unit,
                     quantity=line.quantity,
                     # Mặc định lấy giá sàn — về sau chỉ cần quan tâm giá tổng của báo giá,
