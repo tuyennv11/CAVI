@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "accounts",
+    "geo",
     "crm",
     "approvals",
     "hr",

@@ -7,6 +7,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     full_name = serializers.SerializerMethodField()
     email = serializers.EmailField(source="user.email", read_only=True)
+    country_name = serializers.CharField(source="country.name", read_only=True, default=None)
+    province_name = serializers.CharField(source="province.name", read_only=True, default=None)
+    district_name = serializers.CharField(source="district.name", read_only=True, default=None)
+    ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
 
     class Meta:
         model = Profile
@@ -21,7 +25,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             "phone",
             "date_of_birth",
             "id_number",
-            "address",
+            "country",
+            "country_name",
+            "province",
+            "province_name",
+            "district",
+            "district_name",
+            "ward",
+            "ward_name",
+            "street_address",
             "hired_at",
             "employment_status",
         ]

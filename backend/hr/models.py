@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from geo.models import Country, District, Province, Ward
+
 
 class Profile(models.Model):
     class Department(models.TextChoices):
@@ -29,7 +31,23 @@ class Profile(models.Model):
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
     date_of_birth = models.DateField("Ngày sinh", null=True, blank=True)
     id_number = models.CharField("Số CCCD/CMND", max_length=20, blank=True)
-    address = models.CharField("Địa chỉ", max_length=255, blank=True)
+    # Địa chỉ tách theo cấp hành chính (Quốc gia → Tỉnh/Thành → Quận/Huyện → Phường/Xã) để sau này
+    # tính giá gửi hàng theo khu vực (vd theo phường) — không gộp chung 1 ô tự gõ. Quận/Huyện và
+    # Phường/Xã chỉ có dữ liệu chuẩn cho Việt Nam (xem geo app); Campuchia/Lào chưa có nên để trống,
+    # dùng street_address ghi chi tiết. street_address luôn là phần Đường/Số nhà, không gắn cấp nào.
+    country = models.ForeignKey(
+        Country, verbose_name="Quốc gia", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    province = models.ForeignKey(
+        Province, verbose_name="Tỉnh/Thành phố", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    district = models.ForeignKey(
+        District, verbose_name="Quận/Huyện", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    ward = models.ForeignKey(
+        Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
     hired_at = models.DateField("Ngày vào làm", null=True, blank=True)
     employment_status = models.CharField(
         "Trạng thái làm việc", max_length=20, choices=EmploymentStatus.choices, default=EmploymentStatus.ACTIVE
