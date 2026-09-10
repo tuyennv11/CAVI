@@ -4,11 +4,36 @@ from django.utils import timezone
 
 
 class Profile(models.Model):
+    class Department(models.TextChoices):
+        SALES = "sales", "Kinh doanh"
+        SUPPLY = "supply", "Cung ứng"
+        OPERATIONS = "operations", "Vận hành"
+        ACCOUNTING = "accounting", "Kế toán"
+        HR = "hr", "Nhân sự"
+        MANAGEMENT = "management", "Quản lý"
+
+    class EmploymentStatus(models.TextChoices):
+        PROBATION = "probation", "Đang thử việc"
+        ACTIVE = "active", "Đang làm việc"
+        RESIGNED = "resigned", "Đã nghỉ việc"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name="Người dùng", on_delete=models.CASCADE, related_name="profile"
     )
     company_code = models.CharField("Mã công ty", max_length=50, default="CAVI")
     job_title = models.CharField("Chức vụ", max_length=100, blank=True)
+    # Phòng ban — chưa gắn với quyền hạn kỹ thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền
+    # riêng, xem accounts/roles.py và project_supply_role_deferred), chỉ là dữ liệu phân loại nhân
+    # viên trước, làm nền cho khi cần tách quyền riêng theo phòng ban sau này.
+    department = models.CharField("Phòng ban", max_length=20, choices=Department.choices, blank=True)
+    phone = models.CharField("Số điện thoại", max_length=32, blank=True)
+    date_of_birth = models.DateField("Ngày sinh", null=True, blank=True)
+    id_number = models.CharField("Số CCCD/CMND", max_length=20, blank=True)
+    address = models.CharField("Địa chỉ", max_length=255, blank=True)
+    hired_at = models.DateField("Ngày vào làm", null=True, blank=True)
+    employment_status = models.CharField(
+        "Trạng thái làm việc", max_length=20, choices=EmploymentStatus.choices, default=EmploymentStatus.ACTIVE
+    )
 
     class Meta:
         verbose_name = "Hồ sơ nhân viên"

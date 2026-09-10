@@ -10,7 +10,24 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ["id", "username", "full_name", "email", "company_code", "job_title"]
+        fields = [
+            "id",
+            "username",
+            "full_name",
+            "email",
+            "company_code",
+            "job_title",
+            "department",
+            "phone",
+            "date_of_birth",
+            "id_number",
+            "address",
+            "hired_at",
+            "employment_status",
+        ]
+        # Phòng ban/ngày vào làm/trạng thái làm việc do Quản lý quyết định qua trang quản trị,
+        # không để nhân viên tự sửa lung tung trên trang Hồ sơ cá nhân của chính mình.
+        read_only_fields = ["department", "hired_at", "employment_status"]
 
     def get_full_name(self, obj):
         return obj.user.get_full_name() or obj.user.username

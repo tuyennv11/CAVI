@@ -5,7 +5,9 @@ from .models import AttendanceRecord, LeaveBalance, Profile
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "company_code", "job_title")
+    list_display = ("user", "job_title", "department", "phone", "employment_status", "hired_at")
+    list_filter = ("department", "employment_status")
+    search_fields = ("user__username", "user__first_name", "user__last_name", "phone", "id_number")
 
 
 @admin.register(LeaveBalance)
