@@ -113,3 +113,20 @@ class PriceListItemAdmin(admin.ModelAdmin):
     list_filter = ("category", "group_code", "is_active")
     search_fields = ("item_code", "name", "group_name")
     list_editable = ("floor_pct", "ceiling_pct", "is_active")
+
+
+# Đối tác luôn hiện đầu tiên trong mục CRM ở trang quản trị — mặc định Django sắp models theo thứ tự
+# chữ cái của tên hiển thị, mà chữ "Đ" (mã Unicode riêng, không phải "D") lại xếp sau mọi chữ cái
+# thường nên "Đối tác" tự rơi xuống cuối danh sách dù đây là bảng quan trọng/hay dùng nhất.
+_original_get_app_list = admin.AdminSite.get_app_list
+
+
+def _get_app_list_with_partner_first(self, request, app_label=None):
+    app_list = _original_get_app_list(self, request, app_label=app_label)
+    for app in app_list:
+        if app["app_label"] == "crm":
+            app["models"].sort(key=lambda m: 0 if m["object_name"] == "Partner" else 1)
+    return app_list
+
+
+admin.AdminSite.get_app_list = _get_app_list_with_partner_first
