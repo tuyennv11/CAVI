@@ -251,11 +251,18 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
             raise ValidationError("Cần thêm ít nhất 1 dòng báo giá trước khi xác nhận.")
         cents = Decimal("0.01")
         total_cost = sum((line.line_cost for line in lines), Decimal("0")).quantize(cents)
-        total_floor = sum((line.line_floor for line in lines), Decimal("0")).quantize(cents)
-        total_ceiling = sum((line.line_ceiling for line in lines), Decimal("0")).quantize(cents)
+        # Quy định: khi báo giá gộp nhiều dịch vụ, tỷ lệ sàn/trần CHUNG của cả báo giá là tỷ lệ sàn
+        # CAO NHẤT / tỷ lệ trần THẤP NHẤT trong các dịch vụ thành phần — áp 1 lần lên tổng giá vốn,
+        # không cộng dồn từng dòng riêng lẻ (line_floor/line_ceiling vẫn giữ để hiển thị theo dòng).
+        combined_floor_pct = max(line.floor_pct for line in lines)
+        combined_ceiling_pct = min(line.ceiling_pct for line in lines)
+        total_floor = (total_cost * (1 + combined_floor_pct / 100)).quantize(cents)
+        total_ceiling = (total_cost * (1 + combined_ceiling_pct / 100)).quantize(cents)
         inquiry.cost_price = total_cost
         inquiry.floor_price = total_floor
         inquiry.ceiling_price = total_ceiling
+        inquiry.floor_pct = combined_floor_pct
+        inquiry.ceiling_pct = combined_ceiling_pct
         inquiry.status = PriceInquiry.Status.QUOTED
         inquiry.quoted_by = request.user
         inquiry.quoted_at = timezone.now()
@@ -263,7 +270,10 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         inquiry.messages.create(
             author=request.user,
             is_quote=True,
-            content=f"📌 Đã chốt giá — Giá vốn: {total_cost} · Giá sàn: {total_floor} · Giá trần: {total_ceiling}",
+            content=(
+                f"📌 Đã chốt giá — Giá vốn: {total_cost} · Giá sàn: {total_floor} ({combined_floor_pct}%) · "
+                f"Giá trần: {total_ceiling} ({combined_ceiling_pct}%)"
+            ),
         )
         return Response(PriceInquirySerializer(inquiry).data)
 
@@ -275,6 +285,10 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         quotation = getattr(inquiry, "quotation", None)
         if quotation is None:
             quotation = Quotation.objects.create(inquiry=inquiry, note=inquiry.description, created_by=request.user)
+            # Dùng tỷ lệ sàn CHUNG của cả Hỏi giá (không phải % riêng từng dòng) để tổng báo giá mặc
+            # định luôn khớp đúng inquiry.floor_price — nếu không, báo giá mới tạo có thể bị tính
+            # ngay là "ngoài khoảng" dù chưa ai chỉnh sửa gì.
+            floor_pct = inquiry.floor_pct or 0
             QuotationLine.objects.bulk_create(
                 QuotationLine(
                     quotation=quotation,
@@ -284,7 +298,7 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
                     quantity=line.quantity,
                     # Mặc định lấy giá sàn — về sau chỉ cần quan tâm giá tổng của báo giá,
                     # không cần giữ lại chi tiết giá vốn/% trong báo giá gửi khách.
-                    price=(line.unit_cost * (1 + line.floor_pct / 100)),
+                    price=(line.unit_cost * (1 + floor_pct / 100)),
                 )
                 for line in inquiry.quote_lines.all()
             )
@@ -386,10 +400,17 @@ class QuotationViewSet(
     @action(detail=True, methods=["post"], url_path="create-order")
     def create_order(self, request, pk=None):
         quotation = self.get_object()
+        inquiry = quotation.inquiry
         order = Order.objects.create(
-            customer=quotation.inquiry.customer,
+            customer=inquiry.customer,
             created_by=request.user,
             source_quotation=quotation,
+            # Xác định sẵn giá sàn/trần của đơn ngay lúc tạo, lấy từ Hỏi giá gốc — đã chốt theo đúng
+            # quy tắc tỷ lệ sàn cao nhất/trần thấp nhất trong các dịch vụ thành phần.
+            floor_pct=inquiry.floor_pct,
+            ceiling_pct=inquiry.ceiling_pct,
+            floor_price=inquiry.floor_price,
+            ceiling_price=inquiry.ceiling_price,
         )
         OrderItem.objects.bulk_create(
             OrderItem(

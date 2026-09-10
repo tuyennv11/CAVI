@@ -1097,8 +1097,10 @@ export default function PartnerDetail() {
 
                   {inq.status === "quoted" && (
                     <div className="inquiry-quote-summary">
-                      Giá vốn: <b>{formatMoney(inq.cost_price)}</b> · Giá sàn: <b>{formatMoney(inq.floor_price)}</b> ·
-                      Giá trần: <b>{formatMoney(inq.ceiling_price)}</b>
+                      Giá vốn: <b>{formatMoney(inq.cost_price)}</b> · Giá sàn: <b>{formatMoney(inq.floor_price)}</b>{" "}
+                      {inq.floor_pct != null && <span className="muted">({formatPct(inq.floor_pct)})</span>} · Giá
+                      trần: <b>{formatMoney(inq.ceiling_price)}</b>{" "}
+                      {inq.ceiling_pct != null && <span className="muted">({formatPct(inq.ceiling_pct)})</span>}
                       <span className="muted"> — chốt bởi {inq.quoted_by_name}</span>
                       {!inq.quotation && (
                         <button type="button" className="secondary" onClick={() => handleCreateQuotation(inq.id)}>
@@ -1385,6 +1387,7 @@ export default function PartnerDetail() {
                     <th>Thanh toán</th>
                     <th>Doanh thu</th>
                     <th>Lợi nhuận gộp</th>
+                    <th>Khoảng giá sàn – trần</th>
                     <th>Điểm lấy hàng</th>
                     <th>Điểm giao hàng</th>
                     <th>KL (kg)</th>
@@ -1413,6 +1416,18 @@ export default function PartnerDetail() {
                         </td>
                         <td>{formatMoney(o.total)}</td>
                         <td>{formatMoney(o.gross_profit)}</td>
+                        <td style={{ fontSize: 12 }}>
+                          {o.floor_price != null ? (
+                            <>
+                              {formatMoney(o.floor_price)} – {formatMoney(o.ceiling_price)}
+                              <div className="muted">
+                                ({formatPct(o.floor_pct)} – {formatPct(o.ceiling_pct)})
+                              </div>
+                            </>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
                         <td>
                           <input
                             style={{ width: 110 }}

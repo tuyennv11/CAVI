@@ -288,6 +288,8 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "cost_price",
             "floor_price",
             "ceiling_price",
+            "floor_pct",
+            "ceiling_pct",
             "quoted_by",
             "quoted_by_name",
             "quoted_at",
@@ -304,6 +306,8 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "cost_price",
             "floor_price",
             "ceiling_price",
+            "floor_pct",
+            "ceiling_pct",
             "quoted_by",
             "quoted_at",
             "created_by",
@@ -412,13 +416,26 @@ class OrderSerializer(serializers.ModelSerializer):
             "delivery_point",
             "weight_kg",
             "cod_amount",
+            "floor_pct",
+            "ceiling_pct",
+            "floor_price",
+            "ceiling_price",
             "source_quotation",
             "created_by",
             "created_by_name",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_by", "created_at", "updated_at", "source_quotation"]
+        read_only_fields = [
+            "created_by",
+            "created_at",
+            "updated_at",
+            "source_quotation",
+            "floor_pct",
+            "ceiling_pct",
+            "floor_price",
+            "ceiling_price",
+        ]
 
     def create(self, validated_data):
         items_data = validated_data.pop("items")

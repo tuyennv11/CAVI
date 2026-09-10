@@ -129,6 +129,13 @@ class Order(models.Model):
     delivery_point = models.CharField("Điểm giao hàng", max_length=255, blank=True)
     weight_kg = models.DecimalField("Khối lượng (kg)", max_digits=10, decimal_places=2, null=True, blank=True)
     cod_amount = models.DecimalField("Thu hộ (COD)", max_digits=14, decimal_places=2, null=True, blank=True)
+    # Snapshot giá sàn/trần từ Hỏi giá gốc lúc tạo đơn (nếu đơn tạo từ báo giá) — để Kinh doanh/Vận
+    # hành đối chiếu doanh thu thực tế của đơn có nằm trong khoảng quy định hay không. Đơn tạo thủ
+    # công (không qua báo giá) sẽ để trống, vì không có Hỏi giá gốc để xác định các thông số này.
+    floor_pct = models.DecimalField("Tỷ lệ giá sàn (%)", max_digits=6, decimal_places=2, null=True, blank=True)
+    ceiling_pct = models.DecimalField("Tỷ lệ giá trần (%)", max_digits=6, decimal_places=2, null=True, blank=True)
+    floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)
+    ceiling_price = models.DecimalField("Giá trần", max_digits=14, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -257,6 +264,10 @@ class PriceInquiry(models.Model):
     cost_price = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
     floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)
     ceiling_price = models.DecimalField("Giá trần", max_digits=14, decimal_places=2, null=True, blank=True)
+    # Tỷ lệ sàn/trần tổng hợp của cả báo giá — theo quy định: khi gộp nhiều dịch vụ, tỷ lệ chung là
+    # tỷ lệ sàn CAO NHẤT / tỷ lệ trần THẤP NHẤT trong các dịch vụ thành phần (không cộng dồn từng dòng).
+    floor_pct = models.DecimalField("Tỷ lệ giá sàn (%)", max_digits=6, decimal_places=2, null=True, blank=True)
+    ceiling_pct = models.DecimalField("Tỷ lệ giá trần (%)", max_digits=6, decimal_places=2, null=True, blank=True)
     quoted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người chốt giá", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="+"
