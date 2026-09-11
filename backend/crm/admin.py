@@ -22,6 +22,17 @@ from .models import (
 )
 
 
+class CustomerFieldMixin:
+    """Field "customer" (Khách hàng) trên Order/Activity/PriceInquiry chỉ nên cho chọn Đối tác có
+    is_customer=True — không thì 1 Đối tác chỉ đăng ký "Nhà cung cấp" (vd Chị Lụa) vẫn hiện ra khi
+    tạo Đơn hàng/Hoạt động khách hàng/Hỏi giá mới, dù field này ghi rõ là "Khách hàng"."""
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "customer":
+            kwargs["queryset"] = Partner.objects.filter(is_customer=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
 class ActivityInline(admin.TabularInline):
     model = Activity
     extra = 0
@@ -106,7 +117,7 @@ class PartnerAdmin(admin.ModelAdmin):
 
 
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(CustomerFieldMixin, admin.ModelAdmin):
     list_display = (
         "id", "customer_link", "status", "created_by", "source_quotation_link", "received_by", "received_at",
         "confirmed_by", "confirmed_at", "description", "note", "paid", "on_platform",
@@ -146,7 +157,7 @@ class NoticeAdmin(admin.ModelAdmin):
 
 
 @admin.register(Activity)
-class ActivityAdmin(admin.ModelAdmin):
+class ActivityAdmin(CustomerFieldMixin, admin.ModelAdmin):
     # Bỏ cột "Tiêu đề" — trùng lặp với "Nội dung" (ActivitySerializer.create() tự suy tiêu đề từ
     # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
     list_display = (
@@ -196,7 +207,7 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
 
 
 @admin.register(PriceInquiry)
-class PriceInquiryAdmin(admin.ModelAdmin):
+class PriceInquiryAdmin(CustomerFieldMixin, admin.ModelAdmin):
     list_display = (
         "id", "customer_link", "status", "description", "cost_price", "floor_price", "ceiling_price",
         "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by", "created_at", "updated_at",
