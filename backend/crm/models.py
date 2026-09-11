@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from geo.models import Country, District, Province, Ward
+from geo.models import Ward
 
 
 class Partner(models.Model):
@@ -14,21 +14,11 @@ class Partner(models.Model):
     name = models.CharField("Tên", max_length=255)
     contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
-    # Địa chỉ tách theo cấp hành chính — giống hệt hr.Profile, để sau này tính giá gửi hàng theo
-    # khu vực (vd theo phường) và lọc/thống kê theo tỉnh/thành. Xem geo app.
-    country = models.ForeignKey(
-        Country, verbose_name="Quốc gia", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-    province = models.ForeignKey(
-        Province, verbose_name="Tỉnh/Thành phố", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-    district = models.ForeignKey(
-        District, verbose_name="Quận/Huyện", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-    ward = models.ForeignKey(
-        Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-    street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
+    # Chỉ 1 ô địa chỉ tự do — khác với hr.Profile/Order (giữ cấu trúc Quốc gia/Tỉnh/Quận/Phường vì
+    # cần cho tính giá gửi hàng theo khu vực), địa chỉ của Đối tác chỉ mang tính tham khảo/liên hệ,
+    # không dùng để tính giá (điểm lấy/giao hàng thực tế của từng đơn đã có riêng ở Order), nên
+    # không cần chuẩn hoá tới cấp Phường/Xã.
+    address = models.CharField("Địa chỉ", max_length=255, blank=True)
     note = models.TextField("Mô tả thêm", blank=True)
     # 2 cờ độc lập thay vì 1 field "Loại đối tác" (khách hàng/nhà cung cấp/cả hai) — 1 đối tác có
     # thể vừa là khách hàng vừa là nhà cung cấp, đây là 2 sự thật độc lập, không phải 1 lựa chọn

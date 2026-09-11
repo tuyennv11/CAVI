@@ -329,10 +329,6 @@ class PartnerSerializer(serializers.ModelSerializer):
     tenure_months = serializers.IntegerField(read_only=True)
     tier = serializers.ChoiceField(choices=Partner.Tier.choices, read_only=True)
     tier_source = serializers.ChoiceField(choices=["auto", "approved"], read_only=True)
-    country_name = serializers.CharField(source="country.name", read_only=True, default=None)
-    province_name = serializers.CharField(source="province.name", read_only=True, default=None)
-    district_name = serializers.CharField(source="district.name", read_only=True, default=None)
-    ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
 
     class Meta:
         model = Partner
@@ -354,15 +350,7 @@ class PartnerSerializer(serializers.ModelSerializer):
             "assigned_to_detail",
             "activity_count",
             "order_count",
-            "country",
-            "country_name",
-            "province",
-            "province_name",
-            "district",
-            "district_name",
-            "ward",
-            "ward_name",
-            "street_address",
+            "address",
             "created_at",
         ]
 
