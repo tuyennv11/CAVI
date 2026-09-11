@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiDownload, apiFetch, apiUpload, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
+import AddressFields from "../components/AddressFields";
 import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
@@ -147,6 +148,9 @@ export default function PartnerDetail() {
   const [tab, setTab] = useState(() => searchParams.get("tab") || "activity");
   const highlightInquiryId = searchParams.get("inquiry");
   const [showNewOrder, setShowNewOrder] = useState(false);
+  const [showAddressEdit, setShowAddressEdit] = useState(false);
+  const [addressForm, setAddressForm] = useState(null);
+  const [addressSaving, setAddressSaving] = useState(false);
   // Nội dung mô tả lô hàng cho phiếu tạo tay — giống hệt mẫu Mô tả bên Hỏi giá, để Vận hành có đủ
   // thông tin xử lý (đơn tạo từ báo giá thì copy sẵn từ Hỏi giá gốc, không cần nhập lại — xem
   // QuotationViewSet.create_order phía backend).
@@ -192,6 +196,15 @@ export default function PartnerDetail() {
       setPartner(p);
       setOrders(orderList.results ?? orderList);
       setTierRequests(requestList.results ?? requestList);
+      setAddressForm((prev) =>
+        prev || {
+          country: p.country || "",
+          province: p.province || "",
+          district: p.district || "",
+          ward: p.ward || "",
+          street_address: p.street_address || "",
+        }
+      );
     } catch (err) {
       setError(err.message);
     }
@@ -530,6 +543,23 @@ export default function PartnerDetail() {
     setExpandedQuotations((prev) => ({ ...prev, [quotationId]: !prev[quotationId] }));
   }
 
+  async function handleSaveAddress() {
+    setAddressSaving(true);
+    try {
+      const payload = { ...addressForm };
+      ["country", "province", "district", "ward"].forEach((k) => {
+        if (payload[k] === "") payload[k] = null;
+      });
+      const updated = await apiFetch(`/api/partners/${id}/`, { method: "PATCH", body: JSON.stringify(payload) });
+      setPartner(updated);
+      setShowAddressEdit(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAddressSaving(false);
+    }
+  }
+
   async function handleExportQuotationPdf(quotationId, customerName) {
     try {
       await apiDownload(`/api/quotations/${quotationId}/pdf/`, `bao-gia-${quotationId}-${customerName}.pdf`);
@@ -690,6 +720,29 @@ export default function PartnerDetail() {
               </span>
             )}
             {partner.note && <span>· {partner.note}</span>}
+          </div>
+          <div className="profile-meta-row">
+            {showAddressEdit ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <AddressFields value={addressForm} onChange={setAddressForm} />
+                <button type="button" disabled={addressSaving} onClick={handleSaveAddress}>
+                  {addressSaving ? "Đang lưu..." : "Lưu địa chỉ"}
+                </button>
+                <button type="button" className="secondary" onClick={() => setShowAddressEdit(false)}>
+                  Huỷ
+                </button>
+              </div>
+            ) : (
+              <span className="muted" style={{ fontSize: 12.5 }}>
+                📍{" "}
+                {[partner.street_address, partner.ward_name, partner.district_name, partner.province_name, partner.country_name]
+                  .filter(Boolean)
+                  .join(", ") || "Chưa có địa chỉ"}{" "}
+                <button type="button" className="link-btn" onClick={() => setShowAddressEdit(true)}>
+                  Sửa
+                </button>
+              </span>
+            )}
           </div>
         </div>
       </div>

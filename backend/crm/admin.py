@@ -37,6 +37,7 @@ class PartnerAdmin(admin.ModelAdmin):
     list_filter = ("partner_type", "assigned_to")
     search_fields = ("name", "contact_person", "phone")
     inlines = [ActivityInline]
+    autocomplete_fields = ["country", "province", "district", "ward"]
 
 
 @admin.register(Order)
@@ -44,6 +45,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ("id", "customer", "status", "paid", "on_platform", "total", "gross_profit", "created_at")
     list_filter = ("status", "paid", "on_platform")
     inlines = [OrderItemInline]
+    autocomplete_fields = ["pickup_ward", "delivery_ward"]
 
 
 @admin.register(TierUpgradeRequest)

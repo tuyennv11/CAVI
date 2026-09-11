@@ -329,6 +329,10 @@ class PartnerSerializer(serializers.ModelSerializer):
     tenure_months = serializers.IntegerField(read_only=True)
     tier = serializers.ChoiceField(choices=Partner.Tier.choices, read_only=True)
     tier_source = serializers.ChoiceField(choices=["auto", "approved"], read_only=True)
+    country_name = serializers.CharField(source="country.name", read_only=True, default=None)
+    province_name = serializers.CharField(source="province.name", read_only=True, default=None)
+    district_name = serializers.CharField(source="district.name", read_only=True, default=None)
+    ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
 
     class Meta:
         model = Partner
@@ -349,6 +353,15 @@ class PartnerSerializer(serializers.ModelSerializer):
             "assigned_to_detail",
             "activity_count",
             "order_count",
+            "country",
+            "country_name",
+            "province",
+            "province_name",
+            "district",
+            "district_name",
+            "ward",
+            "ward_name",
+            "street_address",
             "created_at",
         ]
 
@@ -409,6 +422,8 @@ class OrderSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     received_by_name = serializers.CharField(source="received_by.username", read_only=True, default=None)
     confirmed_by_name = serializers.CharField(source="confirmed_by.username", read_only=True, default=None)
+    pickup_ward_name = serializers.CharField(source="pickup_ward.name", read_only=True, default=None)
+    delivery_ward_name = serializers.CharField(source="delivery_ward.name", read_only=True, default=None)
 
     class Meta:
         model = Order
@@ -426,7 +441,11 @@ class OrderSerializer(serializers.ModelSerializer):
             "total",
             "gross_profit",
             "pickup_point",
+            "pickup_ward",
+            "pickup_ward_name",
             "delivery_point",
+            "delivery_ward",
+            "delivery_ward_name",
             "weight_kg",
             "cod_amount",
             "floor_pct",

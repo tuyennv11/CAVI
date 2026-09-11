@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from geo.models import Country, District, Province, Ward
+
 
 class Partner(models.Model):
     class PartnerType(models.TextChoices):
@@ -17,6 +19,21 @@ class Partner(models.Model):
     name = models.CharField("Tên", max_length=255)
     contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
+    # Địa chỉ tách theo cấp hành chính — giống hệt hr.Profile, để sau này tính giá gửi hàng theo
+    # khu vực (vd theo phường) và lọc/thống kê theo tỉnh/thành. Xem geo app.
+    country = models.ForeignKey(
+        Country, verbose_name="Quốc gia", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    province = models.ForeignKey(
+        Province, verbose_name="Tỉnh/Thành phố", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    district = models.ForeignKey(
+        District, verbose_name="Quận/Huyện", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    ward = models.ForeignKey(
+        Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
     note = models.TextField("Mô tả thêm", blank=True)
     partner_type = models.CharField(
         "Loại đối tác", max_length=20, choices=PartnerType.choices, default=PartnerType.CUSTOMER
@@ -155,8 +172,16 @@ class Order(models.Model):
     paid = models.BooleanField("Đã thanh toán", default=False)
     on_platform = models.BooleanField("Qua sàn", default=False)
     # Phục vụ in bill dán lên kiện hàng (dạng Viettel Post/GHN/GHTK/DHL) — Vận hành điền khi nhận hàng.
+    # Giữ nguyên dạng chữ tự do (đủ cho việc in nhãn) — cộng thêm Phường/Xã dạng tham chiếu chuẩn
+    # riêng cho từng điểm, để sau này tính giá gửi hàng theo khu vực (không thay thế 2 field text này).
     pickup_point = models.CharField("Điểm lấy hàng", max_length=255, blank=True)
+    pickup_ward = models.ForeignKey(
+        Ward, verbose_name="Phường/Xã lấy hàng", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     delivery_point = models.CharField("Điểm giao hàng", max_length=255, blank=True)
+    delivery_ward = models.ForeignKey(
+        Ward, verbose_name="Phường/Xã giao hàng", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     weight_kg = models.DecimalField("Khối lượng (kg)", max_digits=10, decimal_places=2, null=True, blank=True)
     cod_amount = models.DecimalField("Thu hộ (COD)", max_digits=14, decimal_places=2, null=True, blank=True)
     # Snapshot giá sàn/trần từ Hỏi giá gốc lúc tạo đơn (nếu đơn tạo từ báo giá) — để Kinh doanh/Vận
