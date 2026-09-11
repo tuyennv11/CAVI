@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.text import Truncator
 
 from .models import (
     AttendanceRecord,
@@ -32,11 +33,19 @@ class TrainingRecordInline(admin.TabularInline):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
+    # Hiện gần hết field ngay trên bảng danh sách (kiểu Excel — kéo ngang xem hết, không phải bấm
+    # vào từng dòng mới thấy) — chỉ tách riêng khi dữ liệu THẬT SỰ cần tách: Lương/Thưởng-phạt (nhạy
+    # cảm, khác quyền xem) đăng ký thành mục riêng bên ngoài; Giấy tờ/Liên hệ khẩn cấp/Đào tạo là
+    # quan hệ 1-nhiều (1 nhân viên có nhiều dòng) nên không thể nhét vào 1 cột, để inline bên dưới
+    # trang chi tiết. avatar (ảnh) không có ý nghĩa hiển thị dạng chữ nên bỏ qua ở bảng danh sách.
     list_display = (
-        "employee_code", "user", "preferred_name", "job_title", "department", "manager",
-        "work_status", "employment_type", "hired_at",
+        "employee_code", "user", "preferred_name", "gender", "job_title", "level", "department",
+        "manager", "work_status", "employment_type", "phone", "date_of_birth", "id_number",
+        "province", "district", "ward", "street_address", "hired_at", "resigned_at",
+        "contract_type", "contract_started_at", "contract_expires_at", "work_location",
+        "education_level", "major", "skills_short", "job_description_short", "company_code",
     )
-    list_filter = ("department", "work_status", "employment_type")
+    list_filter = ("department", "work_status", "employment_type", "level", "education_level")
     search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
     readonly_fields = ("employee_code",)
     inlines = [EmployeeDocumentInline, EmergencyContactInline, TrainingRecordInline]
@@ -44,6 +53,14 @@ class ProfileAdmin(admin.ModelAdmin):
     # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
     # người dùng có thể lớn dần.
     autocomplete_fields = ["country", "province", "district", "ward", "manager"]
+
+    @admin.display(description="Kỹ năng")
+    def skills_short(self, obj):
+        return Truncator(obj.skills).chars(40)
+
+    @admin.display(description="Mô tả công việc")
+    def job_description_short(self, obj):
+        return Truncator(obj.job_description).chars(40)
 
 
 @admin.register(LeaveBalance)
