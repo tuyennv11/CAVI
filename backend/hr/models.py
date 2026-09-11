@@ -39,6 +39,14 @@ class Profile(models.Model):
         HIGH_SCHOOL = "high_school", "THPT"
         OTHER = "other", "Khác"
 
+    class Level(models.TextChoices):
+        CEO = "ceo", "Tổng giám đốc"
+        DIRECTOR = "director", "Giám đốc"
+        HEAD_OF_DEPT = "head_of_dept", "Trưởng phòng"
+        DEPUTY_HEAD = "deputy_head", "Phó phòng"
+        STAFF = "staff", "Nhân viên"
+        INTERN = "intern", "Thực tập sinh"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name="Người dùng", on_delete=models.CASCADE, related_name="profile"
     )
@@ -49,7 +57,7 @@ class Profile(models.Model):
     avatar = models.FileField("Ảnh đại diện", upload_to="avatars/%Y/%m/", null=True, blank=True)
     company_code = models.CharField("Mã công ty", max_length=50, default="CAVI")
     job_title = models.CharField("Chức vụ", max_length=100, blank=True)
-    level = models.CharField("Cấp bậc", max_length=100, blank=True)
+    level = models.CharField("Cấp bậc", max_length=20, choices=Level.choices, blank=True)
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người quản lý trực tiếp",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="direct_reports"

@@ -12,6 +12,7 @@ import {
   EMPLOYMENT_TYPE_LABEL,
   formatMoney,
   GENDER_LABEL,
+  LEVEL_LABEL,
   PAYMENT_METHOD_LABEL,
   WORK_STATUS_LABEL,
 } from "../constants";
@@ -415,7 +416,14 @@ export default function EmployeeDetail() {
           </label>
           <label>
             Cấp bậc
-            <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} />
+            <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })}>
+              <option value="">—</option>
+              {Object.entries(LEVEL_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Phòng ban
