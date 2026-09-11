@@ -1,7 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
 
-from .roles import is_accountant, is_hr, is_manager
+from .roles import is_accountant, is_hr, is_manager, is_supply
 
 
 class UserSerializer(serializers.Serializer):
@@ -20,6 +20,7 @@ class MeSerializer(serializers.Serializer):
     is_manager = serializers.SerializerMethodField()
     is_hr = serializers.SerializerMethodField()
     is_accountant = serializers.SerializerMethodField()
+    is_supply = serializers.SerializerMethodField()
     role_label = serializers.SerializerMethodField()
 
     def get_full_name(self, user):
@@ -33,6 +34,9 @@ class MeSerializer(serializers.Serializer):
 
     def get_is_accountant(self, user):
         return is_accountant(user)
+
+    def get_is_supply(self, user):
+        return is_supply(user)
 
     def get_role_label(self, user):
         # 1 người có thể thuộc nhiều nhóm cùng lúc (vd vừa Kế toán vừa Nhân viên kinh doanh) —

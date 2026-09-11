@@ -24,6 +24,8 @@ MODEL_ORDER = {
         "Activity",  # Tương tác khách hàng — lưu lại mọi lần liên hệ
         "PriceInquiry",  # Khách hỏi giá — Kinh doanh + Cung ứng phối hợp báo giá vốn
         "PriceListItem",  # Bảng giá dịch vụ — dữ liệu dùng để cấu thành giá trong Hỏi giá/Báo giá
+        "PriceInquiryQuoteLine",  # Dòng dịch vụ cấu thành của 1 Hỏi giá
+        "PriceInquiryQuoteLineBid",  # Sàn báo giá cạnh tranh — nhiều Cung ứng chào giá cho 1 dòng
         "Quotation",  # Kinh doanh chốt báo giá gửi khách
         "Order",  # Khách chốt -> thành Phiếu nhận hàng/Đơn hàng chính thức
         "TierUpgradeRequest",  # Phát sinh từ quan hệ với Đối tác — phụ, không phải luồng chính

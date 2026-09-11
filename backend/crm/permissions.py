@@ -1,6 +1,6 @@
 from rest_framework import permissions
 
-from accounts.roles import is_manager
+from accounts.roles import is_manager, is_supply
 
 
 class IsManagerOrAssignedSales(permissions.BasePermission):
@@ -29,3 +29,18 @@ class IsAssignedOrCreatorOrManager(permissions.BasePermission):
         if is_manager(request.user):
             return True
         return obj.assigned_to_id == request.user.id or obj.created_by_id == request.user.id
+
+
+class IsManagerOrSupply(permissions.BasePermission):
+    """Sàn báo giá cạnh tranh: Quản lý và Cung ứng đều xem được hết (đúng nghĩa cạnh tranh toàn
+    công ty, không giới hạn theo Hỏi giá mình phụ trách). Xoá 1 báo giá đã chào: Quản lý xoá được
+    của ai cũng được, Cung ứng khác chỉ xoá được báo giá CỦA CHÍNH MÌNH (rút lại) — không xoá được
+    của người khác."""
+
+    def has_permission(self, request, view):
+        return is_manager(request.user) or is_supply(request.user)
+
+    def has_object_permission(self, request, view, obj):
+        if is_manager(request.user):
+            return True
+        return obj.bidder_id == request.user.id

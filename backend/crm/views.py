@@ -19,7 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.roles import is_manager
+from accounts.roles import is_manager, is_supply
 from approvals.models import ApprovalRequest
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -32,19 +32,21 @@ from .models import (
     Partner,
     PriceInquiry,
     PriceInquiryQuoteLine,
+    PriceInquiryQuoteLineBid,
     PriceListItem,
     Quotation,
     QuotationLine,
     Task,
     TierUpgradeRequest,
 )
-from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales
+from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales, IsManagerOrSupply
 from .serializers import (
     ActivitySerializer,
     NoticeSerializer,
     OrderSerializer,
     PartnerSerializer,
     PriceInquiryMessageSerializer,
+    PriceInquiryQuoteLineBidSerializer,
     PriceInquiryQuoteLineSerializer,
     PriceInquirySerializer,
     PriceListItemSerializer,
@@ -438,15 +440,64 @@ class QuotationViewSet(
         return Response(OrderSerializer(order).data, status=201)
 
 
-class PriceInquiryQuoteLineViewSet(mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class PriceInquiryQuoteLineViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet
+):
     serializer_class = PriceInquiryQuoteLineSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ["inquiry", "inquiry__status"]
 
     def get_queryset(self):
-        qs = PriceInquiryQuoteLine.objects.select_related("inquiry__customer")
+        qs = PriceInquiryQuoteLine.objects.select_related("inquiry__customer").prefetch_related("bids__bidder")
         if is_manager(self.request.user):
             return qs
+        # Cung ứng thấy TOÀN BỘ dòng đang mở của cả công ty (Sàn báo giá cạnh tranh) — không giới
+        # hạn theo Hỏi giá mình phụ trách, khác hẳn Nhân viên kinh doanh chỉ thấy khách của mình.
+        if is_supply(self.request.user):
+            return qs.filter(inquiry__status=PriceInquiry.Status.OPEN)
         return qs.filter(inquiry__customer__assigned_to=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def award(self, request, pk=None):
+        if not is_manager(request.user):
+            raise PermissionDenied("Chỉ Quản lý mới chọn được giá thắng.")
+        line = self.get_object()
+        if line.inquiry.status != PriceInquiry.Status.OPEN:
+            raise ValidationError("Hỏi giá này đã đóng, không thể đổi giá thắng nữa.")
+        bid = get_object_or_404(PriceInquiryQuoteLineBid, pk=request.data.get("bid"), quote_line=line)
+        line.winning_bid = bid
+        line.unit_cost = bid.unit_cost
+        line.save(update_fields=["winning_bid", "unit_cost"])
+        return Response(PriceInquiryQuoteLineSerializer(line).data)
+
+
+class PriceInquiryQuoteLineBidViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Chào giá trên Sàn báo giá cạnh tranh — không có Update (không cho sửa 1 giá đã chào, xem
+    docstring PriceInquiryQuoteLineBid). Tạo/xoá qua đây; chọn giá thắng làm qua action "award" của
+    PriceInquiryQuoteLineViewSet (không phải ở đây, vì đó là hành động trên Dòng, không phải trên
+    bản thân Báo giá)."""
+
+    serializer_class = PriceInquiryQuoteLineBidSerializer
+    permission_classes = [IsAuthenticated, IsManagerOrSupply]
+    filterset_fields = ["quote_line"]
+
+    def get_queryset(self):
+        # Không lọc theo người dùng — Sàn chỉ có ý nghĩa nếu ai cũng thấy giá của nhau (đấu giá công
+        # khai, không phải đấu thầu kín). IsManagerOrSupply đã chặn hẳn các vai trò khác ở has_permission.
+        return PriceInquiryQuoteLineBid.objects.select_related("quote_line__inquiry", "bidder")
+
+    def perform_create(self, serializer):
+        serializer.save(bidder=self.request.user)
+
+    def perform_destroy(self, instance):
+        # Xoá mất báo giá đang là "giá thắng" của 1 dòng thì mất luôn dấu vết ai đã thắng — chặn
+        # hẳn, kể cả với Quản lý (không chỉ giới hạn quyền xoá theo has_object_permission).
+        if PriceInquiryQuoteLine.objects.filter(winning_bid=instance).exists():
+            raise ValidationError("Không thể xoá báo giá đã được chọn làm giá thắng — hãy chọn giá khác trước.")
+        instance.delete()
 
 
 class PriceListItemViewSet(viewsets.ReadOnlyModelViewSet):

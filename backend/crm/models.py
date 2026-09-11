@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -414,6 +417,14 @@ class PriceInquiryQuoteLine(models.Model):
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
     unit_cost = models.DecimalField("Đơn giá vốn", max_digits=14, decimal_places=2, default=0)
     note = models.TextField("Mô tả", blank=True)
+    # Báo giá cạnh tranh (PriceInquiryQuoteLineBid) đã được Quản lý chọn làm giá chính thức cho dòng
+    # này — khi chọn, `unit_cost` phía trên được đồng bộ luôn theo giá này (xem action "award" ở
+    # views.py) để mọi công thức tính sẵn có (line_cost/line_floor/line_ceiling, confirm_quote) không
+    # cần biết gì về khái niệm "đấu giá", chỉ đọc unit_cost như trước giờ.
+    winning_bid = models.ForeignKey(
+        "PriceInquiryQuoteLineBid", verbose_name="Báo giá thắng",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -438,6 +449,35 @@ class PriceInquiryQuoteLine(models.Model):
     @property
     def line_ceiling(self):
         return self.line_cost * (1 + self.ceiling_pct / 100)
+
+
+class PriceInquiryQuoteLineBid(models.Model):
+    """Báo giá cạnh tranh — Sàn báo giá: nhiều Cung ứng cùng chào giá vốn cho 1 dòng Dịch vụ cấu
+    thành, tạo thành lịch sử để Quản lý so sánh rồi chọn 1 giá làm chính thức (xem
+    PriceInquiryQuoteLine.winning_bid). Không cho sửa (PATCH) sau khi đã chào — người khác đã nhìn
+    thấy giá đó rồi, muốn đổi thì xoá chào lại, giữ đúng tinh thần "sổ cái công khai"."""
+
+    quote_line = models.ForeignKey(
+        PriceInquiryQuoteLine, verbose_name="Dòng dịch vụ cấu thành", on_delete=models.CASCADE, related_name="bids"
+    )
+    bidder = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người chào giá", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    unit_cost = models.DecimalField(
+        "Đơn giá vốn chào", max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
+    )
+    note = models.TextField("Ghi chú", blank=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        # Đúng nghĩa "lịch sử" — sắp theo thời gian chào giá, KHÔNG sắp theo giá thấp/cao, để không
+        # tự thiên vị giá rẻ khi hiển thị (Quản lý còn cần cân nhắc chất lượng dịch vụ, không chỉ giá).
+        ordering = ["created_at"]
+        verbose_name = "Báo giá cạnh tranh"
+        verbose_name_plural = "Báo giá cạnh tranh"
+
+    def __str__(self):
+        return f"{self.quote_line.item_name}: {self.unit_cost} — {self.bidder}"
 
 
 class Quotation(models.Model):

@@ -13,6 +13,7 @@ from .models import (
     PriceInquiry,
     PriceInquiryMessage,
     PriceInquiryQuoteLine,
+    PriceInquiryQuoteLineBid,
     PriceListItem,
     Quotation,
     QuotationLine,
@@ -201,11 +202,39 @@ class PriceInquiryAdmin(admin.ModelAdmin):
         "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by", "created_at", "updated_at",
     )
     list_filter = ("status",)
+    search_fields = ("customer__name",)
     inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
 
     @admin.display(description="Khách hàng")
     def customer_link(self, obj):
         return linked_fk(obj.customer)
+
+
+# Đăng ký riêng (không chỉ để inline trong Hỏi giá) để Báo giá cạnh tranh bên dưới autocomplete được
+# tới đúng dòng, và để bấm xem "Báo giá thắng" (winning_bid) round-trip qua lại được.
+@admin.register(PriceInquiryQuoteLine)
+class PriceInquiryQuoteLineAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "inquiry_link", "item_name", "quantity", "unit", "unit_cost", "winning_bid",
+        "note", "created_by", "created_at",
+    )
+    search_fields = ("item_name",)
+    autocomplete_fields = ["inquiry", "item"]
+
+    @admin.display(description="Hỏi giá")
+    def inquiry_link(self, obj):
+        return linked_fk(obj.inquiry)
+
+
+@admin.register(PriceInquiryQuoteLineBid)
+class PriceInquiryQuoteLineBidAdmin(admin.ModelAdmin):
+    list_display = ("id", "quote_line_link", "bidder", "unit_cost", "note", "created_at")
+    search_fields = ("quote_line__item_name",)
+    autocomplete_fields = ["quote_line"]
+
+    @admin.display(description="Dòng dịch vụ cấu thành")
+    def quote_line_link(self, obj):
+        return linked_fk(obj.quote_line)
 
 
 class QuotationLineInline(admin.TabularInline):

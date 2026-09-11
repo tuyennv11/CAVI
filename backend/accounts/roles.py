@@ -20,6 +20,12 @@ def is_accountant(user) -> bool:
     return user.groups.filter(name=settings.GROUP_ACCOUNTING).exists()
 
 
+def is_supply(user) -> bool:
+    """Cung ứng: thấy Sàn báo giá cạnh tranh (mọi dòng Dịch vụ cấu thành đang mở, toàn công ty —
+    không chỉ Hỏi giá mình phụ trách) và chào giá vốn cạnh tranh với Cung ứng khác."""
+    return user.groups.filter(name=settings.GROUP_SUPPLY).exists()
+
+
 def is_manager_of(user, target_profile) -> bool:
     """"Trưởng phòng" không phải 1 nhóm quyền riêng — suy ra từ việc target_profile có
     Profile.manager trỏ thẳng tới user này (cấp dưới trực tiếp)."""

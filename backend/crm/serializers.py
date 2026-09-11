@@ -14,6 +14,7 @@ from .models import (
     PriceInquiry,
     PriceInquiryMessage,
     PriceInquiryQuoteLine,
+    PriceInquiryQuoteLineBid,
     PriceListItem,
     Quotation,
     QuotationLine,
@@ -138,6 +139,27 @@ class PriceListItemSerializer(serializers.ModelSerializer):
         fields = ["id", "category", "group_code", "group_name", "item_code", "name", "unit", "floor_pct", "ceiling_pct"]
 
 
+class PriceInquiryQuoteLineBidSerializer(serializers.ModelSerializer):
+    bidder_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PriceInquiryQuoteLineBid
+        fields = ["id", "quote_line", "bidder", "bidder_name", "unit_cost", "note", "created_at"]
+        read_only_fields = ["bidder", "created_at"]
+
+    def get_bidder_name(self, obj):
+        if not obj.bidder:
+            return None
+        return obj.bidder.get_full_name() or obj.bidder.username
+
+    def validate_quote_line(self, quote_line):
+        # Sàn tự đóng khi Hỏi giá đã chốt giá — không cho chào giá thêm sau mốc đó, tránh chào giá
+        # rồi âm thầm lệch với cost_price tổng đã lưu lúc confirm-quote.
+        if quote_line.inquiry.status != PriceInquiry.Status.OPEN:
+            raise serializers.ValidationError("Hỏi giá này đã đóng, không thể chào giá thêm.")
+        return quote_line
+
+
 class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
     item_code = serializers.CharField(source="item.item_code", read_only=True)
     category = serializers.CharField(source="item.category", read_only=True, default=None)
@@ -150,12 +172,22 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
     line_cost = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
     line_floor = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
     line_ceiling = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    # 3 field dưới đây phục vụ Sàn báo giá cạnh tranh (xem crm/views.py PriceInquiryQuoteLineBidViewSet) —
+    # sàn liệt kê dòng của MỌI Hỏi giá đang mở cùng lúc nên cần biết thuộc khách hàng/trạng thái nào
+    # ngay trên dòng, không phải gọi thêm API để tra cứu.
+    inquiry_status = serializers.CharField(source="inquiry.status", read_only=True)
+    customer_id = serializers.IntegerField(source="inquiry.customer_id", read_only=True)
+    customer_name = serializers.CharField(source="inquiry.customer.name", read_only=True)
+    bids = PriceInquiryQuoteLineBidSerializer(many=True, read_only=True)
 
     class Meta:
         model = PriceInquiryQuoteLine
         fields = [
             "id",
             "inquiry",
+            "inquiry_status",
+            "customer_id",
+            "customer_name",
             "item",
             "item_code",
             "category",
@@ -169,9 +201,11 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
             "line_cost",
             "line_floor",
             "line_ceiling",
+            "winning_bid",
+            "bids",
             "created_at",
         ]
-        read_only_fields = ["inquiry", "created_at"]
+        read_only_fields = ["inquiry", "winning_bid", "created_at"]
 
     def validate(self, attrs):
         if not attrs.get("item") and not attrs.get("item_name"):

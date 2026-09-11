@@ -87,6 +87,13 @@ const ICONS = {
       <path d="M12.5 12.6c2.3.2 3.5 1.9 3.5 4.4" strokeLinecap="round" />
     </svg>
   ),
+  biddingBoard: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 16.5V9M10 16.5V4M16 16.5v-6" strokeLinecap="round" />
+      <path d="M2.5 16.5h15" strokeLinecap="round" />
+      <path d="M7 6.5l3-3 3 3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 function NavItem({ to, icon, children, end }) {
@@ -140,6 +147,15 @@ export default function Sidebar({ user }) {
         <NavItem to="/shipment-batches" icon={ICONS.batches}>
           Quản lý vận hành
         </NavItem>
+
+        {(user?.is_manager || user?.is_supply) && (
+          <>
+            <div className="sidebar-section">Cung ứng</div>
+            <NavItem to="/supply-board" icon={ICONS.biddingBoard}>
+              Sàn báo giá
+            </NavItem>
+          </>
+        )}
 
         {(user?.is_manager || user?.is_hr || user?.is_accountant) && (
           <>

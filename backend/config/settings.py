@@ -145,6 +145,7 @@ GROUP_MANAGER = "Quản lý"
 GROUP_SALES = "Nhân viên kinh doanh"
 GROUP_HR = "Nhân sự"
 GROUP_ACCOUNTING = "Kế toán"
+GROUP_SUPPLY = "Cung ứng"
 
 # --- Thông tin công ty in trên PDF báo giá — chưa có hotline chính thức, để trống, điền qua env sau ---
 COMPANY_HOTLINE = os.environ.get("COMPANY_HOTLINE", "")
