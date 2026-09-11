@@ -105,6 +105,51 @@ class Profile(models.Model):
         super().save(*args, **kwargs)
 
 
+# Field thật sự đáng ghi nhật ký khi đổi — bỏ qua employee_code (không cho sửa), avatar (file, so
+# sánh text không có nghĩa), và các field kỹ thuật khác không phải quyết định nhân sự.
+PROFILE_TRACKED_FIELDS = [
+    "preferred_name", "gender", "job_title", "level", "manager", "work_location",
+    "job_description", "contract_type", "contract_started_at", "contract_expires_at",
+    "department", "phone", "date_of_birth", "id_number", "country", "province",
+    "district", "ward", "street_address", "hired_at", "resigned_at", "work_status",
+    "employment_type",
+]
+
+
+def _display_value(instance, field_name):
+    field = instance._meta.get_field(field_name)
+    value = getattr(instance, field_name)
+    if value is None:
+        return ""
+    if field.choices:
+        return dict(field.choices).get(value, str(value))
+    return str(value)
+
+
+class ProfileChangeLog(models.Model):
+    """Nhật ký thay đổi hồ sơ nhân viên — 1 dòng cho mỗi field thay đổi trong 1 lần lưu (không phải
+    1 dòng cho cả lần lưu), để xem đúng "trường nào đổi từ gì thành gì" như yêu cầu. Tự động ghi bởi
+    signal `hr/signals.py` mỗi khi Profile.save() thay đổi field trong PROFILE_TRACKED_FIELDS — nhân
+    viên không tự sửa/xoá được nhật ký này qua API (chỉ đọc)."""
+
+    profile = models.ForeignKey(Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="change_logs")
+    field_name = models.CharField("Trường thay đổi", max_length=100)
+    old_value = models.TextField("Giá trị cũ", blank=True)
+    new_value = models.TextField("Giá trị mới", blank=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người thay đổi", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    changed_at = models.DateTimeField("Thời điểm thay đổi", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-changed_at"]
+        verbose_name = "Nhật ký thay đổi hồ sơ"
+        verbose_name_plural = "Nhật ký thay đổi hồ sơ"
+
+    def __str__(self):
+        return f"{self.profile.user.username}: {self.field_name} → {self.new_value}"
+
+
 class EmployeeDocument(models.Model):
     """Giấy tờ/hồ sơ đính kèm nhân viên — CCCD, hợp đồng, bằng cấp, chứng chỉ... 1 bảng linh hoạt
     dùng chung, không tách field cứng riêng cho từng loại, vì mỗi nhân viên có thể có nhiều giấy tờ

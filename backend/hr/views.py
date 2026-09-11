@@ -46,6 +46,7 @@ class MyProfileView(APIView):
         profile, _ = Profile.objects.get_or_create(user=request.user)
         serializer = MyProfileSerializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        profile._changed_by = request.user
         serializer.save()
         return Response(serializer.data)
 
@@ -68,6 +69,29 @@ class EmployeeViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins
         # tiếp" (Profile.manager) trỏ tới mình — đúng nghĩa "Trưởng phòng xem nhân viên phòng
         # mình" nhưng suy ra từ quan hệ thật, không cần gán 1 vai trò riêng.
         return qs.filter(Q(user=self.request.user) | Q(manager=self.request.user))
+
+    def perform_update(self, serializer):
+        # Gán trước khi save() để signal hr/signals.py:log_profile_changes biết ai vừa sửa —
+        # signal không tự có request nên phải truyền qua đây.
+        serializer.instance._changed_by = self.request.user
+        serializer.save()
+
+    @action(detail=True, methods=["get"], url_path="change-log")
+    def change_log(self, request, pk=None):
+        profile = self.get_object()
+        logs = profile.change_logs.select_related("changed_by")[:100]
+        return Response([
+            {
+                "id": log.id,
+                "field_name": log.field_name,
+                "field_label": profile._meta.get_field(log.field_name).verbose_name,
+                "old_value": log.old_value,
+                "new_value": log.new_value,
+                "changed_by_name": (log.changed_by.get_full_name() or log.changed_by.username) if log.changed_by else None,
+                "changed_at": log.changed_at,
+            }
+            for log in logs
+        ])
 
     @action(detail=True, methods=["get"], url_path="kpi-history")
     def kpi_history(self, request, pk=None):

@@ -8,6 +8,7 @@ from .models import (
     EmployeeDocument,
     LeaveBalance,
     Profile,
+    ProfileChangeLog,
 )
 
 
@@ -66,3 +67,20 @@ class BonusPenaltyRecordAdmin(admin.ModelAdmin):
     list_filter = ("record_type",)
     autocomplete_fields = ["profile"]
     readonly_fields = ("created_by", "created_at")
+
+
+# Nhật ký thay đổi — chỉ xem, không cho thêm/sửa/xoá tay trong admin vì đây là log tự động do
+# signal (hr/signals.py:log_profile_changes) tạo ra.
+@admin.register(ProfileChangeLog)
+class ProfileChangeLogAdmin(admin.ModelAdmin):
+    list_display = ("profile", "field_name", "old_value", "new_value", "changed_by", "changed_at")
+    list_filter = ("field_name",)
+    search_fields = ("profile__employee_code", "profile__user__username", "profile__user__first_name", "profile__user__last_name")
+    autocomplete_fields = ["profile"]
+    readonly_fields = ("profile", "field_name", "old_value", "new_value", "changed_by", "changed_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

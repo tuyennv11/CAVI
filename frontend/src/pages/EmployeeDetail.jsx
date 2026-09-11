@@ -22,6 +22,7 @@ const BASE_TABS = [
   { key: "emergency", label: "Liên hệ khẩn cấp" },
   { key: "attendance", label: "Chấm công" },
   { key: "kpi", label: "KPI" },
+  { key: "history", label: "Lịch sử thay đổi" },
 ];
 
 const EMPTY_DOC = { doc_type: "id_card", title: "", number: "", issued_at: "", issued_place: "", expires_at: "", note: "" };
@@ -60,6 +61,7 @@ export default function EmployeeDetail() {
   const [attendance, setAttendance] = useState([]);
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [kpiHistory, setKpiHistory] = useState([]);
+  const [changeLog, setChangeLog] = useState([]);
 
   async function load() {
     try {
@@ -120,6 +122,11 @@ export default function EmployeeDetail() {
     setKpiHistory(data);
   }
 
+  async function loadChangeLog() {
+    const data = await apiFetch(`/api/hr/employees/${id}/change-log/`);
+    setChangeLog(data);
+  }
+
   async function loadCompensation() {
     // API tự lọc theo quyền (chính mình / Kế toán / Quản lý) — không có quyền thì trả rỗng,
     // không lỗi, nên gọi thoải mái, tab Lương tự ẩn ở canSeeSalary phía dưới.
@@ -141,6 +148,7 @@ export default function EmployeeDetail() {
     loadContacts();
     loadKpi();
     loadCompensation();
+    loadChangeLog();
   }, [id]);
 
   useEffect(() => {
@@ -164,6 +172,7 @@ export default function EmployeeDetail() {
       const updated = await apiFetch(`/api/hr/employees/${id}/`, { method: "PATCH", body: JSON.stringify(payload) });
       setProfile(updated);
       setSaved(true);
+      loadChangeLog();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -600,6 +609,42 @@ export default function EmployeeDetail() {
                     <td>{k.kpi_pct != null ? `${k.kpi_pct}%` : "—"}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === "history" && (
+        <div className="panel">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Trường thay đổi</th>
+                  <th>Giá trị cũ</th>
+                  <th>Giá trị mới</th>
+                  <th>Người sửa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {changeLog.map((l) => (
+                  <tr key={l.id}>
+                    <td>{new Date(l.changed_at).toLocaleString("vi-VN")}</td>
+                    <td>{l.field_label}</td>
+                    <td>{l.old_value || "—"}</td>
+                    <td>{l.new_value || "—"}</td>
+                    <td>{l.changed_by_name || "—"}</td>
+                  </tr>
+                ))}
+                {changeLog.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="muted">
+                      Chưa có thay đổi nào được ghi nhận.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
