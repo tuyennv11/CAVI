@@ -1,7 +1,5 @@
 from django.contrib import admin
 
-from config.admin_utils import truncated
-
 from .models import (
     Activity,
     KPITarget,
@@ -39,22 +37,18 @@ class PartnerAdmin(admin.ModelAdmin):
     # Yêu cầu nâng hạng/Đơn hàng/Hỏi giá (1 đối tác có NHIỀU dòng) mới tách bảng riêng theo mã đối tác.
     list_display = (
         "name", "is_customer", "is_supplier", "tier", "tier_override", "contact_person", "phone",
-        "address", "note_short", "assigned_to", "created_at",
+        "address", "note", "assigned_to", "created_at",
     )
     list_filter = ("is_customer", "is_supplier", "assigned_to")
     search_fields = ("name", "contact_person", "phone")
     inlines = [ActivityInline]
-
-    @admin.display(description="Mô tả thêm")
-    def note_short(self, obj):
-        return truncated(obj.note)
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
         "id", "customer", "status", "created_by", "source_quotation", "received_by", "received_at",
-        "confirmed_by", "confirmed_at", "description_short", "note_short", "paid", "on_platform",
+        "confirmed_by", "confirmed_at", "description", "note", "paid", "on_platform",
         "pickup_point", "pickup_ward", "delivery_point", "delivery_ward", "weight_kg", "cod_amount",
         "floor_pct", "ceiling_pct", "floor_price", "ceiling_price", "total", "gross_profit",
         "created_at", "updated_at",
@@ -63,35 +57,19 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     autocomplete_fields = ["pickup_ward", "delivery_ward"]
 
-    @admin.display(description="Mô tả lô hàng")
-    def description_short(self, obj):
-        return truncated(obj.description)
-
-    @admin.display(description="Ghi chú")
-    def note_short(self, obj):
-        return truncated(obj.note)
-
 
 @admin.register(TierUpgradeRequest)
 class TierUpgradeRequestAdmin(admin.ModelAdmin):
     list_display = (
-        "partner", "requested_tier", "reason_short", "status", "requested_by", "reviewed_by",
+        "partner", "requested_tier", "reason", "status", "requested_by", "reviewed_by",
         "reviewed_at", "created_at",
     )
     list_filter = ("status", "requested_tier")
 
-    @admin.display(description="Lý do")
-    def reason_short(self, obj):
-        return truncated(obj.reason)
-
 
 @admin.register(Notice)
 class NoticeAdmin(admin.ModelAdmin):
-    list_display = ("code", "title", "body_short", "created_by", "created_at")
-
-    @admin.display(description="Nội dung")
-    def body_short(self, obj):
-        return truncated(obj.body)
+    list_display = ("code", "title", "body", "created_by", "created_at")
 
 
 @admin.register(Activity)
@@ -100,38 +78,22 @@ class ActivityAdmin(admin.ModelAdmin):
     # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
     list_display = (
         "customer", "activity_type", "status", "activity_at", "performed_by", "assigned_to",
-        "contact_person", "content_short", "result_short", "note_short", "follow_up_date",
+        "contact_person", "content", "result", "note", "follow_up_date",
         "follow_up_time", "follow_up_done", "related_order", "related_reference", "created_by",
         "created_at", "updated_at",
     )
     list_filter = ("activity_type", "status")
     search_fields = ("title", "content")
 
-    @admin.display(description="Nội dung")
-    def content_short(self, obj):
-        return truncated(obj.content)
-
-    @admin.display(description="Kết quả")
-    def result_short(self, obj):
-        return truncated(obj.result)
-
-    @admin.display(description="Ghi chú")
-    def note_short(self, obj):
-        return truncated(obj.note)
-
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     list_display = (
-        "title", "content_short", "assigned_to", "created_by", "partner", "related_activity",
+        "title", "content", "assigned_to", "created_by", "partner", "related_activity",
         "priority", "status", "due_at", "created_at", "updated_at",
     )
     list_filter = ("status", "priority")
     search_fields = ("title", "content")
-
-    @admin.display(description="Nội dung")
-    def content_short(self, obj):
-        return truncated(obj.content)
 
 
 @admin.register(KPITarget)
@@ -155,15 +117,11 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
 @admin.register(PriceInquiry)
 class PriceInquiryAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "customer", "status", "description_short", "cost_price", "floor_price", "ceiling_price",
+        "id", "customer", "status", "description", "cost_price", "floor_price", "ceiling_price",
         "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by", "created_at", "updated_at",
     )
     list_filter = ("status",)
     inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
-
-    @admin.display(description="Mô tả")
-    def description_short(self, obj):
-        return truncated(obj.description)
 
 
 class QuotationLineInline(admin.TabularInline):
@@ -174,14 +132,10 @@ class QuotationLineInline(admin.TabularInline):
 @admin.register(Quotation)
 class QuotationAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "inquiry", "note_short", "pending_approval", "saved_at", "created_by",
+        "id", "inquiry", "note", "pending_approval", "saved_at", "created_by",
         "created_at", "updated_at",
     )
     inlines = [QuotationLineInline]
-
-    @admin.display(description="Mô tả")
-    def note_short(self, obj):
-        return truncated(obj.note)
 
 
 @admin.register(PriceListItem)

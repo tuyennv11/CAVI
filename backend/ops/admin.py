@@ -1,7 +1,5 @@
 from django.contrib import admin
 
-from config.admin_utils import truncated
-
 from .models import Shipment, ShipmentBatch
 
 
@@ -10,7 +8,7 @@ class ShipmentAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "partner",
-        "description_short",
+        "description",
         "tracking_code",
         "route",
         "kd_status",
@@ -26,10 +24,6 @@ class ShipmentAdmin(admin.ModelAdmin):
     )
     list_filter = ("kd_status", "cu_status", "vh_status", "kt_status")
     search_fields = ("tracking_code", "description")
-
-    @admin.display(description="Hàng hoá")
-    def description_short(self, obj):
-        return truncated(obj.description)
 
 
 @admin.register(ShipmentBatch)

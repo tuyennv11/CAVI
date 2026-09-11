@@ -1,7 +1,5 @@
 from django.contrib import admin
 
-from config.admin_utils import truncated
-
 from .models import (
     AttendanceRecord,
     BonusPenaltyRecord,
@@ -44,7 +42,7 @@ class ProfileAdmin(admin.ModelAdmin):
         "manager", "work_status", "employment_type", "phone", "date_of_birth", "id_number",
         "province", "district", "ward", "street_address", "hired_at", "resigned_at",
         "contract_type", "contract_started_at", "contract_expires_at", "work_location",
-        "education_level", "major", "skills_short", "job_description_short", "company_code",
+        "education_level", "major", "skills", "job_description", "company_code",
     )
     list_filter = ("department", "work_status", "employment_type", "level", "education_level")
     search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
@@ -54,14 +52,6 @@ class ProfileAdmin(admin.ModelAdmin):
     # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
     # người dùng có thể lớn dần.
     autocomplete_fields = ["country", "province", "district", "ward", "manager"]
-
-    @admin.display(description="Kỹ năng")
-    def skills_short(self, obj):
-        return truncated(obj.skills)
-
-    @admin.display(description="Mô tả công việc")
-    def job_description_short(self, obj):
-        return truncated(obj.job_description)
 
 
 @admin.register(LeaveBalance)

@@ -15,14 +15,22 @@
 {% block extrastyle %}
 {{ block.super }}
 {% comment %}
-Nội dung dài (Mô tả/Ghi chú/Nội dung) hiện ngắn gọn trên bảng, rê chuột vào ô hiện đủ — giống ô có
-chú thích (comment) trong Excel. Xem config/admin_utils.py:truncated() cho phần Python sinh ra
-data-tooltip; phần hiện tooltip nằm ở đây (CSS) + extrahead bên dưới (JS).
+Mọi ô dữ liệu trên bảng danh sách: không cho xuống dòng, tự cắt bằng "…" đúng theo độ rộng thật
+của cột (không cắt cứng 1 số ký tự cố định như trước — cột rộng thì hiện được nhiều hơn, cột hẹp
+hiện ít hơn, đúng nghĩa "cân theo nội dung thật"). Chặn trên ở max-width để 1 cột có nội dung rất
+dài (vd "Nội dung") không kéo giãn cả bảng — cột nội dung ngắn (ngày tháng, có/không...) vẫn tự
+nhiên nhỏ gọn vì không chạm tới mức chặn này. Xem đủ chữ bằng cách rê chuột vào (JS ở extrahead).
+
+Áp dụng luôn cho <th> (tiêu đề cột) — không thì cột có tên tiêu đề dài (vd "Tham chiếu khác (báo
+giá/hợp đồng/cơ hội/phiếu hỗ trợ...)") vẫn kéo giãn cả cột dù dữ liệu bên trong trống trơn, đúng
+vấn đề "cột ít thông tin chiếm quá nhiều chỗ".
 {% endcomment %}
 <style>
-  .field-truncated-tip {
-    cursor: help;
-    border-bottom: 1px dotted var(--border-color, #ccc);
+  #result_list td, #result_list th {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
   }
   #admin-hover-tooltip {
     position: fixed;
@@ -46,12 +54,11 @@ data-tooltip; phần hiện tooltip nằm ở đây (CSS) + extrahead bên dư�
 {% block extrahead %}
 {{ block.super }}
 {% comment %}
-Bảng danh sách (Hồ sơ nhân viên, Đối tác, Hoạt động khách hàng...) cuộn ngang được (xem
-config/admin_site.py) — vùng cuộn đó (".results") có overflow-x:auto, mà theo đúng cách CSS hoạt
-động, hễ 1 trục overflow không phải "visible" thì trục còn lại cũng tự thành "auto" theo, nên
-tooltip vẽ bằng CSS thuần (::after, position:absolute) bên trong bảng sẽ bị CHÍNH bảng đó cắt mất
-phần tràn ra ngoài — hiện ra nhưng không nhìn thấy được. Dùng "position: fixed" + JS tính toạ độ,
-gắn thẳng vào <body> (ngoài mọi khung cuộn) để tránh bị cắt.
+Rê chuột vào Ô BỊ CẮT (so scrollWidth với clientWidth để biết chắc có bị cắt hay không, ô nào đủ
+chỗ hiện hết thì không cần tooltip) là xem được nội dung đầy đủ — giống ô có chú thích (comment)
+trong Excel. Gắn thẳng vào <body> bằng "position: fixed" (không phải bên trong bảng) vì bảng danh
+sách cuộn ngang được (.results có overflow-x:auto — hễ 1 trục overflow không phải "visible" thì
+trục còn lại cũng tự thành "auto" theo, sẽ cắt mất tooltip nếu vẽ bên trong).
 {% endcomment %}
 <script>
 (function () {
@@ -61,13 +68,14 @@ gắn thẳng vào <body> (ngoài mọi khung cuộn) để tránh bị cắt.
     document.body.appendChild(tip);
 
     document.addEventListener("mouseover", function (e) {
-      var target = e.target.closest(".field-truncated-tip");
-      if (!target) return;
-      var text = target.getAttribute("data-tooltip");
+      var td = e.target.closest("#result_list td");
+      if (!td) return;
+      if (td.scrollWidth <= td.clientWidth) return;
+      var text = td.textContent.trim();
       if (!text) return;
       tip.textContent = text;
       tip.style.display = "block";
-      var rect = target.getBoundingClientRect();
+      var rect = td.getBoundingClientRect();
       var top = rect.bottom + 6;
       var left = rect.left;
       // Đo xong mới biết chiều rộng thật để canh không tràn khỏi màn hình / không đủ chỗ bên dưới.
@@ -83,9 +91,9 @@ gắn thẳng vào <body> (ngoài mọi khung cuộn) để tránh bị cắt.
     });
 
     document.addEventListener("mouseout", function (e) {
-      var target = e.target.closest(".field-truncated-tip");
-      if (!target) return;
-      if (target.contains(e.relatedTarget)) return;
+      var td = e.target.closest("#result_list td");
+      if (!td) return;
+      if (td.contains(e.relatedTarget)) return;
       tip.style.display = "none";
     });
   });
