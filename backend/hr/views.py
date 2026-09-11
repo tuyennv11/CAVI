@@ -18,6 +18,7 @@ from .models import (
     EmployeeDocument,
     LeaveBalance,
     Profile,
+    TrainingRecord,
 )
 from .permissions import IsAccountantOrManagerForWrite, IsManagerOrHRForWrite
 from .serializers import (
@@ -29,6 +30,7 @@ from .serializers import (
     LeaveBalanceSerializer,
     MyProfileSerializer,
     ProfileSerializer,
+    TrainingRecordSerializer,
 )
 
 
@@ -130,6 +132,24 @@ class EmployeeDocumentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = EmployeeDocument.objects.select_related("profile__user")
+        if is_manager(self.request.user) or is_hr(self.request.user):
+            return qs
+        return qs.filter(profile__user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class TrainingRecordViewSet(viewsets.ModelViewSet):
+    """Đào tạo & năng lực — xem: chính mình hoặc Quản lý/Nhân sự xem hết. Sửa: chỉ Quản lý/Nhân sự
+    (giống hồ sơ chung, không nhạy cảm như Lương nên không cần tách quyền riêng cho Kế toán)."""
+
+    serializer_class = TrainingRecordSerializer
+    permission_classes = [IsAuthenticated, IsManagerOrHRForWrite]
+    filterset_fields = ["profile"]
+
+    def get_queryset(self):
+        qs = TrainingRecord.objects.select_related("profile__user")
         if is_manager(self.request.user) or is_hr(self.request.user):
             return qs
         return qs.filter(profile__user=self.request.user)

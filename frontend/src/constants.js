@@ -249,3 +249,12 @@ export const BONUS_PENALTY_TYPE_LABEL = {
   penalty: "Phạt",
   commission: "Hoa hồng",
 };
+
+export const EDUCATION_LEVEL_LABEL = {
+  postgrad: "Sau đại học",
+  university: "Đại học",
+  college: "Cao đẳng",
+  vocational: "Trung cấp",
+  high_school: "THPT",
+  other: "Khác",
+};

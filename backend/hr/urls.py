@@ -10,6 +10,7 @@ from .views import (
     EmployeeViewSet,
     LeaveBalanceViewSet,
     MyProfileView,
+    TrainingRecordViewSet,
 )
 
 router = DefaultRouter()
@@ -20,6 +21,7 @@ router.register("documents", EmployeeDocumentViewSet, basename="employee-documen
 router.register("emergency-contacts", EmergencyContactViewSet, basename="emergency-contact")
 router.register("compensation", CompensationRecordViewSet, basename="compensation")
 router.register("bonus-penalty", BonusPenaltyRecordViewSet, basename="bonus-penalty")
+router.register("trainings", TrainingRecordViewSet, basename="training")
 
 urlpatterns = [
     path("profile/me/", MyProfileView.as_view(), name="my-profile"),

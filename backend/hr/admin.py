@@ -9,6 +9,7 @@ from .models import (
     LeaveBalance,
     Profile,
     ProfileChangeLog,
+    TrainingRecord,
 )
 
 
@@ -23,6 +24,12 @@ class EmergencyContactInline(admin.TabularInline):
     extra = 0
 
 
+class TrainingRecordInline(admin.TabularInline):
+    model = TrainingRecord
+    extra = 0
+    readonly_fields = ("created_by", "created_at")
+
+
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
     list_display = (
@@ -32,7 +39,7 @@ class ProfileAdmin(admin.ModelAdmin):
     list_filter = ("department", "work_status", "employment_type")
     search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
     readonly_fields = ("employee_code",)
-    inlines = [EmployeeDocumentInline, EmergencyContactInline]
+    inlines = [EmployeeDocumentInline, EmergencyContactInline, TrainingRecordInline]
     # Quận/Huyện, Phường/Xã có hàng trăm/hàng chục nghìn dòng — bắt buộc phải là ô tìm kiếm (autocomplete)
     # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
     # người dùng có thể lớn dần.

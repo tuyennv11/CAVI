@@ -7,6 +7,7 @@ import { useAuth } from "../AuthContext";
 import {
   BONUS_PENALTY_TYPE_LABEL,
   DEPARTMENT_LABEL,
+  EDUCATION_LEVEL_LABEL,
   EMPLOYEE_DOC_TYPE_LABEL,
   EMPLOYMENT_TYPE_LABEL,
   formatMoney,
@@ -19,6 +20,7 @@ const BASE_TABS = [
   { key: "overview", label: "Tổng quan" },
   { key: "work", label: "Công việc" },
   { key: "documents", label: "Hồ sơ" },
+  { key: "training", label: "Đào tạo & năng lực" },
   { key: "emergency", label: "Liên hệ khẩn cấp" },
   { key: "attendance", label: "Chấm công" },
   { key: "kpi", label: "KPI" },
@@ -26,6 +28,7 @@ const BASE_TABS = [
 ];
 
 const EMPTY_DOC = { doc_type: "id_card", title: "", number: "", issued_at: "", issued_place: "", expires_at: "", note: "" };
+const EMPTY_TRAINING = { course_name: "", started_at: "", ended_at: "", trainer: "", result: "", note: "" };
 const EMPTY_CONTACT = { name: "", relationship: "", phone: "", address: "", note: "" };
 const EMPTY_COMP = { effective_date: "", base_salary: "", allowance: "", insurance_base: "", bank_name: "", bank_account: "", payment_method: "bank_transfer", note: "" };
 const EMPTY_BONUS = { record_type: "bonus", amount: "", reason: "", effective_date: "" };
@@ -49,6 +52,9 @@ export default function EmployeeDetail() {
   const [documents, setDocuments] = useState([]);
   const [docForm, setDocForm] = useState(EMPTY_DOC);
   const [docFile, setDocFile] = useState(null);
+
+  const [trainings, setTrainings] = useState([]);
+  const [trainingForm, setTrainingForm] = useState(EMPTY_TRAINING);
 
   const [contacts, setContacts] = useState([]);
   const [contactForm, setContactForm] = useState(EMPTY_CONTACT);
@@ -91,6 +97,9 @@ export default function EmployeeDetail() {
         employment_type: p.employment_type,
         hired_at: p.hired_at || "",
         resigned_at: p.resigned_at || "",
+        education_level: p.education_level || "",
+        major: p.major || "",
+        skills: p.skills || "",
       });
     } catch (err) {
       setError(err.message);
@@ -105,6 +114,11 @@ export default function EmployeeDetail() {
   async function loadContacts() {
     const data = await apiFetch(`/api/hr/emergency-contacts/?profile=${id}`);
     setContacts(data.results ?? data);
+  }
+
+  async function loadTrainings() {
+    const data = await apiFetch(`/api/hr/trainings/?profile=${id}`);
+    setTrainings(data.results ?? data);
   }
 
   async function loadAttendance(userId) {
@@ -145,6 +159,7 @@ export default function EmployeeDetail() {
   useEffect(() => {
     load();
     loadDocuments();
+    loadTrainings();
     loadContacts();
     loadKpi();
     loadCompensation();
@@ -212,6 +227,26 @@ export default function EmployeeDetail() {
   async function handleDeleteDocument(docId) {
     await apiFetch(`/api/hr/documents/${docId}/`, { method: "DELETE" });
     loadDocuments();
+  }
+
+  async function handleAddTraining(e) {
+    e.preventDefault();
+    try {
+      const payload = { ...trainingForm, profile: id };
+      ["started_at", "ended_at"].forEach((k) => {
+        if (payload[k] === "") payload[k] = null;
+      });
+      await apiFetch("/api/hr/trainings/", { method: "POST", body: JSON.stringify(payload) });
+      setTrainingForm(EMPTY_TRAINING);
+      loadTrainings();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteTraining(trainingId) {
+    await apiFetch(`/api/hr/trainings/${trainingId}/`, { method: "DELETE" });
+    loadTrainings();
   }
 
   async function handleAddContact(e) {
@@ -349,6 +384,25 @@ export default function EmployeeDetail() {
           <label>
             Địa chỉ
             <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
+          </label>
+          <label>
+            Trình độ
+            <select value={form.education_level} onChange={(e) => setForm({ ...form, education_level: e.target.value })}>
+              <option value="">—</option>
+              {Object.entries(EDUCATION_LEVEL_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Chuyên môn
+            <input value={form.major} onChange={(e) => setForm({ ...form, major: e.target.value })} />
+          </label>
+          <label>
+            Kỹ năng
+            <textarea rows={2} placeholder="Cách nhau bằng dấu phẩy" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} />
           </label>
         </div>
       )}
@@ -491,6 +545,67 @@ export default function EmployeeDetail() {
                   <tr>
                     <td colSpan={7} className="muted">
                       Chưa có giấy tờ nào.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === "training" && (
+        <div className="panel">
+          {canEditProfile && (
+            <form className="field-grid" onSubmit={handleAddTraining} style={{ marginBottom: 14 }}>
+              <input placeholder="Khoá đào tạo" required value={trainingForm.course_name} onChange={(e) => setTrainingForm({ ...trainingForm, course_name: e.target.value })} />
+              <label>
+                Ngày bắt đầu
+                <input type="date" value={trainingForm.started_at} onChange={(e) => setTrainingForm({ ...trainingForm, started_at: e.target.value })} />
+              </label>
+              <label>
+                Ngày kết thúc
+                <input type="date" value={trainingForm.ended_at} onChange={(e) => setTrainingForm({ ...trainingForm, ended_at: e.target.value })} />
+              </label>
+              <input placeholder="Người/đơn vị đào tạo" value={trainingForm.trainer} onChange={(e) => setTrainingForm({ ...trainingForm, trainer: e.target.value })} />
+              <input placeholder="Kết quả" value={trainingForm.result} onChange={(e) => setTrainingForm({ ...trainingForm, result: e.target.value })} />
+              <button type="submit">+ Thêm khoá đào tạo</button>
+            </form>
+          )}
+
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Khoá đào tạo</th>
+                  <th>Bắt đầu</th>
+                  <th>Kết thúc</th>
+                  <th>Người/đơn vị đào tạo</th>
+                  <th>Kết quả</th>
+                  {canEditProfile && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {trainings.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.course_name}</td>
+                    <td>{t.started_at || "—"}</td>
+                    <td>{t.ended_at || "—"}</td>
+                    <td>{t.trainer || "—"}</td>
+                    <td>{t.result || "—"}</td>
+                    {canEditProfile && (
+                      <td>
+                        <button type="button" className="link-btn" onClick={() => handleDeleteTraining(t.id)}>
+                          Xoá
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {trainings.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="muted">
+                      Chưa có khoá đào tạo nào.
                     </td>
                   </tr>
                 )}

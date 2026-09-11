@@ -31,6 +31,14 @@ class Profile(models.Model):
         FEMALE = "female", "Nữ"
         OTHER = "other", "Khác"
 
+    class EducationLevel(models.TextChoices):
+        POSTGRAD = "postgrad", "Sau đại học"
+        UNIVERSITY = "university", "Đại học"
+        COLLEGE = "college", "Cao đẳng"
+        VOCATIONAL = "vocational", "Trung cấp"
+        HIGH_SCHOOL = "high_school", "THPT"
+        OTHER = "other", "Khác"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name="Người dùng", on_delete=models.CASCADE, related_name="profile"
     )
@@ -83,6 +91,11 @@ class Profile(models.Model):
     employment_type = models.CharField(
         "Loại nhân sự", max_length=20, choices=EmploymentType.choices, default=EmploymentType.OFFICIAL
     )
+    education_level = models.CharField("Trình độ", max_length=20, choices=EducationLevel.choices, blank=True)
+    major = models.CharField("Chuyên môn", max_length=255, blank=True)
+    # Danh sách kỹ năng, cách nhau bằng dấu phẩy — chưa cần tách bảng riêng/gắn tag vì hiện chưa có
+    # nhu cầu lọc/tìm kiếm theo kỹ năng, chỉ cần hiển thị trong hồ sơ.
+    skills = models.TextField("Kỹ năng", blank=True)
 
     class Meta:
         ordering = ["employee_code"]
@@ -112,7 +125,7 @@ PROFILE_TRACKED_FIELDS = [
     "job_description", "contract_type", "contract_started_at", "contract_expires_at",
     "department", "phone", "date_of_birth", "id_number", "country", "province",
     "district", "ward", "street_address", "hired_at", "resigned_at", "work_status",
-    "employment_type",
+    "employment_type", "education_level", "major", "skills",
 ]
 
 
@@ -184,6 +197,31 @@ class EmployeeDocument(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.profile.user.username}"
+
+
+class TrainingRecord(models.Model):
+    """Lịch sử đào tạo — 1 dòng cho mỗi khoá học đã tham gia (khác "Lịch sử nâng bậc", vốn đã có sẵn
+    qua ProfileChangeLog vì "Cấp bậc"/level nằm trong PROFILE_TRACKED_FIELDS)."""
+
+    profile = models.ForeignKey(Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="trainings")
+    course_name = models.CharField("Khoá đào tạo", max_length=255)
+    started_at = models.DateField("Ngày bắt đầu", null=True, blank=True)
+    ended_at = models.DateField("Ngày kết thúc", null=True, blank=True)
+    trainer = models.CharField("Người/đơn vị đào tạo", max_length=255, blank=True)
+    result = models.CharField("Kết quả", max_length=255, blank=True)
+    note = models.TextField("Ghi chú", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-started_at", "-created_at"]
+        verbose_name = "Khoá đào tạo"
+        verbose_name_plural = "Đào tạo & năng lực"
+
+    def __str__(self):
+        return f"{self.course_name} — {self.profile.user.username}"
 
 
 class EmergencyContact(models.Model):

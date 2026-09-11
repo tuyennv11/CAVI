@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { apiFetch, apiUpload } from "../api";
 import AddressFields from "../components/AddressFields";
 import Avatar from "../components/Avatar";
-import { GENDER_LABEL } from "../constants";
+import { EDUCATION_LEVEL_LABEL, GENDER_LABEL } from "../constants";
 
 const DATE_FIELDS = ["date_of_birth"];
 
@@ -30,6 +30,9 @@ export default function Profile() {
         district: data.district || "",
         ward: data.ward || "",
         street_address: data.street_address || "",
+        education_level: data.education_level || "",
+        major: data.major || "",
+        skills: data.skills || "",
       });
     } catch (err) {
       setError(err.message);
@@ -141,6 +144,25 @@ export default function Profile() {
           <label>
             Địa chỉ
             <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
+          </label>
+          <label>
+            Trình độ
+            <select value={form.education_level} onChange={(e) => setForm({ ...form, education_level: e.target.value })}>
+              <option value="">—</option>
+              {Object.entries(EDUCATION_LEVEL_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Chuyên môn
+            <input value={form.major} onChange={(e) => setForm({ ...form, major: e.target.value })} />
+          </label>
+          <label>
+            Kỹ năng
+            <textarea rows={2} placeholder="Cách nhau bằng dấu phẩy" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} />
           </label>
           <div className="modal-actions">
             {saved && <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>Đã lưu</span>}

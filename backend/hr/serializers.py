@@ -8,6 +8,7 @@ from .models import (
     EmployeeDocument,
     LeaveBalance,
     Profile,
+    TrainingRecord,
 )
 
 # Field do Quản lý quyết định qua trang quản lý nhân sự — nhân viên không tự sửa được trên trang
@@ -55,6 +56,9 @@ PROFILE_FIELDS = [
     "resigned_at",
     "work_status",
     "employment_type",
+    "education_level",
+    "major",
+    "skills",
 ]
 
 
@@ -104,6 +108,16 @@ class EmployeeDocumentSerializer(serializers.ModelSerializer):
         fields = [
             "id", "profile", "doc_type", "title", "number", "issued_at", "issued_place",
             "expires_at", "file", "note", "created_by", "created_at",
+        ]
+        read_only_fields = ["created_by", "created_at"]
+
+
+class TrainingRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainingRecord
+        fields = [
+            "id", "profile", "course_name", "started_at", "ended_at", "trainer", "result",
+            "note", "created_by", "created_at",
         ]
         read_only_fields = ["created_by", "created_at"]
 
