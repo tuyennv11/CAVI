@@ -38,10 +38,10 @@ class PartnerAdmin(admin.ModelAdmin):
     # Mỗi Đối tác chỉ có 1 dòng — hiện hết field trên bảng danh sách (kéo ngang xem), chỉ Hoạt động/
     # Yêu cầu nâng hạng/Đơn hàng/Hỏi giá (1 đối tác có NHIỀU dòng) mới tách bảng riêng theo mã đối tác.
     list_display = (
-        "name", "partner_type", "tier", "tier_override", "contact_person", "phone",
+        "name", "is_customer", "is_supplier", "tier", "tier_override", "contact_person", "phone",
         "province", "district", "ward", "street_address", "note_short", "assigned_to", "created_at",
     )
-    list_filter = ("partner_type", "assigned_to")
+    list_filter = ("is_customer", "is_supplier", "assigned_to")
     search_fields = ("name", "contact_person", "phone")
     inlines = [ActivityInline]
     autocomplete_fields = ["country", "province", "district", "ward"]

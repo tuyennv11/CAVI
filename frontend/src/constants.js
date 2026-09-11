@@ -1,8 +1,10 @@
-export const PARTNER_TYPE_LABEL = {
-  customer: "Khách hàng",
-  supplier: "Nhà cung cấp",
-  both: "Khách hàng - NCC",
-};
+// Đối tác có 2 cờ độc lập is_customer/is_supplier (1 đối tác có thể vừa là khách hàng vừa là nhà
+// cung cấp) — hàm này chỉ ghép lại thành 1 nhãn để hiển thị, không phải nguồn dữ liệu.
+export function partnerTypeLabel(partner) {
+  if (partner.is_customer && partner.is_supplier) return "Khách hàng - NCC";
+  if (partner.is_supplier) return "Nhà cung cấp";
+  return "Khách hàng";
+}
 
 export const TIER_LABEL = {
   standard: "Thường",

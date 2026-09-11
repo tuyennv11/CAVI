@@ -9,7 +9,7 @@ import StatusBadge from "../components/StatusBadge";
 import {
   ACTIVITY_TYPE_CATEGORY,
   formatMoney,
-  PARTNER_TYPE_LABEL,
+  partnerTypeLabel,
   PRICE_INQUIRY_TEMPLATE,
   TIER_LABEL,
 } from "../constants";
@@ -680,7 +680,7 @@ export default function PartnerDetail() {
               &larr;
             </Link>
             <h1>{partner.name}</h1>
-            <span className="badge badge-neutral">{PARTNER_TYPE_LABEL[partner.partner_type]}</span>
+            <span className="badge badge-neutral">{partnerTypeLabel(partner)}</span>
             <span className={`badge badge-tier-${partner.tier}`}>
               {TIER_LABEL[partner.tier]}
               {partner.tier_source === "approved" ? " · đã duyệt" : " · tự động"}
@@ -714,7 +714,7 @@ export default function PartnerDetail() {
             <span>
               Gắn bó {partner.tenure_months} tháng · Doanh thu tích luỹ {formatMoney(partner.total_revenue)}
             </span>
-            {partner.partner_type !== "supplier" && (
+            {partner.is_customer && (
               <span className={overLimit ? "error" : ""}>
                 · Công nợ: <b>{formatMoney(partner.debt)}</b> / {formatMoney(partner.credit_limit)}
               </span>

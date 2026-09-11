@@ -6,11 +6,6 @@ from geo.models import Country, District, Province, Ward
 
 
 class Partner(models.Model):
-    class PartnerType(models.TextChoices):
-        CUSTOMER = "customer", "Khách hàng"
-        SUPPLIER = "supplier", "Nhà cung cấp"
-        BOTH = "both", "Khách hàng - Nhà cung cấp"
-
     class Tier(models.TextChoices):
         STANDARD = "standard", "Thường"
         VIP = "vip", "VIP"
@@ -35,9 +30,12 @@ class Partner(models.Model):
     )
     street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
     note = models.TextField("Mô tả thêm", blank=True)
-    partner_type = models.CharField(
-        "Loại đối tác", max_length=20, choices=PartnerType.choices, default=PartnerType.CUSTOMER
-    )
+    # 2 cờ độc lập thay vì 1 field "Loại đối tác" (khách hàng/nhà cung cấp/cả hai) — 1 đối tác có
+    # thể vừa là khách hàng vừa là nhà cung cấp, đây là 2 sự thật độc lập, không phải 1 lựa chọn
+    # duy nhất. Cách cũ buộc mọi chỗ lọc "ai là khách hàng" phải viết thêm điều kiện xử lý riêng
+    # cho giá trị "cả hai" (dễ quên, dễ sót).
+    is_customer = models.BooleanField("Là khách hàng", default=True)
+    is_supplier = models.BooleanField("Là nhà cung cấp", default=False)
     # Hạng do hệ thống tự tính (xem computed_tier) — chỉ bị ghi đè khi có yêu cầu nâng hạng được duyệt.
     tier_override = models.CharField(
         "Hạng đã duyệt vượt bậc", max_length=20, choices=Tier.choices, null=True, blank=True
@@ -94,7 +92,7 @@ class Partner(models.Model):
 
     @property
     def debt(self):
-        if self.partner_type == self.PartnerType.SUPPLIER:
+        if not self.is_customer:
             return 0
         unpaid = self.orders.filter(paid=False).prefetch_related("items")
         return sum((o.total for o in unpaid), start=0)

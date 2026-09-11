@@ -89,7 +89,7 @@ class PartnerViewSet(viewsets.ModelViewSet):
     serializer_class = PartnerSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
     search_fields = ["name", "contact_person", "phone"]
-    filterset_fields = ["assigned_to", "partner_type"]
+    filterset_fields = ["assigned_to", "is_customer", "is_supplier"]
 
     def get_queryset(self):
         qs = Partner.objects.select_related("assigned_to").all()

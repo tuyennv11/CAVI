@@ -342,7 +342,8 @@ class PartnerSerializer(serializers.ModelSerializer):
             "contact_person",
             "phone",
             "note",
-            "partner_type",
+            "is_customer",
+            "is_supplier",
             "tier",
             "tier_source",
             "tenure_months",
@@ -364,6 +365,13 @@ class PartnerSerializer(serializers.ModelSerializer):
             "street_address",
             "created_at",
         ]
+
+    def validate(self, attrs):
+        is_customer = attrs.get("is_customer", getattr(self.instance, "is_customer", None))
+        is_supplier = attrs.get("is_supplier", getattr(self.instance, "is_supplier", None))
+        if is_customer is False and is_supplier is False:
+            raise serializers.ValidationError("Phải chọn ít nhất 1 loại: Khách hàng hoặc Nhà cung cấp.")
+        return attrs
 
 
 class TierUpgradeRequestSerializer(serializers.ModelSerializer):

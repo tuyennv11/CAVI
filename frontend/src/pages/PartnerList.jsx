@@ -4,15 +4,22 @@ import { apiFetch } from "../api";
 import Avatar from "../components/Avatar";
 import Modal from "../components/Modal";
 import PhoneInput from "../components/PhoneInput";
-import { formatMoney, PARTNER_TYPE_LABEL, TIER_LABEL } from "../constants";
+import { formatMoney, TIER_LABEL } from "../constants";
 
 const TABS = [
   { key: "customer", label: "Khách hàng" },
   { key: "supplier", label: "Nhà cung cấp" },
 ];
 
-function emptyForm(partnerType) {
-  return { name: "", contact_person: "", phone: "", note: "", partner_type: partnerType };
+function emptyForm(tab) {
+  return {
+    name: "",
+    contact_person: "",
+    phone: "",
+    note: "",
+    is_customer: tab === "customer",
+    is_supplier: tab === "supplier",
+  };
 }
 
 export default function PartnerList() {
@@ -56,6 +63,10 @@ export default function PartnerList() {
   async function handleCreate(e) {
     e.preventDefault();
     setError("");
+    if (!form.is_customer && !form.is_supplier) {
+      setError("Phải chọn ít nhất 1 loại: Khách hàng hoặc Nhà cung cấp.");
+      return;
+    }
     setSaving(true);
     try {
       await apiFetch("/api/partners/", { method: "POST", body: JSON.stringify(form) });
@@ -68,7 +79,7 @@ export default function PartnerList() {
     }
   }
 
-  const visible = partners.filter((p) => p.partner_type === tab || p.partner_type === "both");
+  const visible = partners.filter((p) => (tab === "customer" ? p.is_customer : p.is_supplier));
 
   return (
     <div>
@@ -132,9 +143,9 @@ export default function PartnerList() {
                         <div>
                           <div>
                             {p.name}
-                            {p.partner_type === "both" && (
+                            {p.is_customer && p.is_supplier && (
                               <span className="badge badge-neutral" style={{ marginLeft: 8 }}>
-                                {PARTNER_TYPE_LABEL.both}
+                                Khách hàng - NCC
                               </span>
                             )}
                           </div>
@@ -172,13 +183,24 @@ export default function PartnerList() {
             </label>
             <label>
               Loại đối tác
-              <select value={form.partner_type} onChange={(e) => setForm({ ...form, partner_type: e.target.value })}>
-                {Object.entries(PARTNER_TYPE_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_customer}
+                    onChange={(e) => setForm({ ...form, is_customer: e.target.checked })}
+                  />
+                  Khách hàng
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_supplier}
+                    onChange={(e) => setForm({ ...form, is_supplier: e.target.checked })}
+                  />
+                  Nhà cung cấp
+                </label>
+              </div>
             </label>
             <label>
               Người liên hệ
