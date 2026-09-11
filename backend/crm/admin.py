@@ -96,8 +96,10 @@ class NoticeAdmin(admin.ModelAdmin):
 
 @admin.register(Activity)
 class ActivityAdmin(admin.ModelAdmin):
+    # Bỏ cột "Tiêu đề" — trùng lặp với "Nội dung" (ActivitySerializer.create() tự suy tiêu đề từ
+    # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
     list_display = (
-        "customer", "activity_type", "title", "status", "activity_at", "performed_by", "assigned_to",
+        "customer", "activity_type", "status", "activity_at", "performed_by", "assigned_to",
         "contact_person", "content_short", "result_short", "note_short", "follow_up_date",
         "follow_up_time", "follow_up_done", "related_order", "related_reference", "created_by",
         "created_at", "updated_at",
