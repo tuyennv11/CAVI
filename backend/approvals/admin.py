@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.utils.text import Truncator
+
+from config.admin_utils import truncated
 
 from .models import ApprovalRequest
 
@@ -14,4 +15,4 @@ class ApprovalRequestAdmin(admin.ModelAdmin):
 
     @admin.display(description="Ghi chú")
     def note_short(self, obj):
-        return Truncator(obj.note).chars(40)
+        return truncated(obj.note)

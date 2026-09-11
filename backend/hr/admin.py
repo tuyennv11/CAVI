@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.utils.text import Truncator
+
+from config.admin_utils import truncated
 
 from .models import (
     AttendanceRecord,
@@ -56,11 +57,11 @@ class ProfileAdmin(admin.ModelAdmin):
 
     @admin.display(description="Kỹ năng")
     def skills_short(self, obj):
-        return Truncator(obj.skills).chars(40)
+        return truncated(obj.skills)
 
     @admin.display(description="Mô tả công việc")
     def job_description_short(self, obj):
-        return Truncator(obj.job_description).chars(40)
+        return truncated(obj.job_description)
 
 
 @admin.register(LeaveBalance)

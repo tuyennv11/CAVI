@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.utils.text import Truncator
+
+from config.admin_utils import truncated
 
 from .models import Shipment, ShipmentBatch
 
@@ -28,7 +29,7 @@ class ShipmentAdmin(admin.ModelAdmin):
 
     @admin.display(description="Hàng hoá")
     def description_short(self, obj):
-        return Truncator(obj.description).chars(40)
+        return truncated(obj.description)
 
 
 @admin.register(ShipmentBatch)

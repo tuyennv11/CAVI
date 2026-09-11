@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.utils.text import Truncator
+
+from config.admin_utils import truncated
 
 from .models import (
     Activity,
@@ -47,14 +48,14 @@ class PartnerAdmin(admin.ModelAdmin):
 
     @admin.display(description="Mô tả thêm")
     def note_short(self, obj):
-        return Truncator(obj.note).chars(40)
+        return truncated(obj.note)
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
         "id", "customer", "status", "created_by", "source_quotation", "received_by", "received_at",
-        "confirmed_by", "confirmed_at", "description_short", "note", "paid", "on_platform",
+        "confirmed_by", "confirmed_at", "description_short", "note_short", "paid", "on_platform",
         "pickup_point", "pickup_ward", "delivery_point", "delivery_ward", "weight_kg", "cod_amount",
         "floor_pct", "ceiling_pct", "floor_price", "ceiling_price", "total", "gross_profit",
         "created_at", "updated_at",
@@ -65,7 +66,11 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.display(description="Mô tả lô hàng")
     def description_short(self, obj):
-        return Truncator(obj.description).chars(40)
+        return truncated(obj.description)
+
+    @admin.display(description="Ghi chú")
+    def note_short(self, obj):
+        return truncated(obj.note)
 
 
 @admin.register(TierUpgradeRequest)
@@ -78,7 +83,7 @@ class TierUpgradeRequestAdmin(admin.ModelAdmin):
 
     @admin.display(description="Lý do")
     def reason_short(self, obj):
-        return Truncator(obj.reason).chars(40)
+        return truncated(obj.reason)
 
 
 @admin.register(Notice)
@@ -87,7 +92,7 @@ class NoticeAdmin(admin.ModelAdmin):
 
     @admin.display(description="Nội dung")
     def body_short(self, obj):
-        return Truncator(obj.body).chars(40)
+        return truncated(obj.body)
 
 
 @admin.register(Activity)
@@ -103,15 +108,15 @@ class ActivityAdmin(admin.ModelAdmin):
 
     @admin.display(description="Nội dung")
     def content_short(self, obj):
-        return Truncator(obj.content).chars(40)
+        return truncated(obj.content)
 
     @admin.display(description="Kết quả")
     def result_short(self, obj):
-        return Truncator(obj.result).chars(40)
+        return truncated(obj.result)
 
     @admin.display(description="Ghi chú")
     def note_short(self, obj):
-        return Truncator(obj.note).chars(40)
+        return truncated(obj.note)
 
 
 @admin.register(Task)
@@ -125,7 +130,7 @@ class TaskAdmin(admin.ModelAdmin):
 
     @admin.display(description="Nội dung")
     def content_short(self, obj):
-        return Truncator(obj.content).chars(40)
+        return truncated(obj.content)
 
 
 @admin.register(KPITarget)
@@ -157,7 +162,7 @@ class PriceInquiryAdmin(admin.ModelAdmin):
 
     @admin.display(description="Mô tả")
     def description_short(self, obj):
-        return Truncator(obj.description).chars(40)
+        return truncated(obj.description)
 
 
 class QuotationLineInline(admin.TabularInline):
@@ -175,7 +180,7 @@ class QuotationAdmin(admin.ModelAdmin):
 
     @admin.display(description="Mô tả")
     def note_short(self, obj):
-        return Truncator(obj.note).chars(40)
+        return truncated(obj.note)
 
 
 @admin.register(PriceListItem)
