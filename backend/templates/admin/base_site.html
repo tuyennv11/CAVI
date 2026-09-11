@@ -1,0 +1,94 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+{% comment %}
+Nội dung dài (Mô tả/Ghi chú/Nội dung) hiện ngắn gọn trên bảng, rê chuột vào ô hiện đủ — giống ô có
+chú thích (comment) trong Excel. Xem config/admin_utils.py:truncated() cho phần Python sinh ra
+data-tooltip; phần hiện tooltip nằm ở đây (CSS) + extrahead bên dưới (JS).
+{% endcomment %}
+<style>
+  .field-truncated-tip {
+    cursor: help;
+    border-bottom: 1px dotted var(--border-color, #ccc);
+  }
+  #admin-hover-tooltip {
+    position: fixed;
+    background: #1c2620;
+    color: #f3f5f3;
+    padding: 8px 11px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    width: max-content;
+    max-width: 360px;
+    z-index: 10000;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+    pointer-events: none;
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% comment %}
+Bảng danh sách (Hồ sơ nhân viên, Đối tác, Hoạt động khách hàng...) cuộn ngang được (xem
+config/admin_site.py) — vùng cuộn đó (".results") có overflow-x:auto, mà theo đúng cách CSS hoạt
+động, hễ 1 trục overflow không phải "visible" thì trục còn lại cũng tự thành "auto" theo, nên
+tooltip vẽ bằng CSS thuần (::after, position:absolute) bên trong bảng sẽ bị CHÍNH bảng đó cắt mất
+phần tràn ra ngoài — hiện ra nhưng không nhìn thấy được. Dùng "position: fixed" + JS tính toạ độ,
+gắn thẳng vào <body> (ngoài mọi khung cuộn) để tránh bị cắt.
+{% endcomment %}
+<script>
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    var tip = document.createElement("div");
+    tip.id = "admin-hover-tooltip";
+    document.body.appendChild(tip);
+
+    document.addEventListener("mouseover", function (e) {
+      var target = e.target.closest(".field-truncated-tip");
+      if (!target) return;
+      var text = target.getAttribute("data-tooltip");
+      if (!text) return;
+      tip.textContent = text;
+      tip.style.display = "block";
+      var rect = target.getBoundingClientRect();
+      var top = rect.bottom + 6;
+      var left = rect.left;
+      // Đo xong mới biết chiều rộng thật để canh không tràn khỏi màn hình / không đủ chỗ bên dưới.
+      var tipRect = tip.getBoundingClientRect();
+      if (left + tipRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - tipRect.width - 8;
+      }
+      if (top + tipRect.height > window.innerHeight - 8) {
+        top = rect.top - tipRect.height - 6;
+      }
+      tip.style.left = Math.max(8, left) + "px";
+      tip.style.top = Math.max(8, top) + "px";
+    });
+
+    document.addEventListener("mouseout", function (e) {
+      var target = e.target.closest(".field-truncated-tip");
+      if (!target) return;
+      if (target.contains(e.relatedTarget)) return;
+      tip.style.display = "none";
+    });
+  });
+})();
+</script>
+{% endblock %}

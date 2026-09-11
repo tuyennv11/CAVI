@@ -51,7 +51,9 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # templates/admin/base_site.html ghi đè CSS trang admin (xem file đó) — phải khai DIRS ở
+        # đây vì app_directories chỉ tự tìm bên trong từng app, không tìm ở thư mục gốc project.
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
