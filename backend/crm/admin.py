@@ -1,5 +1,8 @@
 from django.contrib import admin
 
+from config.admin_utils import linked_fk
+from ops.models import Shipment as OpsShipment
+
 from .models import (
     Activity,
     KPITarget,
@@ -31,6 +34,63 @@ class OrderItemInline(admin.TabularInline):
     extra = 1
 
 
+# 3 inline dưới đây CHỈ ĐỌC (không cho thêm/sửa trực tiếp tại đây) — mục đích là để mở 1 Đối tác ra
+# là THẤY NGAY toàn bộ Hỏi giá/Đơn hàng/Yêu cầu nâng hạng đã gắn với đối tác đó (trước đây các bảng
+# này hoàn toàn tách rời, chỉ nối ngầm qua field "Khách hàng"/"Đối tác" nên không nhìn thấy được
+# mối liên kết nếu không biết trước). "show_change_link" cho bấm thẳng vào 1 dòng để mở trang đầy
+# đủ của Hỏi giá/Đơn hàng đó (sửa chi tiết, xem tin nhắn trao đổi... vẫn làm ở trang riêng, đủ chỗ
+# hơn — trang Đối tác chỉ để xem tổng quan).
+class PriceInquiryInline(admin.TabularInline):
+    model = PriceInquiry
+    fk_name = "customer"
+    extra = 0
+    fields = ("id", "status", "cost_price", "floor_price", "ceiling_price", "created_at")
+    readonly_fields = fields
+    show_change_link = True
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class OrderInline(admin.TabularInline):
+    model = Order
+    fk_name = "customer"
+    extra = 0
+    fields = ("id", "status", "paid", "total", "created_at")
+    readonly_fields = fields
+    show_change_link = True
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class TierUpgradeRequestInline(admin.TabularInline):
+    model = TierUpgradeRequest
+    extra = 0
+    fields = ("requested_tier", "status", "requested_by", "created_at")
+    readonly_fields = fields
+    show_change_link = True
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class ShipmentInline(admin.TabularInline):
+    model = OpsShipment
+    fk_name = "partner"
+    extra = 0
+    fields = ("id", "description", "tracking_code", "vh_status", "kt_status", "created_at")
+    readonly_fields = fields
+    show_change_link = True
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Partner)
 class PartnerAdmin(admin.ModelAdmin):
     # Mỗi Đối tác chỉ có 1 dòng — hiện hết field trên bảng danh sách (kéo ngang xem), chỉ Hoạt động/
@@ -41,13 +101,13 @@ class PartnerAdmin(admin.ModelAdmin):
     )
     list_filter = ("is_customer", "is_supplier", "assigned_to")
     search_fields = ("name", "contact_person", "phone")
-    inlines = [ActivityInline]
+    inlines = [PriceInquiryInline, OrderInline, ShipmentInline, TierUpgradeRequestInline, ActivityInline]
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "customer", "status", "created_by", "source_quotation", "received_by", "received_at",
+        "id", "customer_link", "status", "created_by", "source_quotation_link", "received_by", "received_at",
         "confirmed_by", "confirmed_at", "description", "note", "paid", "on_platform",
         "pickup_point", "pickup_ward", "delivery_point", "delivery_ward", "weight_kg", "cod_amount",
         "floor_pct", "ceiling_pct", "floor_price", "ceiling_price", "total", "gross_profit",
@@ -57,14 +117,26 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     autocomplete_fields = ["pickup_ward", "delivery_ward"]
 
+    @admin.display(description="Khách hàng")
+    def customer_link(self, obj):
+        return linked_fk(obj.customer)
+
+    @admin.display(description="Báo giá gốc")
+    def source_quotation_link(self, obj):
+        return linked_fk(obj.source_quotation)
+
 
 @admin.register(TierUpgradeRequest)
 class TierUpgradeRequestAdmin(admin.ModelAdmin):
     list_display = (
-        "partner", "requested_tier", "reason", "status", "requested_by", "reviewed_by",
+        "partner_link", "requested_tier", "reason", "status", "requested_by", "reviewed_by",
         "reviewed_at", "created_at",
     )
     list_filter = ("status", "requested_tier")
+
+    @admin.display(description="Đối tác")
+    def partner_link(self, obj):
+        return linked_fk(obj.partner)
 
 
 @admin.register(Notice)
@@ -77,7 +149,7 @@ class ActivityAdmin(admin.ModelAdmin):
     # Bỏ cột "Tiêu đề" — trùng lặp với "Nội dung" (ActivitySerializer.create() tự suy tiêu đề từ
     # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
     list_display = (
-        "customer", "activity_type", "status", "activity_at", "performed_by", "assigned_to",
+        "customer_link", "activity_type", "status", "activity_at", "performed_by", "assigned_to",
         "contact_person", "content", "result", "note", "follow_up_date",
         "follow_up_time", "follow_up_done", "related_order", "related_reference", "created_by",
         "created_at", "updated_at",
@@ -85,15 +157,23 @@ class ActivityAdmin(admin.ModelAdmin):
     list_filter = ("activity_type", "status")
     search_fields = ("title", "content")
 
+    @admin.display(description="Khách hàng")
+    def customer_link(self, obj):
+        return linked_fk(obj.customer)
+
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     list_display = (
-        "title", "content", "assigned_to", "created_by", "partner", "related_activity",
+        "title", "content", "assigned_to", "created_by", "partner_link", "related_activity",
         "priority", "status", "due_at", "created_at", "updated_at",
     )
     list_filter = ("status", "priority")
     search_fields = ("title", "content")
+
+    @admin.display(description="Khách hàng/đối tác liên quan")
+    def partner_link(self, obj):
+        return linked_fk(obj.partner)
 
 
 @admin.register(KPITarget)
@@ -117,11 +197,15 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
 @admin.register(PriceInquiry)
 class PriceInquiryAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "customer", "status", "description", "cost_price", "floor_price", "ceiling_price",
+        "id", "customer_link", "status", "description", "cost_price", "floor_price", "ceiling_price",
         "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by", "created_at", "updated_at",
     )
     list_filter = ("status",)
     inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
+
+    @admin.display(description="Khách hàng")
+    def customer_link(self, obj):
+        return linked_fk(obj.customer)
 
 
 class QuotationLineInline(admin.TabularInline):
@@ -132,10 +216,14 @@ class QuotationLineInline(admin.TabularInline):
 @admin.register(Quotation)
 class QuotationAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "inquiry", "note", "pending_approval", "saved_at", "created_by",
+        "id", "inquiry_link", "note", "pending_approval", "saved_at", "created_by",
         "created_at", "updated_at",
     )
     inlines = [QuotationLineInline]
+
+    @admin.display(description="Hỏi giá")
+    def inquiry_link(self, obj):
+        return linked_fk(obj.inquiry)
 
 
 @admin.register(PriceListItem)

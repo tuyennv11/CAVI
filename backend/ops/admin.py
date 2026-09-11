@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from config.admin_utils import linked_fk
+
 from .models import Shipment, ShipmentBatch
 
 
@@ -7,7 +9,7 @@ from .models import Shipment, ShipmentBatch
 class ShipmentAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "partner",
+        "partner_link",
         "description",
         "tracking_code",
         "route",
@@ -24,6 +26,10 @@ class ShipmentAdmin(admin.ModelAdmin):
     )
     list_filter = ("kd_status", "cu_status", "vh_status", "kt_status")
     search_fields = ("tracking_code", "description")
+
+    @admin.display(description="Đối tác")
+    def partner_link(self, obj):
+        return linked_fk(obj.partner)
 
 
 @admin.register(ShipmentBatch)
