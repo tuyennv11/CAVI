@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiDownload, apiFetch, apiUpload, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
 import Avatar from "../components/Avatar";
+import CompanyCheckboxes from "../components/CompanyCheckboxes";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import {
@@ -154,6 +155,10 @@ export default function PartnerDetail() {
   const [showAddressEdit, setShowAddressEdit] = useState(false);
   const [addressForm, setAddressForm] = useState(null);
   const [addressSaving, setAddressSaving] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [showCompaniesEdit, setShowCompaniesEdit] = useState(false);
+  const [companiesForm, setCompaniesForm] = useState([]);
+  const [companiesSaving, setCompaniesSaving] = useState(false);
   // Nội dung mô tả lô hàng cho phiếu tạo tay — giống hệt mẫu Mô tả bên Hỏi giá, để Vận hành có đủ
   // thông tin xử lý (đơn tạo từ báo giá thì copy sẵn từ Hỏi giá gốc, không cần nhập lại — xem
   // QuotationViewSet.create_order phía backend).
@@ -268,6 +273,7 @@ export default function PartnerDetail() {
     loadInquiries();
     loadPriceList();
     loadProducts();
+    apiFetch("/api/companies/").then(setCompanies).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -582,6 +588,31 @@ export default function PartnerDetail() {
     }
   }
 
+  function openCompaniesEdit() {
+    setCompaniesForm((partner.companies_detail || []).map((c) => c.id));
+    setShowCompaniesEdit(true);
+  }
+
+  async function handleSaveCompanies() {
+    if (companiesForm.length === 0) {
+      setError("Phải tick ít nhất 1 công ty.");
+      return;
+    }
+    setCompaniesSaving(true);
+    try {
+      const updated = await apiFetch(`/api/partners/${id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ companies: companiesForm }),
+      });
+      setPartner(updated);
+      setShowCompaniesEdit(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCompaniesSaving(false);
+    }
+  }
+
   async function handleExportQuotationPdf(quotationId, customerName) {
     try {
       await apiDownload(`/api/quotations/${quotationId}/pdf/`, `bao-gia-${quotationId}-${customerName}.pdf`);
@@ -763,6 +794,31 @@ export default function PartnerDetail() {
               <span className="muted" style={{ fontSize: 12.5 }}>
                 📍 {partner.address || "Chưa có địa chỉ"}{" "}
                 <button type="button" className="link-btn" onClick={() => setShowAddressEdit(true)}>
+                  Sửa
+                </button>
+              </span>
+            )}
+          </div>
+          <div className="profile-meta-row">
+            {showCompaniesEdit ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <CompanyCheckboxes companies={companies} selected={companiesForm} onChange={setCompaniesForm} />
+                <button type="button" disabled={companiesSaving} onClick={handleSaveCompanies}>
+                  {companiesSaving ? "Đang lưu..." : "Lưu công ty"}
+                </button>
+                <button type="button" className="secondary" onClick={() => setShowCompaniesEdit(false)}>
+                  Huỷ
+                </button>
+              </div>
+            ) : (
+              <span className="muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 6 }}>
+                🏢{" "}
+                {(partner.companies_detail || []).map((c) => (
+                  <span className="badge badge-neutral" key={c.id}>
+                    {c.code}
+                  </span>
+                ))}
+                <button type="button" className="link-btn" onClick={openCompaniesEdit}>
                   Sửa
                 </button>
               </span>

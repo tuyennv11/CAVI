@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api";
+import { useAuth } from "../AuthContext";
 import Avatar from "../components/Avatar";
+import CompanyCheckboxes from "../components/CompanyCheckboxes";
 import Modal from "../components/Modal";
 import PhoneInput from "../components/PhoneInput";
 import { formatMoney, TIER_LABEL } from "../constants";
@@ -11,7 +13,7 @@ const TABS = [
   { key: "supplier", label: "Nhà cung cấp" },
 ];
 
-function emptyForm(tab) {
+function emptyForm(tab, activeCompanyId) {
   return {
     name: "",
     contact_person: "",
@@ -19,17 +21,20 @@ function emptyForm(tab) {
     note: "",
     is_customer: tab === "customer",
     is_supplier: tab === "supplier",
+    companies: activeCompanyId ? [Number(activeCompanyId)] : [],
   };
 }
 
 export default function PartnerList() {
   const navigate = useNavigate();
+  const { activeCompanyId } = useAuth();
   const [tab, setTab] = useState("customer");
   const [partners, setPartners] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
-  const [form, setForm] = useState(emptyForm("customer"));
+  const [form, setForm] = useState(emptyForm("customer", activeCompanyId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,6 +53,7 @@ export default function PartnerList() {
 
   useEffect(() => {
     load();
+    apiFetch("/api/companies/").then(setCompanies).catch(() => {});
   }, []);
 
   function handleSearchSubmit(e) {
@@ -56,7 +62,7 @@ export default function PartnerList() {
   }
 
   function openNew() {
-    setForm(emptyForm(tab));
+    setForm(emptyForm(tab, activeCompanyId));
     setShowNew(true);
   }
 
@@ -65,6 +71,10 @@ export default function PartnerList() {
     setError("");
     if (!form.is_customer && !form.is_supplier) {
       setError("Phải chọn ít nhất 1 loại: Khách hàng hoặc Nhà cung cấp.");
+      return;
+    }
+    if (form.companies.length === 0) {
+      setError("Phải tick ít nhất 1 công ty.");
       return;
     }
     setSaving(true);
@@ -201,6 +211,14 @@ export default function PartnerList() {
                   Nhà cung cấp
                 </label>
               </div>
+            </label>
+            <label>
+              Thuộc công ty
+              <CompanyCheckboxes
+                companies={companies}
+                selected={form.companies}
+                onChange={(companies) => setForm({ ...form, companies })}
+              />
             </label>
             <label>
               Người liên hệ

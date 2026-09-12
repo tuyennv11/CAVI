@@ -31,6 +31,9 @@ class Partner(models.Model):
     # cho giá trị "cả hai" (dễ quên, dễ sót).
     is_customer = models.BooleanField("Là khách hàng", default=True)
     is_supplier = models.BooleanField("Là nhà cung cấp", default=False)
+    # Đối tác dùng 1 hồ sơ chung, nhưng chỉ hiển thị/giao dịch được ở đúng những công ty đã tick —
+    # 1 đối tác có thể thuộc 1 công ty, hoặc nhiều công ty cùng lúc (vd vừa CAVI vừa LIVI).
+    companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="partners", blank=True)
     # Hạng do hệ thống tự tính (xem computed_tier) — chỉ bị ghi đè khi có yêu cầu nâng hạng được duyệt.
     tier_override = models.CharField(
         "Hạng đã duyệt vượt bậc", max_length=20, choices=Tier.choices, null=True, blank=True

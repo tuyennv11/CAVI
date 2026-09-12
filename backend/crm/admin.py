@@ -111,8 +111,9 @@ class PartnerAdmin(admin.ModelAdmin):
         "name", "is_customer", "is_supplier", "tier", "tier_override", "contact_person", "phone",
         "address", "note", "assigned_to", "created_at",
     )
-    list_filter = ("is_customer", "is_supplier", "assigned_to")
+    list_filter = ("is_customer", "is_supplier", "companies", "assigned_to")
     search_fields = ("name", "contact_person", "phone")
+    filter_horizontal = ("companies",)
     inlines = [PriceInquiryInline, OrderInline, ShipmentInline, TierUpgradeRequestInline, ActivityInline]
 
 

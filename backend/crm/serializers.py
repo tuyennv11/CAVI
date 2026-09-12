@@ -378,12 +378,14 @@ class PriceInquirySerializer(serializers.ModelSerializer):
 
 
 class PartnerSerializer(serializers.ModelSerializer):
-    """Đối tác dùng chung cho mọi công ty (không có field company) — nhưng hạng/công nợ/doanh thu
-    PHẢI tính riêng theo từng công ty, không thì 1 đối tác giao dịch cả CAVI lẫn LIVI sẽ bị trộn lẫn
-    số liệu sai. View truyền company đang hoạt động vào context (key "company") — xem
-    PartnerViewSet.get_serializer_context."""
+    """Đối tác dùng 1 hồ sơ chung cho mọi công ty, nhưng chỉ hiển thị/giao dịch được ở đúng những
+    công ty đã tick (field `companies`) — 1 đối tác có thể thuộc 1 hoặc nhiều công ty cùng lúc.
+    Hạng/công nợ/doanh thu vẫn PHẢI tính riêng theo từng công ty đang xem (không phải theo companies
+    đã tick), không thì 1 đối tác giao dịch cả CAVI lẫn LIVI sẽ bị trộn lẫn số liệu sai. View truyền
+    company đang hoạt động vào context (key "company") — xem PartnerViewSet.get_serializer_context."""
 
     assigned_to_detail = AssignedToSerializer(source="assigned_to", read_only=True)
+    companies_detail = serializers.SerializerMethodField()
     activity_count = serializers.SerializerMethodField()
     order_count = serializers.SerializerMethodField()
     credit_limit = serializers.SerializerMethodField()
@@ -395,6 +397,9 @@ class PartnerSerializer(serializers.ModelSerializer):
 
     def _active_company(self):
         return self.context.get("company")
+
+    def get_companies_detail(self, obj):
+        return [{"id": c.id, "code": c.code, "name": c.name} for c in obj.companies.all()]
 
     def get_activity_count(self, obj):
         return obj.activities.filter(company=self._active_company()).count()
@@ -424,6 +429,8 @@ class PartnerSerializer(serializers.ModelSerializer):
             "note",
             "is_customer",
             "is_supplier",
+            "companies",
+            "companies_detail",
             "tier",
             "tier_source",
             "tenure_months",
@@ -443,6 +450,12 @@ class PartnerSerializer(serializers.ModelSerializer):
         is_supplier = attrs.get("is_supplier", getattr(self.instance, "is_supplier", None))
         if is_customer is False and is_supplier is False:
             raise serializers.ValidationError("Phải chọn ít nhất 1 loại: Khách hàng hoặc Nhà cung cấp.")
+        # Tạo mới bắt buộc tick ít nhất 1 công ty (không thì đối tác vừa tạo không ai thấy được ở
+        # đâu cả); sửa mà không đụng tới field này (PATCH không gửi lên) thì bỏ qua, giữ nguyên cũ.
+        if "companies" in attrs and not attrs["companies"]:
+            raise serializers.ValidationError("Phải tick ít nhất 1 công ty.")
+        if self.instance is None and not attrs.get("companies"):
+            raise serializers.ValidationError("Phải tick ít nhất 1 công ty.")
         return attrs
 
 

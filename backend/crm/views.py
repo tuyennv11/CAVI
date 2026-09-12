@@ -105,17 +105,18 @@ def _sum_gross_profit(queryset):
 
 
 class PartnerViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
-    """Đối tác dùng CHUNG cho mọi công ty — KHÔNG lọc queryset theo công ty (khác mọi ViewSet khác
-    trong file này). `CompanyScopedMixin` chỉ dùng để lấy `get_active_company()` cho context của
-    serializer (tính hạng/công nợ đúng theo công ty đang xem, xem PartnerSerializer)."""
+    """Đối tác dùng 1 hồ sơ chung, nhưng chỉ hiển thị ở đúng công ty đã tick (field `companies`) —
+    lọc theo công ty đang chọn TRƯỚC và ĐỘC LẬP với is_manager, giống mọi ViewSet khác trong file
+    này (Quản lý vẫn chỉ thấy đối tác TRONG PHẠM VI công ty đang chọn)."""
 
     serializer_class = PartnerSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
     search_fields = ["name", "contact_person", "phone"]
     filterset_fields = ["assigned_to", "is_customer", "is_supplier"]
+    company_field = "companies"
 
     def get_queryset(self):
-        qs = Partner.objects.select_related("assigned_to").all()
+        qs = self.scope_by_company(Partner.objects.select_related("assigned_to").all())
         if is_manager(self.request.user):
             return qs
         return qs.filter(assigned_to=self.request.user)
@@ -126,7 +127,9 @@ class PartnerViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        # Nhân viên kinh doanh tạo đối tác mới thì mặc định tự phụ trách đối tác đó.
+        # Nhân viên kinh doanh tạo đối tác mới thì mặc định tự phụ trách đối tác đó. Serializer đã
+        # bắt buộc tick ít nhất 1 công ty (validate()) — frontend mặc định tick sẵn công ty đang
+        # thao tác, không cần server tự suy thêm ở đây.
         if is_manager(self.request.user) and serializer.validated_data.get("assigned_to"):
             serializer.save()
         else:

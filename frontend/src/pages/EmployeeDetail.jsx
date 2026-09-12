@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { apiFetch, apiUpload } from "../api";
 import AddressFields from "../components/AddressFields";
 import Avatar from "../components/Avatar";
+import CompanyCheckboxes from "../components/CompanyCheckboxes";
 import { useAuth } from "../AuthContext";
 import {
   BONUS_PENALTY_TYPE_LABEL,
@@ -45,6 +46,7 @@ export default function EmployeeDetail() {
   const { user: currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState(null);
+  const [companies, setCompanies] = useState([]);
   const [tab, setTab] = useState("overview");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -101,6 +103,7 @@ export default function EmployeeDetail() {
         education_level: p.education_level || "",
         major: p.major || "",
         skills: p.skills || "",
+        companies: (p.companies_detail || []).map((c) => c.id),
       });
     } catch (err) {
       setError(err.message);
@@ -165,6 +168,7 @@ export default function EmployeeDetail() {
     loadKpi();
     loadCompensation();
     loadChangeLog();
+    apiFetch("/api/companies/").then(setCompanies).catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -333,6 +337,12 @@ export default function EmployeeDetail() {
             <div className="page-head-sub">
               {profile.employee_code} · {profile.job_title || "Chưa có chức vụ"} ·{" "}
               {DEPARTMENT_LABEL[profile.department] || "Chưa có phòng ban"}
+              {(profile.companies_detail || []).length > 0 && (
+                <>
+                  {" · "}
+                  {profile.companies_detail.map((c) => c.code).join(", ")}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -483,6 +493,14 @@ export default function EmployeeDetail() {
           <label>
             Ngày nghỉ việc
             <input type="date" value={form.resigned_at} onChange={(e) => setForm({ ...form, resigned_at: e.target.value })} />
+          </label>
+          <label>
+            Thuộc công ty
+            <CompanyCheckboxes
+              companies={companies}
+              selected={form.companies}
+              onChange={(companies) => setForm({ ...form, companies })}
+            />
           </label>
         </div>
       )}
