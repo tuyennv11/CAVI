@@ -133,26 +133,25 @@ function CompanySwitcher() {
   }
 
   return (
-    <div className="sidebar-brand sidebar-company-switcher">
-      {activeCompany?.logo ? (
-        <img src={`${API_URL}${activeCompany.logo}`} alt={activeCompany.name} className="mark-logo" />
-      ) : null}
-      <select
-        value={activeCompany?.id || ""}
-        onChange={(e) => switchCompany(e.target.value)}
-        title="Công ty đang thao tác"
-      >
-        {!activeCompany && (
-          <option value="" disabled>
-            Chọn công ty…
-          </option>
-        )}
+    <div className="sidebar-company-switcher">
+      <div className="company-chip-row">
         {companies.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
+          <button
+            key={c.id}
+            type="button"
+            className={`company-chip${activeCompany?.id === c.id ? " active" : ""}`}
+            title={c.name}
+            onClick={() => switchCompany(c.id)}
+          >
+            {c.logo ? (
+              <img src={`${API_URL}${c.logo}`} alt={c.name} />
+            ) : (
+              <span className="company-chip-fallback">{c.code.slice(0, 2)}</span>
+            )}
+          </button>
         ))}
-      </select>
+      </div>
+      <div className="company-chip-label">{activeCompany ? activeCompany.name : "Chọn công ty đang thao tác"}</div>
     </div>
   );
 }

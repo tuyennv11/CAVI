@@ -160,20 +160,29 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), var(--shadow-sm);
 }
-.sidebar-company-switcher { gap: 9px; }
-.sidebar-company-switcher select {
-  flex: 1;
-  min-width: 0;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 7px;
-  padding: 5px 6px;
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 13px;
+.sidebar-company-switcher { padding: 4px 10px 22px; }
+.company-chip-row { display: flex; gap: 8px; }
+.company-chip {
+  width: 40px; height: 40px; padding: 0; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  overflow: hidden;
 }
-.sidebar-company-switcher select option { color: #111; }
+.company-chip:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), var(--shadow-sm); }
+.company-chip.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), var(--shadow-sm); }
+.company-chip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.company-chip-fallback {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 13px; color: #fff;
+  text-transform: uppercase;
+}
+.company-chip-label {
+  margin-top: 9px; color: #fff; font-family: var(--font-display); font-weight: 800;
+  font-size: 13.5px; letter-spacing: 0.01em;
+}
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; min-height: 0; }
 .sidebar-section {
@@ -225,6 +234,25 @@ a:hover { text-decoration: underline; }
 .app-content { flex: 1; padding: 20px 28px 32px; max-width: 1320px; width: 100%; }
 
 .center-msg { text-align: center; margin-top: 80px; color: var(--muted); }
+
+.company-picker { text-align: center; margin-top: 90px; }
+.company-picker > p { color: var(--muted); font-size: 14.5px; margin-bottom: 20px; }
+.company-picker-grid { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 0 16px; }
+.company-picker-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: 132px; padding: 20px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.company-picker-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary); }
+.company-picker-card img { width: 56px; height: 56px; border-radius: 13px; object-fit: cover; box-shadow: var(--shadow-sm); }
+.company-picker-fallback {
+  width: 56px; height: 56px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  background: var(--primary); color: #fff; font-family: var(--font-display); font-weight: 800;
+  font-size: 16px; text-transform: uppercase;
+}
+.company-picker-name { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; color: var(--ink); }
 
 /* ---------- Login ---------- */
 .login-page {

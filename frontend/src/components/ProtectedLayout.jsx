@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { API_URL } from "../api";
 import { useAuth } from "../AuthContext";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -15,22 +16,20 @@ export default function ProtectedLayout() {
   }
   if (companies.length > 1 && !activeCompany) {
     return (
-      <div className="center-msg">
-        <p>Bạn thuộc nhiều công ty — hãy chọn công ty đang thao tác:</p>
-        <select
-          defaultValue=""
-          onChange={(e) => e.target.value && switchCompany(e.target.value)}
-          style={{ fontSize: 15, padding: "6px 10px" }}
-        >
-          <option value="" disabled>
-            Chọn công ty…
-          </option>
+      <div className="company-picker">
+        <p>Bạn thuộc nhiều công ty — chọn công ty đang thao tác:</p>
+        <div className="company-picker-grid">
           {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
+            <button key={c.id} type="button" className="company-picker-card" onClick={() => switchCompany(c.id)}>
+              {c.logo ? (
+                <img src={`${API_URL}${c.logo}`} alt={c.name} />
+              ) : (
+                <span className="company-picker-fallback">{c.code.slice(0, 2)}</span>
+              )}
+              <span className="company-picker-name">{c.name}</span>
+            </button>
           ))}
-        </select>
+        </div>
       </div>
     );
   }
