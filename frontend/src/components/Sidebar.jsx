@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import Avatar from "./Avatar";
-import { API_URL } from "../api";
+import { mediaUrl } from "../api";
 import { useAuth } from "../AuthContext";
 
 const ICONS = {
@@ -126,7 +126,7 @@ function CompanySwitcher() {
     const c = companies[0];
     return (
       <div className="sidebar-brand">
-        {c.logo ? <img src={`${API_URL}${c.logo}`} alt={c.name} className="mark-logo" /> : null}
+        {c.logo ? <img src={mediaUrl(c.logo)} alt={c.name} className="mark-logo" /> : null}
         {c.name}
       </div>
     );
@@ -144,7 +144,7 @@ function CompanySwitcher() {
             onClick={() => switchCompany(c.id)}
           >
             {c.logo ? (
-              <img src={`${API_URL}${c.logo}`} alt={c.name} />
+              <img src={mediaUrl(c.logo)} alt={c.name} />
             ) : (
               <span className="company-chip-fallback">{c.code.slice(0, 2)}</span>
             )}

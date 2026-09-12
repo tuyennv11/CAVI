@@ -1,5 +1,13 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// Tuỳ serializer, đường dẫn media trả về có thể là tương đối ("/media/...") hoặc tuyệt đối
+// (DRF tự thêm domain khi serializer có "request" trong context) — hàm này xử lý được cả 2, tránh
+// nối nhầm domain 2 lần khi đã là URL tuyệt đối.
+export function mediaUrl(path) {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${API_URL}${path}`;
+}
+
 function getTokens() {
   return {
     access: localStorage.getItem("access"),

@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { API_URL } from "../api";
+import { mediaUrl } from "../api";
 import { useAuth } from "../AuthContext";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -22,7 +22,7 @@ export default function ProtectedLayout() {
           {companies.map((c) => (
             <button key={c.id} type="button" className="company-picker-card" onClick={() => switchCompany(c.id)}>
               {c.logo ? (
-                <img src={`${API_URL}${c.logo}`} alt={c.name} />
+                <img src={mediaUrl(c.logo)} alt={c.name} />
               ) : (
                 <span className="company-picker-fallback">{c.code.slice(0, 2)}</span>
               )}
