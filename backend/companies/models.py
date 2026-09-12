@@ -24,7 +24,9 @@ class Company(models.Model):
     created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
 
     class Meta:
-        ordering = ["business_type", "name"]
+        # Theo đúng thứ tự tạo (CAVI trước, rồi LIVI, AVI...) — công ty thương mại mới thêm sau này
+        # cứ nối tiếp cuối danh sách, không bị xáo trộn theo alphabet/loại hình.
+        ordering = ["created_at"]
         verbose_name = "Công ty"
         verbose_name_plural = "Công ty"
 
