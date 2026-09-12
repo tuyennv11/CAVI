@@ -19,7 +19,6 @@ export default function Profile() {
       const data = await apiFetch("/api/hr/profile/me/");
       setProfile(data);
       setForm({
-        company_code: data.company_code || "",
         preferred_name: data.preferred_name || "",
         gender: data.gender || "",
         phone: data.phone || "",
@@ -97,6 +96,11 @@ export default function Profile() {
           <div className="profile-pills" style={{ marginTop: 10 }}>
             <span className="profile-pill">👤 {profile.username}</span>
             <span className="profile-pill">✉️ {profile.email}</span>
+            {profile.companies_detail?.map((c) => (
+              <span className="profile-pill" key={c.id}>
+                🏢 {c.name}
+              </span>
+            ))}
           </div>
           <Link to={`/employees/${profile.id}`} className="muted" style={{ display: "inline-block", marginTop: 8, fontSize: 12.5 }}>
             Xem hồ sơ đầy đủ (gồm cả Lương, chỉ mình bạn xem được) →
@@ -107,13 +111,6 @@ export default function Profile() {
       <div className="panel">
         <h2>Cập nhật hồ sơ</h2>
         <form className="field-grid" onSubmit={handleSave} style={{ maxWidth: 520 }}>
-          <label>
-            Mã công ty
-            <input
-              value={form.company_code}
-              onChange={(e) => setForm({ ...form, company_code: e.target.value })}
-            />
-          </label>
           <label>
             Tên thường gọi
             <input value={form.preferred_name} onChange={(e) => setForm({ ...form, preferred_name: e.target.value })} />

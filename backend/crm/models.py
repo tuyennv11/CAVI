@@ -5,7 +5,9 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from companies.models import Company
 from geo.models import Ward
+from inventory.models import Product
 
 
 class Partner(models.Model):
@@ -56,38 +58,41 @@ class Partner(models.Model):
         delta = timezone.now() - self.created_at
         return delta.days // 30
 
-    @property
-    def total_revenue(self):
+    # 5 hàm dưới đây nhận `company=None` (tính gộp mọi công ty — dùng khi chưa có ngữ cảnh công ty
+    # nào, vd script/shell) — mọi nơi hiển thị cho người dùng PHẢI truyền company đang chọn, không
+    # thì hạng/công nợ của 1 đối tác giao dịch nhiều công ty sẽ bị TRỘN LẪN sai giữa các công ty.
+    def total_revenue(self, company=None):
         orders = self.orders.exclude(status="cancelled").prefetch_related("items")
+        if company is not None:
+            orders = orders.filter(company=company)
         return sum((o.total for o in orders), start=0)
 
-    @property
-    def computed_tier(self):
+    def computed_tier(self, company=None):
         months = self.tenure_months
-        revenue = self.total_revenue
+        revenue = self.total_revenue(company)
         if months >= settings.TIER_TENURE_MONTHS["super_vip"] and revenue >= settings.TIER_REVENUE_THRESHOLDS["super_vip"]:
             return self.Tier.SUPER_VIP
         if months >= settings.TIER_TENURE_MONTHS["vip"] and revenue >= settings.TIER_REVENUE_THRESHOLDS["vip"]:
             return self.Tier.VIP
         return self.Tier.STANDARD
 
-    @property
-    def tier(self):
-        return self.tier_override or self.computed_tier
+    def tier(self, company=None):
+        return self.tier_override or self.computed_tier(company)
 
     @property
     def tier_source(self):
+        # Không phụ thuộc doanh thu/công ty — chỉ hỏi "có bị ghi đè tay hay không" — giữ @property.
         return "approved" if self.tier_override else "auto"
 
-    @property
-    def credit_limit(self):
-        return settings.TIER_CREDIT_LIMITS.get(self.tier, 0)
+    def credit_limit(self, company=None):
+        return settings.TIER_CREDIT_LIMITS.get(self.tier(company), 0)
 
-    @property
-    def debt(self):
+    def debt(self, company=None):
         if not self.is_customer:
             return 0
         unpaid = self.orders.filter(paid=False).prefetch_related("items")
+        if company is not None:
+            unpaid = unpaid.filter(company=company)
         return sum((o.total for o in unpaid), start=0)
 
 
@@ -98,6 +103,10 @@ class TierUpgradeRequest(models.Model):
         REJECTED = "rejected", "Từ chối"
 
     partner = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="tier_requests")
+    # Chỉ mang tính thông tin (yêu cầu phát sinh từ công ty nào) — Partner.tier_override mà yêu cầu
+    # này chỉnh vẫn là field toàn cục trên Partner, nên KHÔNG ép buộc (NOT NULL) ở đây kẻo ngộ nhận
+    # đã tách hạng theo từng công ty.
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="tier_requests")
     requested_tier = models.CharField("Hạng xin lên", max_length=20, choices=Partner.Tier.choices)
     reason = models.TextField("Lý do")
     requested_by = models.ForeignKey(
@@ -134,6 +143,9 @@ class Order(models.Model):
         CANCELLED = "cancelled", "Huỷ"
 
     customer = models.ForeignKey(Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="orders")
+    # Nullable tạm thời — backfill CAVI cho dữ liệu cũ ở migration, rồi chuyển NOT NULL (xem
+    # migration liên quan). Đơn hàng luôn thuộc đúng 1 công ty, không như Partner (dùng chung).
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="orders")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -204,6 +216,12 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, verbose_name="Phiếu nhận hàng", on_delete=models.CASCADE, related_name="items")
+    # Chỉ có ở đơn hàng của công ty Thương mại — dòng hàng ứng với 1 Hàng hoá cụ thể trong kho, để
+    # biết xuất kho đúng sản phẩm nào khi xác nhận đơn (xem OrderViewSet.confirm_received). Đơn hàng
+    # Vận chuyển (CAVI) không có tồn kho nên field này luôn trống.
+    product = models.ForeignKey(
+        Product, verbose_name="Hàng hoá", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     description = models.CharField("Mô tả", max_length=255)
     # Số lượng dự kiến lúc tạo Phiếu nhận hàng — Vận hành ghi nhận thực tế vào actual_quantity, rồi
     # khi Kinh doanh xác nhận, actual_quantity được chốt lại thành quantity chính thức (xem
@@ -268,6 +286,7 @@ class Activity(models.Model):
         CANCELLED = "cancelled", "Huỷ"
 
     customer = models.ForeignKey(Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="activities")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="activities")
     activity_type = models.CharField("Loại hoạt động", max_length=20, choices=ActivityType.choices)
     title = models.CharField("Tiêu đề", max_length=255)
     activity_at = models.DateTimeField("Ngày giờ", default=timezone.now)
@@ -322,6 +341,7 @@ class PriceInquiry(models.Model):
     customer = models.ForeignKey(
         Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="price_inquiries"
     )
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_inquiries")
     description = models.TextField("Mô tả", blank=True)
     image = models.FileField("Hình ảnh", upload_to="price_inquiries/%Y/%m/", null=True, blank=True)
     status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.OPEN)
@@ -381,6 +401,9 @@ class PriceListItem(models.Model):
         II = "II", "Loại II"
         III = "III", "Loại III"
 
+    # Chỉ công ty Vận chuyển (CAVI) dùng bảng này — thêm field cho đồng nhất với mọi bảng khác
+    # (tránh phải xử lý đặc biệt 1 bảng duy nhất không có company ở mọi chỗ lọc theo công ty).
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_list_items")
     category = models.CharField("Phân loại", max_length=5, choices=Category.choices)
     group_name = models.CharField("Nhóm dịch vụ", max_length=255)
     group_code = models.CharField("Mã nhóm", max_length=10)
@@ -408,6 +431,11 @@ class PriceInquiryQuoteLine(models.Model):
     )
     item = models.ForeignKey(
         PriceListItem, verbose_name="Dịch vụ", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # `item` (dịch vụ vận chuyển) và `product` (hàng hoá thương mại) loại trừ nhau — đúng 1 trong 2,
+    # tuỳ inquiry.company.business_type là Vận chuyển hay Thương mại (ép ở serializer validate()).
+    product = models.ForeignKey(
+        Product, verbose_name="Hàng hoá", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     # Snapshot lại tại thời điểm thêm dòng — bảng giá gốc có đổi sau này cũng không ảnh hưởng báo giá đã lập.
     item_name = models.CharField("Tên dịch vụ", max_length=255)
@@ -523,6 +551,11 @@ class QuotationLine(models.Model):
     `price` mặc định lấy từ giá sàn của dòng Hỏi giá gốc lúc tạo, sau đó chỉnh sửa độc lập."""
 
     quotation = models.ForeignKey(Quotation, verbose_name="Báo giá", on_delete=models.CASCADE, related_name="lines")
+    # Giữ lại đường nối tới Hàng hoá — thiếu field này thì lúc tạo Đơn hàng từ Báo giá (xem
+    # Quotation.create_order) sẽ mất dấu sản phẩm, không trừ được kho (xem PriceInquiryQuoteLine.product).
+    product = models.ForeignKey(
+        Product, verbose_name="Hàng hoá", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     item_name = models.CharField("Mô tả", max_length=255, blank=True)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, default=1)
@@ -558,6 +591,9 @@ class Task(models.Model):
 
     title = models.CharField("Tên công việc", max_length=255)
     content = models.TextField("Nội dung", blank=True)
+    # Tuỳ chọn, giống hệt field `partner` — 1 công việc có thể không thuộc công ty cụ thể nào (vd
+    # việc nội bộ chung cho cả 2 công ty).
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="tasks")
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người phụ trách", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="tasks"
@@ -603,6 +639,9 @@ class KPITarget(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="kpi_targets"
     )
+    # Tuỳ chọn — tách chỉ tiêu theo từng công ty (đổi unique_together thành 4 cột) không nằm trong
+    # yêu cầu hiện tại, để nullable, không mở rộng tính năng ngoài phạm vi.
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="kpi_targets")
     year = models.IntegerField("Năm")
     month = models.IntegerField("Tháng")
     revenue_target = models.DecimalField("Chỉ tiêu doanh thu", max_digits=16, decimal_places=2, default=0)
@@ -622,6 +661,9 @@ class KPITarget(models.Model):
 
 
 class Notice(models.Model):
+    # Không set = thông báo cho TẤT CẢ công ty; set = thông báo riêng 1 công ty. Vì vậy để nullable
+    # vĩnh viễn, không ép buộc — ép NOT NULL sẽ mất khả năng thông báo chung.
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="notices")
     code = models.CharField("Số hiệu", max_length=50, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)
     body = models.TextField("Nội dung", blank=True)

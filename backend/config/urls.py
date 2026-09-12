@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/hr/", include("hr.urls")),
     path("api/geo/", include("geo.urls")),
     path("api/", include("ops.urls")),
+    path("api/", include("inventory.urls")),
 ]
 
 if settings.DEBUG:

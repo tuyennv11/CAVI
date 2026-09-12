@@ -13,6 +13,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from companies.mixins import CompanyScopedMixin
+
 from .models import Activity, KPITarget, Notice, Order, Partner, Task
 from .serializers import ActivitySerializer, NoticeSerializer, TaskSerializer
 
@@ -41,22 +43,27 @@ def _pct(actual, target):
     return round(float(actual) / float(target) * 100)
 
 
-class WorkspaceTodayView(APIView):
+class WorkspaceTodayView(CompanyScopedMixin, APIView):
     """"Hôm nay của tôi" + "Việc cần chú ý" — gộp chung vì cùng mục đích: biết ngay việc cần làm."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
+        company = self.get_active_company()
         today = timezone.localdate()
         open_task_statuses = [Task.Status.TODO, Task.Status.IN_PROGRESS]
         open_activity_statuses = [Activity.Status.NOT_PROCESSED, Activity.Status.IN_PROGRESS]
 
-        my_tasks = Task.objects.filter(assigned_to=user).filter(status__in=open_task_statuses)
+        my_tasks = Task.objects.filter(assigned_to=user, status__in=open_task_statuses).filter(
+            Q(company__isnull=True) | Q(company=company)
+        )
         tasks_today = my_tasks.filter(due_at__date=today).order_by("due_at")
         tasks_overdue = my_tasks.filter(due_at__date__lt=today).order_by("due_at")
 
-        my_activities = Activity.objects.filter(Q(performed_by=user) | Q(assigned_to=user)).distinct()
+        my_activities = Activity.objects.filter(
+            Q(performed_by=user) | Q(assigned_to=user), company=company
+        ).distinct()
         follow_ups_due = my_activities.filter(
             follow_up_date__isnull=False, follow_up_date__lte=today, follow_up_done=False
         ).order_by("follow_up_date")
@@ -75,7 +82,7 @@ class WorkspaceTodayView(APIView):
             ]
         ).exclude(status__in=[Activity.Status.DONE, Activity.Status.CANCELLED]).order_by("activity_at")
 
-        notices = Notice.objects.order_by("-created_at")[:5]
+        notices = Notice.objects.filter(Q(company__isnull=True) | Q(company=company)).order_by("-created_at")[:5]
 
         return Response(
             {
@@ -90,13 +97,15 @@ class WorkspaceTodayView(APIView):
         )
 
 
-class WorkspaceKPIView(APIView):
-    """KPI + doanh thu + hiệu suất cá nhân trong tháng hiện tại."""
+class WorkspaceKPIView(CompanyScopedMixin, APIView):
+    """KPI + doanh thu + hiệu suất cá nhân trong tháng hiện tại — chỉ tính theo công ty đang chọn,
+    tránh trộn doanh thu/KPI của nhân sự làm việc cho nhiều công ty."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
+        company = self.get_active_company()
         now = timezone.now()
         year, month = now.year, now.month
         today = timezone.localdate()
@@ -109,7 +118,9 @@ class WorkspaceKPIView(APIView):
         quarter_start, _ = _month_bounds(year, quarter_start_month)
         year_start, _ = _month_bounds(year, 1)
 
-        my_orders = Order.objects.filter(customer__assigned_to=user).exclude(status=Order.Status.CANCELLED)
+        my_orders = Order.objects.filter(customer__assigned_to=user, company=company).exclude(
+            status=Order.Status.CANCELLED
+        )
 
         def revenue_between(start, end=None):
             qs = my_orders.filter(created_at__gte=start)
@@ -127,19 +138,21 @@ class WorkspaceKPIView(APIView):
 
         new_customers_month = Partner.objects.filter(assigned_to=user, created_at__gte=month_start).count()
         quotes_month = Activity.objects.filter(
-            assigned_to=user, activity_type=Activity.ActivityType.QUOTE, activity_at__gte=month_start
+            assigned_to=user, activity_type=Activity.ActivityType.QUOTE, activity_at__gte=month_start,
+            company=company,
         ).count()
         tasks_done_month = Task.objects.filter(
             assigned_to=user, status=Task.Status.DONE, updated_at__gte=month_start, updated_at__lte=month_end
-        ).count()
+        ).filter(Q(company__isnull=True) | Q(company=company)).count()
         tasks_due_month = Task.objects.filter(
             assigned_to=user, due_at__gte=month_start, due_at__lte=month_end
-        ).exclude(status=Task.Status.CANCELLED)
+        ).filter(Q(company__isnull=True) | Q(company=company)).exclude(status=Task.Status.CANCELLED)
         tasks_done_ontime = tasks_due_month.filter(status=Task.Status.DONE, updated_at__lte=F("due_at")).count()
         tasks_due_count = tasks_due_month.count()
 
         follow_ups_month = Activity.objects.filter(
-            assigned_to=user, follow_up_date__gte=month_start.date(), follow_up_date__lte=month_end.date()
+            assigned_to=user, follow_up_date__gte=month_start.date(), follow_up_date__lte=month_end.date(),
+            company=company,
         )
         follow_ups_done = follow_ups_month.filter(status=Activity.Status.DONE).count()
         follow_ups_total = follow_ups_month.count()
@@ -198,12 +211,14 @@ class WorkspaceKPIView(APIView):
         )
 
 
-class WorkspaceRankingView(APIView):
-    """Bảng xếp hạng nhân viên kinh doanh trong tháng — ưu tiên KPI% (kết quả), không chỉ đếm số lượng."""
+class WorkspaceRankingView(CompanyScopedMixin, APIView):
+    """Bảng xếp hạng nhân viên kinh doanh trong tháng — ưu tiên KPI% (kết quả), không chỉ đếm số lượng.
+    Chỉ tính theo công ty đang chọn, cùng lý do với WorkspaceKPIView."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        company = self.get_active_company()
         now = timezone.now()
         year, month = now.year, now.month
         month_start, month_end = _month_bounds(year, month)
@@ -214,14 +229,14 @@ class WorkspaceRankingView(APIView):
         rows = []
         for u in sales_users:
             orders = Order.objects.filter(
-                customer__assigned_to=u, created_at__gte=month_start, created_at__lte=month_end
+                customer__assigned_to=u, created_at__gte=month_start, created_at__lte=month_end, company=company,
             ).exclude(status=Order.Status.CANCELLED)
             revenue = _sum_revenue(orders)
             target = KPITarget.objects.filter(user=u, year=year, month=month).first()
             kpi_pct = _pct(revenue, target.revenue_target) if target else None
             tasks_done = Task.objects.filter(
                 assigned_to=u, status=Task.Status.DONE, updated_at__gte=month_start, updated_at__lte=month_end
-            ).count()
+            ).filter(Q(company__isnull=True) | Q(company=company)).count()
             new_customers = Partner.objects.filter(
                 assigned_to=u, created_at__gte=month_start, created_at__lte=month_end
             ).count()

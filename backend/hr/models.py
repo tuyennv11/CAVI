@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from companies.models import Company
 from geo.models import Country, District, Province, Ward
 
 
@@ -55,7 +56,9 @@ class Profile(models.Model):
     preferred_name = models.CharField("Tên thường gọi", max_length=100, blank=True)
     gender = models.CharField("Giới tính", max_length=10, choices=Gender.choices, blank=True)
     avatar = models.FileField("Ảnh đại diện", upload_to="avatars/%Y/%m/", null=True, blank=True)
-    company_code = models.CharField("Mã công ty", max_length=50, default="CAVI")
+    # Nhân viên có thể thuộc NHIỀU công ty cùng lúc (vd Quản lý/Kế toán làm việc cho cả CAVI lẫn
+    # LIVI) — thay cho company_code (text tự do, không có ràng buộc, không dùng ở logic nào).
+    companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="staff", blank=True)
     job_title = models.CharField("Chức vụ", max_length=100, blank=True)
     level = models.CharField("Cấp bậc", max_length=20, choices=Level.choices, blank=True)
     manager = models.ForeignKey(

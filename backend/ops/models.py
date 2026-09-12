@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from companies.models import Company
 from crm.models import Partner
 
 
@@ -10,6 +11,8 @@ class ShipmentBatch(models.Model):
         GATHERED = "gathered", "Đã gom hàng đủ"
         SHIPPED = "shipped", "Đã gửi"
 
+    # Nullable tạm thời — backfill CAVI ở migration rồi chuyển NOT NULL.
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="shipment_batches")
     route = models.CharField("Tuyến", max_length=50)
     status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.GATHERING)
     operator = models.ForeignKey(
@@ -54,6 +57,7 @@ class Shipment(models.Model):
         USD = "USD", "USD"
 
     partner = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="shipments")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="shipments")
     description = models.CharField("Hàng hoá", max_length=255)
     route = models.CharField("Tuyến", max_length=50, blank=True)
     tracking_code = models.CharField("Mã tracking", max_length=50, blank=True, db_index=True)

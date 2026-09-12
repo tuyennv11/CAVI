@@ -90,7 +90,10 @@ function sumLines(lines) {
 }
 
 function emptyLineForm() {
-  return { item: "", item_name: "", unit: "", floor_pct: "", ceiling_pct: "", quantity: 1, unit_cost: "", note: "" };
+  return {
+    item: "", product: "", item_name: "", unit: "", floor_pct: "", ceiling_pct: "",
+    quantity: 1, unit_cost: "", note: "",
+  };
 }
 
 function emptyQuotationForm(quotation) {
@@ -134,7 +137,8 @@ function emptyActivityForm(currentUserId) {
 
 export default function PartnerDetail() {
   const { id } = useParams();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, activeCompany } = useAuth();
+  const isTrading = activeCompany?.business_type === "trading";
   const [partner, setPartner] = useState(null);
   const [orders, setOrders] = useState([]);
   const [orderLabelForms, setOrderLabelForms] = useState({});
@@ -176,6 +180,7 @@ export default function PartnerDetail() {
   const [inquiryError, setInquiryError] = useState("");
   const [messageDrafts, setMessageDrafts] = useState({});
   const [priceList, setPriceList] = useState([]);
+  const [products, setProducts] = useState([]);
   const [lineFormFor, setLineFormFor] = useState(null);
   const [lineForms, setLineForms] = useState({});
   // Tất cả state dưới đây khoá theo id báo giá (không phải id Hỏi giá) — 1 Hỏi giá có thể có
@@ -249,10 +254,20 @@ export default function PartnerDetail() {
     }
   }
 
+  async function loadProducts() {
+    try {
+      const res = await apiFetch("/api/products/");
+      setProducts(res.results ?? res);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   useEffect(() => {
     loadAll();
     loadInquiries();
     loadPriceList();
+    loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -393,15 +408,35 @@ export default function PartnerDetail() {
 
   async function handleAddLine(inquiryId) {
     const form = lineForms[inquiryId] || emptyLineForm();
-    if (!form.item && !form.item_name) {
-      setLineError("Chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.");
-      return;
+    if (isTrading) {
+      if (!form.product) {
+        setLineError("Chọn hàng hoá.");
+        return;
+      }
+      if (!form.quantity) {
+        setLineError("Cần nhập Số lượng.");
+        return;
+      }
+    } else {
+      if (!form.item && !form.item_name) {
+        setLineError("Chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.");
+        return;
+      }
+      if (!form.quantity || !form.unit_cost) {
+        setLineError("Cần nhập Số lượng và Đơn giá vốn.");
+        return;
+      }
     }
-    if (!form.quantity || !form.unit_cost) {
-      setLineError("Cần nhập Số lượng và Đơn giá vốn.");
-      return;
-    }
-    const payload = form.item
+    const payload = isTrading
+      ? {
+          product: Number(form.product),
+          quantity: form.quantity,
+          unit_cost: form.unit_cost || undefined,
+          floor_pct: form.floor_pct || 0,
+          ceiling_pct: form.ceiling_pct || 0,
+          note: form.note || "",
+        }
+      : form.item
       ? { item: Number(form.item), quantity: form.quantity, unit_cost: form.unit_cost, note: form.note || "" }
       : {
           item_name: form.item_name,
@@ -591,7 +626,7 @@ export default function PartnerDetail() {
 
   async function handlePrintOrderLabel(orderId) {
     try {
-      await apiDownload(`/api/orders/${orderId}/label/`, `CAVI-${String(orderId).padStart(6, "0")}.pdf`);
+      await apiDownload(`/api/orders/${orderId}/label/`, `phieu-${String(orderId).padStart(6, "0")}.pdf`);
     } catch (err) {
       setLineError(err.message);
     }
@@ -973,7 +1008,74 @@ export default function PartnerDetail() {
                     </div>
                   )}
 
-                  {lineFormFor === inq.id && (
+                  {lineFormFor === inq.id && isTrading && (
+                    <div className="inquiry-line-form">
+                      <select
+                        value={lineForms[inq.id]?.product || ""}
+                        onChange={(e) => {
+                          updateLineField(inq.id, "product", e.target.value);
+                          const p = products.find((x) => String(x.id) === e.target.value);
+                          if (p) updateLineField(inq.id, "unit_cost", p.cost_price);
+                        }}
+                      >
+                        <option value="">— Chọn hàng hoá —</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.sku} — {p.name} (tồn: {p.stock_on_hand})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        className="line-note"
+                        placeholder="Mô tả"
+                        value={lineForms[inq.id]?.note || ""}
+                        onChange={(e) => updateLineField(inq.id, "note", e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Số lượng"
+                        style={{ width: 80 }}
+                        value={lineForms[inq.id]?.quantity ?? 1}
+                        onChange={(e) => updateLineField(inq.id, "quantity", e.target.value)}
+                      />
+                      <input
+                        placeholder="ĐVT"
+                        style={{ width: 60 }}
+                        disabled
+                        value={products.find((p) => String(p.id) === String(lineForms[inq.id]?.product))?.unit || ""}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Đơn giá vốn"
+                        style={{ width: 110 }}
+                        value={lineForms[inq.id]?.unit_cost || ""}
+                        onChange={(e) => updateLineField(inq.id, "unit_cost", e.target.value)}
+                      />
+                      <span className="line-pct-group">
+                        <span className="line-pct-label">Sàn</span>
+                        <input
+                          type="number"
+                          className="line-pct"
+                          value={lineForms[inq.id]?.floor_pct || ""}
+                          onChange={(e) => updateLineField(inq.id, "floor_pct", e.target.value)}
+                        />
+                      </span>
+                      <span className="line-pct-group">
+                        <span className="line-pct-label">Trần</span>
+                        <input
+                          type="number"
+                          className="line-pct"
+                          value={lineForms[inq.id]?.ceiling_pct || ""}
+                          onChange={(e) => updateLineField(inq.id, "ceiling_pct", e.target.value)}
+                        />
+                      </span>
+                      <button type="button" onClick={() => handleAddLine(inq.id)}>
+                        Thêm dòng
+                      </button>
+                    </div>
+                  )}
+
+                  {lineFormFor === inq.id && !isTrading && (
                     <div className="inquiry-line-form">
                       <select
                         value={lineForms[inq.id]?.item || ""}

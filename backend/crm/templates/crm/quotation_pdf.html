@@ -27,9 +27,9 @@
 <body>
   <div class="header">
     <div class="brand">
-      {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="CAVI">{% endif %}
+      {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="{{ company_name }}">{% endif %}
       <div>
-        <div class="brand-name">CAVI</div>
+        <div class="brand-name">{{ company_name }}</div>
         {% if hotline %}<div class="brand-hotline">Hotline: {{ hotline }}</div>{% endif %}
       </div>
     </div>
@@ -77,7 +77,7 @@
   </table>
 
   <div class="footer">
-    Cảm ơn quý khách đã tin tưởng CAVI.
+    Cảm ơn quý khách đã tin tưởng {{ company_name }}.
     {% if hotline %}Mọi thắc mắc vui lòng liên hệ hotline {{ hotline }}.{% endif %}
   </div>
 </body>

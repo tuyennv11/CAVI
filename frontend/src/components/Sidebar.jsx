@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
 import Avatar from "./Avatar";
+import { API_URL } from "../api";
+import { useAuth } from "../AuthContext";
 
 const ICONS = {
   workspace: (
@@ -94,6 +96,13 @@ const ICONS = {
       <path d="M7 6.5l3-3 3 3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  inventory: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M2.5 6.5L10 3l7.5 3.5L10 10l-7.5-3.5z" strokeLinejoin="round" />
+      <path d="M2.5 6.5V14L10 17.5V10M17.5 6.5V14L10 17.5" strokeLinejoin="round" />
+      <path d="M6 8.2l7.5-3.5" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 function NavItem({ to, icon, children, end }) {
@@ -105,13 +114,54 @@ function NavItem({ to, icon, children, end }) {
   );
 }
 
+function CompanySwitcher() {
+  const { user, activeCompany, switchCompany } = useAuth();
+  const companies = user?.companies || [];
+
+  if (companies.length === 0) {
+    return <div className="sidebar-brand">Hệ thống nội bộ</div>;
+  }
+
+  if (companies.length === 1) {
+    const c = companies[0];
+    return (
+      <div className="sidebar-brand">
+        {c.logo ? <img src={`${API_URL}${c.logo}`} alt={c.name} className="mark-logo" /> : null}
+        {c.name}
+      </div>
+    );
+  }
+
+  return (
+    <div className="sidebar-brand sidebar-company-switcher">
+      {activeCompany?.logo ? (
+        <img src={`${API_URL}${activeCompany.logo}`} alt={activeCompany.name} className="mark-logo" />
+      ) : null}
+      <select
+        value={activeCompany?.id || ""}
+        onChange={(e) => switchCompany(e.target.value)}
+        title="Công ty đang thao tác"
+      >
+        {!activeCompany && (
+          <option value="" disabled>
+            Chọn công ty…
+          </option>
+        )}
+        {companies.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function Sidebar({ user }) {
+  const { activeCompany } = useAuth();
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
-        <img src="/logo.jpg" alt="CAVI" className="mark-logo" />
-        CAVI
-      </div>
+      <CompanySwitcher />
       <nav className="sidebar-nav">
         <NavItem to="/" end icon={ICONS.workspace}>
           Làm việc
@@ -153,6 +203,15 @@ export default function Sidebar({ user }) {
             <div className="sidebar-section">Cung ứng</div>
             <NavItem to="/supply-board" icon={ICONS.biddingBoard}>
               Sàn báo giá
+            </NavItem>
+          </>
+        )}
+
+        {activeCompany?.business_type === "trading" && (
+          <>
+            <div className="sidebar-section">Kho hàng</div>
+            <NavItem to="/inventory" icon={ICONS.inventory}>
+              Tồn kho
             </NavItem>
           </>
         )}

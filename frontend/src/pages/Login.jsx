@@ -28,17 +28,16 @@ export default function Login() {
     <div className="login-page">
       <div className="login-visual">
         <div className="brand">
-          <img src="/logo.jpg" alt="CAVI" />
-          <span>CAVI</span>
+          <span>Hệ thống quản lý nội bộ</span>
         </div>
         <div className="pitch">
-          <h2>Vận hành toàn bộ công ty trên một nền tảng.</h2>
+          <h2>Vận hành mọi công ty trên một nền tảng.</h2>
           <p>
-            Đối tác, đơn hàng, ký duyệt, vận hành, chấm công — quản lý xuyên suốt cho đội ngũ vận tải
-            Việt Nam · Campuchia · Lào.
+            Đối tác, đơn hàng, ký duyệt, vận hành, chấm công, tồn kho — quản lý xuyên suốt cho cả
+            công ty Vận chuyển lẫn Thương mại. Chọn công ty đang làm việc sau khi đăng nhập.
           </p>
         </div>
-        <div className="foot">© {new Date().getFullYear()} CAVI</div>
+        <div className="foot">© {new Date().getFullYear()}</div>
       </div>
 
       <div className="login-form-side">

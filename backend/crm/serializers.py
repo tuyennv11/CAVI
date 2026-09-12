@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from approvals.models import ApprovalRequest
+from companies.models import Company
 
 from .models import (
     Activity,
@@ -163,6 +164,8 @@ class PriceInquiryQuoteLineBidSerializer(serializers.ModelSerializer):
 class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
     item_code = serializers.CharField(source="item.item_code", read_only=True)
     category = serializers.CharField(source="item.category", read_only=True, default=None)
+    product_name = serializers.CharField(source="product.name", read_only=True, default=None)
+    product_sku = serializers.CharField(source="product.sku", read_only=True, default=None)
     # Không bắt buộc ở đây — khi có chọn `item` thì create() tự điền lại từ bảng giá gốc bên dưới.
     item_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
     unit = serializers.CharField(required=False, allow_blank=True, max_length=50)
@@ -191,6 +194,9 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
             "item",
             "item_code",
             "category",
+            "product",
+            "product_name",
+            "product_sku",
             "item_name",
             "unit",
             "floor_pct",
@@ -208,17 +214,28 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
         read_only_fields = ["inquiry", "winning_bid", "created_at"]
 
     def validate(self, attrs):
-        if not attrs.get("item") and not attrs.get("item_name"):
-            raise serializers.ValidationError("Cần chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.")
+        inquiry = self.context.get("inquiry") or getattr(self.instance, "inquiry", None)
         item = attrs.get("item")
-        inquiry = self.context.get("inquiry")
-        if item and item.category == PriceListItem.Category.I and inquiry is not None:
-            if inquiry.quote_lines.filter(item__category=PriceListItem.Category.I).exists():
-                raise serializers.ValidationError("Một đơn hàng chỉ được chọn 1 dịch vụ thuộc nhóm I.")
+        product = attrs.get("product")
+
+        # Công ty Vận chuyển dùng "item" (dịch vụ), công ty Thương mại dùng "product" (hàng hoá) —
+        # 2 khái niệm loại trừ nhau, tuỳ theo loại hình của công ty đang tạo Hỏi giá này.
+        if inquiry is not None and inquiry.company.business_type == Company.BusinessType.TRADING:
+            if not product:
+                raise serializers.ValidationError("Công ty thương mại cần chọn hàng hoá.")
+            if not attrs.get("item_name") and not product:
+                raise serializers.ValidationError("Cần chọn hàng hoá.")
+        else:
+            if not item and not attrs.get("item_name"):
+                raise serializers.ValidationError("Cần chọn dịch vụ từ bảng giá hoặc nhập tên dịch vụ.")
+            if item and item.category == PriceListItem.Category.I and inquiry is not None:
+                if inquiry.quote_lines.filter(item__category=PriceListItem.Category.I).exists():
+                    raise serializers.ValidationError("Một đơn hàng chỉ được chọn 1 dịch vụ thuộc nhóm I.")
         return attrs
 
     def create(self, validated_data):
         item = validated_data.get("item")
+        product = validated_data.get("product")
         if item:
             if not validated_data.get("item_name"):
                 validated_data["item_name"] = item.name
@@ -226,6 +243,13 @@ class PriceInquiryQuoteLineSerializer(serializers.ModelSerializer):
                 validated_data["unit"] = item.unit
             validated_data["floor_pct"] = item.floor_pct
             validated_data["ceiling_pct"] = item.ceiling_pct
+        elif product:
+            if not validated_data.get("item_name"):
+                validated_data["item_name"] = product.name
+            if not validated_data.get("unit"):
+                validated_data["unit"] = product.unit
+            if not validated_data.get("unit_cost"):
+                validated_data["unit_cost"] = product.cost_price
         return super().create(validated_data)
 
 
@@ -234,7 +258,7 @@ class QuotationLineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuotationLine
-        fields = ["id", "item_name", "unit", "quantity", "price", "line_total"]
+        fields = ["id", "product", "item_name", "unit", "quantity", "price", "line_total"]
 
 
 class QuotationSerializer(serializers.ModelSerializer):
@@ -354,15 +378,41 @@ class PriceInquirySerializer(serializers.ModelSerializer):
 
 
 class PartnerSerializer(serializers.ModelSerializer):
+    """Đối tác dùng chung cho mọi công ty (không có field company) — nhưng hạng/công nợ/doanh thu
+    PHẢI tính riêng theo từng công ty, không thì 1 đối tác giao dịch cả CAVI lẫn LIVI sẽ bị trộn lẫn
+    số liệu sai. View truyền company đang hoạt động vào context (key "company") — xem
+    PartnerViewSet.get_serializer_context."""
+
     assigned_to_detail = AssignedToSerializer(source="assigned_to", read_only=True)
-    activity_count = serializers.IntegerField(source="activities.count", read_only=True)
-    order_count = serializers.IntegerField(source="orders.count", read_only=True)
-    credit_limit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
-    debt = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
-    total_revenue = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    activity_count = serializers.SerializerMethodField()
+    order_count = serializers.SerializerMethodField()
+    credit_limit = serializers.SerializerMethodField()
+    debt = serializers.SerializerMethodField()
+    total_revenue = serializers.SerializerMethodField()
     tenure_months = serializers.IntegerField(read_only=True)
-    tier = serializers.ChoiceField(choices=Partner.Tier.choices, read_only=True)
+    tier = serializers.SerializerMethodField()
     tier_source = serializers.ChoiceField(choices=["auto", "approved"], read_only=True)
+
+    def _active_company(self):
+        return self.context.get("company")
+
+    def get_activity_count(self, obj):
+        return obj.activities.filter(company=self._active_company()).count()
+
+    def get_order_count(self, obj):
+        return obj.orders.filter(company=self._active_company()).count()
+
+    def get_credit_limit(self, obj):
+        return obj.credit_limit(self._active_company())
+
+    def get_debt(self, obj):
+        return obj.debt(self._active_company())
+
+    def get_total_revenue(self, obj):
+        return obj.total_revenue(self._active_company())
+
+    def get_tier(self, obj):
+        return obj.tier(self._active_company())
 
     class Meta:
         model = Partner

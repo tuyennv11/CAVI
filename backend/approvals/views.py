@@ -8,24 +8,27 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.roles import is_manager
+from companies.mixins import CompanyScopedMixin
 
 from .models import ApprovalRequest
 from .serializers import ApprovalRequestSerializer
 
 
-class ApprovalRequestViewSet(viewsets.ModelViewSet):
+class ApprovalRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     serializer_class = ApprovalRequestSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ["request_type", "status"]
 
     def get_queryset(self):
-        qs = ApprovalRequest.objects.select_related("requested_by", "reviewed_by").all()
+        qs = self.scope_by_company(
+            ApprovalRequest.objects.select_related("requested_by", "reviewed_by").all()
+        )
         if is_manager(self.request.user):
             return qs
         return qs.filter(requested_by=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(requested_by=self.request.user)
+        serializer.save(requested_by=self.request.user, company=self.get_active_company())
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):

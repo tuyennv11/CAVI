@@ -42,16 +42,21 @@ class ProfileAdmin(admin.ModelAdmin):
         "manager", "work_status", "employment_type", "phone", "date_of_birth", "id_number",
         "province", "district", "ward", "street_address", "hired_at", "resigned_at",
         "contract_type", "contract_started_at", "contract_expires_at", "work_location",
-        "education_level", "major", "skills", "job_description", "company_code",
+        "education_level", "major", "skills", "job_description", "companies_display",
     )
-    list_filter = ("department", "work_status", "employment_type", "level", "education_level")
+    list_filter = ("department", "work_status", "employment_type", "level", "education_level", "companies")
     search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
     readonly_fields = ("employee_code",)
+    filter_horizontal = ("companies",)
     inlines = [EmployeeDocumentInline, EmergencyContactInline, TrainingRecordInline]
     # Quận/Huyện, Phường/Xã có hàng trăm/hàng chục nghìn dòng — bắt buộc phải là ô tìm kiếm (autocomplete)
     # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
     # người dùng có thể lớn dần.
     autocomplete_fields = ["country", "province", "district", "ward", "manager"]
+
+    @admin.display(description="Công ty")
+    def companies_display(self, obj):
+        return ", ".join(c.code for c in obj.companies.all()) or "—"
 
 
 @admin.register(LeaveBalance)

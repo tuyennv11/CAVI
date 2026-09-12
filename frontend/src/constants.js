@@ -261,6 +261,12 @@ export const LEVEL_LABEL = {
   intern: "Thực tập sinh",
 };
 
+export const MOVEMENT_TYPE_LABEL = {
+  in: "Nhập kho",
+  out: "Xuất kho",
+  adjustment: "Điều chỉnh",
+};
+
 export const EDUCATION_LEVEL_LABEL = {
   postgrad: "Sau đại học",
   university: "Đại học",

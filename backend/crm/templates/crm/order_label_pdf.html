@@ -40,9 +40,9 @@
   <div class="label">
     <div class="top">
       <div class="brand">
-        {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="CAVI">{% endif %}
+        {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="{{ company_name }}">{% endif %}
         <div>
-          <div class="brand-name">CAVI</div>
+          <div class="brand-name">{{ company_name }}</div>
           {% if hotline %}<div style="font-size:9px;color:#555;">Hotline: {{ hotline }}</div>{% endif %}
         </div>
       </div>
@@ -59,7 +59,7 @@
 
     <div class="party">
       <div class="label">Người gửi</div>
-      <div class="name">CAVI</div>
+      <div class="name">{{ company_name }}</div>
       {% if hotline %}<div class="detail">{{ hotline }}</div>{% endif %}
     </div>
 

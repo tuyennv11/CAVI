@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.roles import is_accountant, is_hr, is_manager
+from companies.mixins import CompanyScopedMixin
 from crm.models import KPITarget, Order
 from crm.workspace_views import _month_bounds, _pct, _sum_revenue
 
@@ -53,7 +54,10 @@ class MyProfileView(APIView):
         return Response(serializer.data)
 
 
-class EmployeeViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+class EmployeeViewSet(
+    CompanyScopedMixin,
+    mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+):
     """Trang quản lý nhân sự. Xem: Quản lý/Nhân sự/Kế toán xem hết (Kế toán cần thấy danh sách để
     chọn đúng người khi quản lý Lương); người khác chỉ thấy chính mình + cấp dưới trực tiếp. Sửa:
     chỉ Quản lý/Nhân sự (xem IsManagerOrHRForWrite) — Kế toán chỉ xem, không sửa hồ sơ chung."""
@@ -101,13 +105,14 @@ class EmployeeViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins
         # không tính lại kiểu khác, chỉ đổi từ "tất cả Kinh doanh tháng này" sang "1 người, nhiều tháng".
         profile = self.get_object()
         user = profile.user
+        company = self.get_active_company()
         now = timezone.now()
         rows = []
         year, month = now.year, now.month
         for _ in range(6):
             month_start, month_end = _month_bounds(year, month)
             orders = Order.objects.filter(
-                customer__assigned_to=user, created_at__gte=month_start, created_at__lte=month_end
+                customer__assigned_to=user, created_at__gte=month_start, created_at__lte=month_end, company=company,
             ).exclude(status=Order.Status.CANCELLED)
             revenue = _sum_revenue(orders)
             target = KPITarget.objects.filter(user=user, year=year, month=month).first()

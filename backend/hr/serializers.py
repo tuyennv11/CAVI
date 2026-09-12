@@ -16,7 +16,7 @@ from .models import (
 MANAGER_ONLY_FIELDS = [
     "employee_code", "job_title", "level", "manager", "work_location", "job_description",
     "contract_type", "contract_started_at", "contract_expires_at", "department",
-    "hired_at", "resigned_at", "work_status", "employment_type",
+    "hired_at", "resigned_at", "work_status", "employment_type", "companies",
 ]
 
 PROFILE_FIELDS = [
@@ -29,7 +29,8 @@ PROFILE_FIELDS = [
     "preferred_name",
     "gender",
     "avatar",
-    "company_code",
+    "companies",
+    "companies_detail",
     "job_title",
     "level",
     "manager",
@@ -71,6 +72,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     province_name = serializers.CharField(source="province.name", read_only=True, default=None)
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
+    companies_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -83,6 +85,9 @@ class BaseProfileSerializer(serializers.ModelSerializer):
         if not obj.manager:
             return None
         return obj.manager.get_full_name() or obj.manager.username
+
+    def get_companies_detail(self, obj):
+        return [{"id": c.id, "code": c.code, "name": c.name} for c in obj.companies.all()]
 
 
 class ProfileSerializer(BaseProfileSerializer):

@@ -11,12 +11,14 @@ sách tương ứng theo thứ tự chữ cái — không bị lỗi hay mất t
 
 from django.contrib import admin
 
-APP_ORDER = ["hr", "auth", "crm", "ops", "approvals", "geo"]
+APP_ORDER = ["companies", "hr", "auth", "crm", "inventory", "ops", "approvals", "geo"]
 
 MODEL_ORDER = {
     # Hồ sơ nhân viên trước, rồi tới Lương/Thưởng-phạt, Chấm công/Phép, Nhật ký thay đổi cuối cùng
     # (ít khi cần mở trực tiếp, chỉ để tra cứu khi cần).
     "hr": ["Profile", "CompensationRecord", "BonusPenaltyRecord", "AttendanceRecord", "LeaveBalance", "ProfileChangeLog"],
+    # Kho trước, Hàng hoá sau (hàng hoá cần chọn kho lúc nhập), Nhật ký nhập-xuất cuối (tra cứu).
+    "inventory": ["Warehouse", "Product", "StockMovement"],
     # Tài khoản đăng nhập trước, Nhóm quyền sau (gán nhóm cho tài khoản, không phải ngược lại).
     "auth": ["User", "Group"],
     "crm": [

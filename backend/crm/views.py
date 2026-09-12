@@ -1,5 +1,6 @@
 import base64
 import io
+import mimetypes
 from datetime import timedelta
 from decimal import Decimal
 
@@ -21,6 +22,8 @@ from rest_framework.views import APIView
 
 from accounts.roles import is_manager, is_supply
 from approvals.models import ApprovalRequest
+from companies.mixins import CompanyScopedMixin
+from inventory.models import StockMovement, Warehouse
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -74,6 +77,20 @@ def _sum_revenue(queryset):
     )["total"]
 
 
+def _company_logo_data_uri(company):
+    # Logo riêng từng công ty (upload qua admin) — nếu công ty mới chưa kịp có logo, dùng tạm logo
+    # tĩnh mặc định để PDF không bị vỡ layout (thiếu ảnh) trong lúc chờ.
+    if company is not None and company.logo:
+        mime = mimetypes.guess_type(company.logo.name)[0] or "image/png"
+        with company.logo.open("rb") as f:
+            return f"data:{mime};base64," + base64.b64encode(f.read()).decode()
+    logo_path = finders.find("crm/logo.jpg")
+    if logo_path:
+        with open(logo_path, "rb") as f:
+            return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+    return ""
+
+
 def _sum_gross_profit(queryset):
     return queryset.aggregate(
         total=Coalesce(
@@ -87,7 +104,11 @@ def _sum_gross_profit(queryset):
     )["total"]
 
 
-class PartnerViewSet(viewsets.ModelViewSet):
+class PartnerViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
+    """Đối tác dùng CHUNG cho mọi công ty — KHÔNG lọc queryset theo công ty (khác mọi ViewSet khác
+    trong file này). `CompanyScopedMixin` chỉ dùng để lấy `get_active_company()` cho context của
+    serializer (tính hạng/công nợ đúng theo công ty đang xem, xem PartnerSerializer)."""
+
     serializer_class = PartnerSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
     search_fields = ["name", "contact_person", "phone"]
@@ -98,6 +119,11 @@ class PartnerViewSet(viewsets.ModelViewSet):
         if is_manager(self.request.user):
             return qs
         return qs.filter(assigned_to=self.request.user)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["company"] = self.get_active_company()
+        return context
 
     def perform_create(self, serializer):
         # Nhân viên kinh doanh tạo đối tác mới thì mặc định tự phụ trách đối tác đó.
@@ -120,7 +146,7 @@ class PartnerViewSet(viewsets.ModelViewSet):
         if request.method == "GET":
             qs = partner.activities.select_related(
                 "performed_by", "assigned_to", "created_by", "related_order"
-            ).all()
+            ).filter(company=self.get_active_company())
             p = request.query_params
             if p.get("activity_type"):
                 qs = qs.filter(activity_type=p["activity_type"])
@@ -149,6 +175,7 @@ class PartnerViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(
             customer=partner,
+            company=self.get_active_company(),
             created_by=request.user,
             performed_by=serializer.validated_data.get("performed_by") or request.user,
         )
@@ -157,7 +184,7 @@ class PartnerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="activities/summary")
     def activities_summary(self, request, pk=None):
         partner = self._get_partner(request, pk)
-        acts = partner.activities.all()
+        acts = partner.activities.filter(company=self.get_active_company())
         today = timezone.localdate()
         last = acts.order_by("-activity_at").first()
         return Response(
@@ -171,26 +198,31 @@ class PartnerViewSet(viewsets.ModelViewSet):
         )
 
 
-class ActivityViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class ActivityViewSet(CompanyScopedMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
     """Chỉ hỗ trợ cập nhật (vd đánh dấu đã nhắc follow-up) — tạo/xem hoạt động đi qua PartnerViewSet.activities."""
 
     serializer_class = ActivitySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Activity.objects.select_related("customer", "performed_by", "assigned_to").all()
+        qs = self.scope_by_company(
+            Activity.objects.select_related("customer", "performed_by", "assigned_to").all()
+        )
         if is_manager(self.request.user):
             return qs
         return qs.filter(Q(assigned_to=self.request.user) | Q(customer__assigned_to=self.request.user)).distinct()
 
 
-class TaskViewSet(viewsets.ModelViewSet):
+class TaskViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated, IsAssignedOrCreatorOrManager]
     filterset_fields = ["status", "priority", "assigned_to", "partner"]
 
     def get_queryset(self):
-        qs = Task.objects.select_related("assigned_to", "created_by", "partner").all()
+        company = self.get_active_company()
+        qs = Task.objects.select_related("assigned_to", "created_by", "partner").filter(
+            Q(company__isnull=True) | Q(company=company)
+        )
         if not is_manager(self.request.user):
             qs = qs.filter(Q(assigned_to=self.request.user) | Q(created_by=self.request.user))
 
@@ -206,24 +238,26 @@ class TaskViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        serializer.save(created_by=self.request.user, company=self.get_active_company())
 
 
-class PriceInquiryViewSet(viewsets.ModelViewSet):
+class PriceInquiryViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     serializer_class = PriceInquirySerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ["customer", "status"]
 
     def get_queryset(self):
-        qs = PriceInquiry.objects.select_related("customer", "created_by", "quoted_by").prefetch_related(
-            "messages__author"
+        qs = self.scope_by_company(
+            PriceInquiry.objects.select_related("customer", "created_by", "quoted_by").prefetch_related(
+                "messages__author"
+            )
         )
         if is_manager(self.request.user):
             return qs
         return qs.filter(customer__assigned_to=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        serializer.save(created_by=self.request.user, company=self.get_active_company())
 
     @action(detail=True, methods=["get", "post"], url_path="messages")
     def messages(self, request, pk=None):
@@ -293,6 +327,7 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
         QuotationLine.objects.bulk_create(
             QuotationLine(
                 quotation=quotation,
+                product=line.product,
                 # Đúng ô "Mô tả" (note) của dòng dịch vụ cấu thành, không lấy tên dịch vụ (item_name)
                 # — 2 khái niệm khác nhau, không dùng cái này thay cho cái kia.
                 item_name=line.note,
@@ -313,13 +348,17 @@ class PriceInquiryViewSet(viewsets.ModelViewSet):
 
 
 class QuotationViewSet(
+    CompanyScopedMixin,
     mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet
 ):
     serializer_class = QuotationSerializer
     permission_classes = [IsAuthenticated]
+    company_field = "inquiry__company"
 
     def get_queryset(self):
-        qs = Quotation.objects.select_related("inquiry__customer").prefetch_related("lines")
+        qs = self.scope_by_company(
+            Quotation.objects.select_related("inquiry__customer").prefetch_related("lines")
+        )
         if is_manager(self.request.user):
             return qs
         return qs.filter(inquiry__customer__assigned_to=self.request.user)
@@ -344,6 +383,7 @@ class QuotationViewSet(
         if total >= floor and (ceiling is None or total <= ceiling):
             raise ValidationError("Giá tổng đã nằm trong khoảng giá sàn - giá trần, không cần gửi đề xuất.")
         approval = ApprovalRequest.objects.create(
+            company=inquiry.company,
             request_type=ApprovalRequest.RequestType.PROPOSAL,
             category=f"Báo giá #{quotation.id}",
             title=f"Đề xuất báo giá ngoài khoảng giá sàn/trần — {inquiry.customer.name}",
@@ -384,12 +424,7 @@ class QuotationViewSet(
             for line in lines
         ]
         total = sum((line.line_total for line in lines), Decimal("0"))
-
-        logo_data_uri = ""
-        logo_path = finders.find("crm/logo.jpg")
-        if logo_path:
-            with open(logo_path, "rb") as f:
-                logo_data_uri = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+        company = quotation.inquiry.company
 
         html = render_to_string(
             "crm/quotation_pdf.html",
@@ -399,8 +434,9 @@ class QuotationViewSet(
                 "lines": line_rows,
                 "total_display": _format_money_vn(total),
                 "issue_date": quotation.updated_at.strftime("%d/%m/%Y"),
-                "hotline": settings.COMPANY_HOTLINE,
-                "logo_data_uri": logo_data_uri,
+                "company_name": company.legal_name or company.name,
+                "hotline": company.hotline or settings.COMPANY_HOTLINE,
+                "logo_data_uri": _company_logo_data_uri(company),
             },
         )
         pdf_bytes = HTML(string=html).write_pdf()
@@ -415,6 +451,7 @@ class QuotationViewSet(
         inquiry = quotation.inquiry
         order = Order.objects.create(
             customer=inquiry.customer,
+            company=inquiry.company,
             created_by=request.user,
             source_quotation=quotation,
             # Nội dung mô tả lô hàng cho Vận hành phải giống hệt Hỏi giá gốc — copy thẳng từ đó,
@@ -431,6 +468,7 @@ class QuotationViewSet(
         OrderItem.objects.bulk_create(
             OrderItem(
                 order=order,
+                product=line.product,
                 description=line.item_name,
                 quantity=line.quantity,
                 unit_price=line.price,
@@ -441,18 +479,24 @@ class QuotationViewSet(
 
 
 class PriceInquiryQuoteLineViewSet(
+    CompanyScopedMixin,
     mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet
 ):
     serializer_class = PriceInquiryQuoteLineSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ["inquiry", "inquiry__status"]
+    company_field = "inquiry__company"
 
     def get_queryset(self):
-        qs = PriceInquiryQuoteLine.objects.select_related("inquiry__customer").prefetch_related("bids__bidder")
+        qs = self.scope_by_company(
+            PriceInquiryQuoteLine.objects.select_related("inquiry__customer").prefetch_related("bids__bidder")
+        )
         if is_manager(self.request.user):
             return qs
-        # Cung ứng thấy TOÀN BỘ dòng đang mở của cả công ty (Sàn báo giá cạnh tranh) — không giới
-        # hạn theo Hỏi giá mình phụ trách, khác hẳn Nhân viên kinh doanh chỉ thấy khách của mình.
+        # Cung ứng thấy TOÀN BỘ dòng đang mở của cả công ty đang chọn (Sàn báo giá cạnh tranh) —
+        # không giới hạn theo Hỏi giá mình phụ trách, khác hẳn Nhân viên kinh doanh chỉ thấy khách
+        # của mình. Vẫn phải lọc theo công ty đang thao tác (scope_by_company ở trên) — nếu không,
+        # Cung ứng của công ty này sẽ thấy luôn cả dữ liệu đấu giá của công ty khác.
         if is_supply(self.request.user):
             return qs.filter(inquiry__status=PriceInquiry.Status.OPEN)
         return qs.filter(inquiry__customer__assigned_to=self.request.user)
@@ -472,6 +516,7 @@ class PriceInquiryQuoteLineViewSet(
 
 
 class PriceInquiryQuoteLineBidViewSet(
+    CompanyScopedMixin,
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
@@ -483,11 +528,16 @@ class PriceInquiryQuoteLineBidViewSet(
     serializer_class = PriceInquiryQuoteLineBidSerializer
     permission_classes = [IsAuthenticated, IsManagerOrSupply]
     filterset_fields = ["quote_line"]
+    company_field = "quote_line__inquiry__company"
 
     def get_queryset(self):
         # Không lọc theo người dùng — Sàn chỉ có ý nghĩa nếu ai cũng thấy giá của nhau (đấu giá công
         # khai, không phải đấu thầu kín). IsManagerOrSupply đã chặn hẳn các vai trò khác ở has_permission.
-        return PriceInquiryQuoteLineBid.objects.select_related("quote_line__inquiry", "bidder")
+        # Vẫn phải lọc theo công ty đang thao tác — nếu không, đây chính là nửa còn lại của rò rỉ dữ
+        # liệu giữa các công ty trên Sàn báo giá cạnh tranh (xem PriceInquiryQuoteLineViewSet).
+        return self.scope_by_company(
+            PriceInquiryQuoteLineBid.objects.select_related("quote_line__inquiry", "bidder")
+        )
 
     def perform_create(self, serializer):
         serializer.save(bidder=self.request.user)
@@ -500,27 +550,32 @@ class PriceInquiryQuoteLineBidViewSet(
         instance.delete()
 
 
-class PriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
+class PriceListItemViewSet(CompanyScopedMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = PriceListItemSerializer
     permission_classes = [IsAuthenticated]
-    queryset = PriceListItem.objects.filter(is_active=True)
     search_fields = ["name", "item_code", "group_name"]
     pagination_class = None
 
+    def get_queryset(self):
+        return self.scope_by_company(PriceListItem.objects.filter(is_active=True))
 
-class TierUpgradeRequestViewSet(viewsets.ModelViewSet):
+
+class TierUpgradeRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     serializer_class = TierUpgradeRequestSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
     filterset_fields = ["status", "partner"]
 
     def get_queryset(self):
-        qs = TierUpgradeRequest.objects.select_related("partner", "requested_by", "reviewed_by").all()
+        company = self.get_active_company()
+        qs = TierUpgradeRequest.objects.select_related("partner", "requested_by", "reviewed_by").filter(
+            Q(company__isnull=True) | Q(company=company)
+        )
         if is_manager(self.request.user):
             return qs
         return qs.filter(partner__assigned_to=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(requested_by=self.request.user)
+        serializer.save(requested_by=self.request.user, company=self.get_active_company())
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
@@ -547,16 +602,19 @@ class TierUpgradeRequestViewSet(viewsets.ModelViewSet):
         return Response(TierUpgradeRequestSerializer(tier_request).data)
 
 
-class OrderViewSet(viewsets.ModelViewSet):
+class OrderViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
     filterset_fields = ["status", "customer", "paid", "on_platform"]
 
     def get_queryset(self):
-        qs = Order.objects.select_related("customer", "created_by").prefetch_related("items").all()
+        qs = self.scope_by_company(
+            Order.objects.select_related("customer", "created_by").prefetch_related("items").all()
+        )
         # Vận hành ghi nhận số liệu thực tế lúc nhận hàng không gắn với khách hàng cụ thể nào của
-        # Kinh doanh nào — cần thấy được phiếu đang chờ nhận của TẤT CẢ khách, không chỉ khách mình
-        # phụ trách. Xem thêm get_permissions bên dưới.
+        # Kinh doanh nào — cần thấy được phiếu đang chờ nhận của TẤT CẢ khách CỦA CÔNG TY ĐANG CHỌN,
+        # không chỉ khách mình phụ trách (lọc theo công ty ở scope_by_company trên vẫn áp dụng, chỉ
+        # bỏ qua lọc theo người phụ trách). Xem thêm get_permissions bên dưới.
         if self.action in ("pending_receipt", "record_actual"):
             return qs
         if is_manager(self.request.user):
@@ -569,7 +627,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        serializer.save(created_by=self.request.user, company=self.get_active_company())
 
     @action(detail=False, methods=["get"], url_path="pending-receipt")
     def pending_receipt(self, request):
@@ -614,6 +672,23 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.confirmed_by = request.user
         order.confirmed_at = timezone.now()
         order.save()
+        # Đây là mốc "hàng thực sự rời kho" — với công ty Thương mại, mỗi dòng gắn Hàng hoá (product)
+        # tạo 1 dòng Xuất kho tương ứng. Đơn giản hoá: lấy kho ĐẦU TIÊN đang hoạt động của công ty
+        # (chưa hỗ trợ chọn kho cụ thể lúc lên đơn — nếu cần nhiều kho một lúc, làm sau khi thấy nhu cầu).
+        warehouse = Warehouse.objects.filter(company=order.company, is_active=True).first()
+        if warehouse is not None:
+            StockMovement.objects.bulk_create(
+                StockMovement(
+                    product=item.product,
+                    warehouse=warehouse,
+                    movement_type=StockMovement.MovementType.OUT,
+                    quantity=item.quantity,
+                    reference_order_item=item,
+                    created_by=request.user,
+                )
+                for item in order.items.all()
+                if item.product is not None
+            )
         return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=["get"], url_path="label")
@@ -623,17 +698,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         from weasyprint import HTML
 
         order = self.get_object()
-        order_code = f"CAVI-{order.id:06d}"
+        order_code = f"{order.company.code}-{order.id:06d}"
 
         qr_buf = io.BytesIO()
         qrcode.make(order_code).save(qr_buf, format="PNG")
         qr_data_uri = "data:image/png;base64," + base64.b64encode(qr_buf.getvalue()).decode()
-
-        logo_data_uri = ""
-        logo_path = finders.find("crm/logo.jpg")
-        if logo_path:
-            with open(logo_path, "rb") as f:
-                logo_data_uri = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
 
         html = render_to_string(
             "crm/order_label_pdf.html",
@@ -652,8 +721,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "weight_display": f"{_format_qty_vn(order.weight_kg)} kg" if order.weight_kg is not None else "",
                 "cod_display": _format_money_vn(order.cod_amount) if order.cod_amount else "",
                 "note": order.note,
-                "hotline": settings.COMPANY_HOTLINE,
-                "logo_data_uri": logo_data_uri,
+                "company_name": order.company.legal_name or order.company.name,
+                "hotline": order.company.hotline or settings.COMPANY_HOTLINE,
+                "logo_data_uri": _company_logo_data_uri(order.company),
                 "qr_data_uri": qr_data_uri,
             },
         )
@@ -663,12 +733,19 @@ class OrderViewSet(viewsets.ModelViewSet):
         return response
 
 
-class NoticeViewSet(viewsets.ModelViewSet):
+class NoticeViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     """Thông báo nội bộ — ai cũng xem được, chỉ Quản lý được đăng/sửa/xoá."""
 
     serializer_class = NoticeSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Notice.objects.select_related("created_by").all()
+
+    def get_queryset(self):
+        company = self.get_active_company()
+        # company=None nghĩa là thông báo cho TẤT CẢ công ty — luôn hiện, cộng với thông báo riêng
+        # của đúng công ty đang chọn.
+        return Notice.objects.select_related("created_by").filter(
+            Q(company__isnull=True) | Q(company=company)
+        )
 
     def check_permissions(self, request):
         super().check_permissions(request)
@@ -679,15 +756,18 @@ class NoticeViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
 
-class DashboardStatsView(APIView):
+class DashboardStatsView(CompanyScopedMixin, APIView):
     """Số liệu tổng quan cho trang Dashboard — scope theo vai trò giống các ViewSet ở trên."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        partners = Partner.objects.all()
-        orders = Order.objects.all()
-        acts = Activity.objects.select_related("customer", "performed_by")
+        company = self.get_active_company()
+        orders = Order.objects.filter(company=company)
+        acts = Activity.objects.filter(company=company).select_related("customer", "performed_by")
+        # Partner không gắn công ty (hồ sơ dùng chung) — thu hẹp về đúng đối tác từng có đơn hàng với
+        # công ty đang chọn, nếu không "tổng khách hàng" sẽ lẫn cả khách của công ty khác.
+        partners = Partner.objects.filter(orders__company=company).distinct()
         if not is_manager(request.user):
             partners = partners.filter(assigned_to=request.user)
             orders = orders.filter(customer__assigned_to=request.user)

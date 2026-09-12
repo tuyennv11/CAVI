@@ -6,6 +6,7 @@ import Attendance from "./pages/Attendance";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetail from "./pages/EmployeeDetail";
 import Employees from "./pages/Employees";
+import Inventory from "./pages/Inventory";
 import Login from "./pages/Login";
 import Notices from "./pages/Notices";
 import OrderReceiving from "./pages/OrderReceiving";
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/shipments" element={<Shipments />} />
           <Route path="/shipment-batches" element={<ShipmentBatches />} />
           <Route path="/supply-board" element={<SupplyBoard />} />
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/employees/:id" element={<EmployeeDetail />} />

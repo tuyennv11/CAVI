@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from companies.models import Company
+
 
 class ApprovalRequest(models.Model):
     class RequestType(models.TextChoices):
@@ -17,6 +19,9 @@ class ApprovalRequest(models.Model):
         REJECTED = "rejected", "Từ chối"
         PAID = "paid", "Đã chi"
 
+    # Nullable tạm thời — backfill CAVI ở migration rồi chuyển NOT NULL. Model này trước đây không
+    # có đường nối nào tới Đối tác/công ty — bắt buộc phải có field riêng, không suy được qua bảng khác.
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="approval_requests")
     request_type = models.CharField("Loại yêu cầu", max_length=20, choices=RequestType.choices)
     category = models.CharField("Danh mục", max_length=255, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)

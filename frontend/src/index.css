@@ -160,6 +160,20 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), var(--shadow-sm);
 }
+.sidebar-company-switcher { gap: 9px; }
+.sidebar-company-switcher select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 7px;
+  padding: 5px 6px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+}
+.sidebar-company-switcher select option { color: #111; }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; min-height: 0; }
 .sidebar-section {
@@ -561,6 +575,9 @@ a:hover { text-decoration: underline; }
 }
 .tab-btn:hover { background: none; color: var(--ink); }
 .tab-btn.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
+
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
+.panel-head h3 { font-size: 15px; margin: 0; font-weight: 700; }
 
 /* ---------- Customer profile header ---------- */
 .profile-header {

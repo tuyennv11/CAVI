@@ -17,6 +17,26 @@ export function clearTokens() {
   localStorage.removeItem("refresh");
 }
 
+// Công ty đang thao tác — gắn kèm mọi request qua header X-Company-Id để backend lọc dữ liệu đúng
+// công ty (xem companies/utils.py:get_active_company). Lưu localStorage để giữ lựa chọn qua các lần
+// tải lại trang, không phải chọn lại mỗi lần đăng nhập.
+export function getActiveCompanyId() {
+  return localStorage.getItem("active_company_id");
+}
+
+export function setActiveCompanyId(id) {
+  if (id === null || id === undefined) {
+    localStorage.removeItem("active_company_id");
+  } else {
+    localStorage.setItem("active_company_id", String(id));
+  }
+}
+
+function companyHeaders() {
+  const id = getActiveCompanyId();
+  return id ? { "X-Company-Id": id } : {};
+}
+
 export async function login(username, password) {
   const res = await fetch(`${API_URL}/api/auth/token/`, {
     method: "POST",
@@ -62,6 +82,7 @@ export async function apiFetch(path, options = {}) {
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...companyHeaders(),
         ...options.headers,
       },
     });
@@ -92,7 +113,7 @@ export async function apiUpload(path, formData, method = "POST") {
   const doFetch = (token) =>
     fetch(`${API_URL}${path}`, {
       method,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...companyHeaders() },
       body: formData,
     });
 
@@ -121,7 +142,7 @@ export async function apiDownload(path, filename) {
   const { access } = getTokens();
   const doFetch = (token) =>
     fetch(`${API_URL}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...companyHeaders() },
     });
 
   let res = await doFetch(access);

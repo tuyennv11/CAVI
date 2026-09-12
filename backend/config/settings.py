@@ -28,11 +28,13 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "accounts",
+    "companies",
     "geo",
     "crm",
     "approvals",
     "hr",
     "ops",
+    "inventory",
 ]
 
 MIDDLEWARE = [

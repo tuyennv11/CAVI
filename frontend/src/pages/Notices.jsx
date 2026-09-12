@@ -90,7 +90,7 @@ export default function Notices() {
             <label>
               Số hiệu
               <input
-                placeholder="vd: CAVI-TB-2026-05"
+                placeholder="vd: TB-2026-05"
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
               />
