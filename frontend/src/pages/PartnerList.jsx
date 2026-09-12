@@ -137,6 +137,7 @@ export default function PartnerList() {
             <thead>
               <tr>
                 <th>Đối tác</th>
+                <th>Công ty</th>
                 {tab === "customer" && <th>Hạng</th>}
                 {tab === "customer" && <th>Công nợ</th>}
                 <th>Phụ trách</th>
@@ -166,6 +167,13 @@ export default function PartnerList() {
                           )}
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      {(p.companies_detail || []).map((c) => (
+                        <span className="badge badge-neutral" key={c.id} style={{ marginRight: 4 }}>
+                          {c.code}
+                        </span>
+                      ))}
                     </td>
                     {tab === "customer" && (
                       <td>
