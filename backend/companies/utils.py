@@ -15,8 +15,9 @@ def get_active_company(request):
       — trừ is_manager (Quản lý) được chọn bất kỳ công ty nào, giữ đúng nghĩa "full access" đã áp
       dụng ở mọi nơi khác trong hệ thống.
     - Không có header: nếu user chỉ thuộc đúng 1 công ty thì tự dùng luôn công ty đó (đa số nhân sự
-      chỉ làm 1 công ty, không nên bắt phải chọn) — nếu thuộc 0 hoặc từ 2 công ty trở lên (kể cả
-      is_manager, vì Quản lý không có "công ty mặc định" rõ ràng) thì báo lỗi yêu cầu chọn rõ.
+      chỉ làm 1 công ty, không nên bắt phải chọn) — is_manager cũng vậy nếu hệ thống hiện chỉ có
+      đúng 1 công ty đang hoạt động (vd đang chỉ vận hành LIVI). Thuộc/còn lại từ 2 công ty trở lên
+      thì báo lỗi yêu cầu chọn rõ.
     """
     company_id = request.META.get(ACTIVE_COMPANY_HEADER)
     manager = is_manager(request.user)
@@ -31,6 +32,9 @@ def get_active_company(request):
         return company
 
     if manager:
+        active_companies = list(Company.objects.filter(is_active=True))
+        if len(active_companies) == 1:
+            return active_companies[0]
         raise ValidationError("Thiếu công ty đang thao tác (X-Company-Id) — Quản lý cần chọn rõ.")
 
     memberships = list(request.user.profile.companies.filter(is_active=True))

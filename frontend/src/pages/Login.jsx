@@ -28,16 +28,16 @@ export default function Login() {
     <div className="login-page">
       <div className="login-visual">
         <div className="brand">
-          <span>Hệ thống quản lý nội bộ</span>
+          <img src="/logo.png" alt="LIVI" />
+          <span>LIVI</span>
         </div>
         <div className="pitch">
-          <h2>Vận hành mọi công ty trên một nền tảng.</h2>
+          <h2>Vận hành toàn bộ công ty trên một nền tảng.</h2>
           <p>
-            Đối tác, đơn hàng, ký duyệt, vận hành, chấm công, tồn kho — quản lý xuyên suốt cho cả
-            công ty Vận chuyển lẫn Thương mại. Chọn công ty đang làm việc sau khi đăng nhập.
+            Đối tác, đơn hàng, ký duyệt, tồn kho, chấm công — quản lý xuyên suốt cho đội ngũ LIVI.
           </p>
         </div>
-        <div className="foot">© {new Date().getFullYear()}</div>
+        <div className="foot">© {new Date().getFullYear()} LIVI</div>
       </div>
 
       <div className="login-form-side">

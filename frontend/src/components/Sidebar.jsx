@@ -190,12 +190,16 @@ export default function Sidebar({ user }) {
         <NavItem to="/order-receiving" icon={ICONS.orderReceiving}>
           Chờ nhận hàng
         </NavItem>
-        <NavItem to="/shipments" icon={ICONS.shipments}>
-          Kiện hàng
-        </NavItem>
-        <NavItem to="/shipment-batches" icon={ICONS.batches}>
-          Quản lý vận hành
-        </NavItem>
+        {activeCompany?.business_type === "transport" && (
+          <>
+            <NavItem to="/shipments" icon={ICONS.shipments}>
+              Kiện hàng
+            </NavItem>
+            <NavItem to="/shipment-batches" icon={ICONS.batches}>
+              Quản lý vận hành
+            </NavItem>
+          </>
+        )}
 
         {(user?.is_manager || user?.is_supply) && (
           <>
