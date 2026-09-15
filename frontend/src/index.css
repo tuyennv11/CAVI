@@ -1,31 +1,31 @@
 :root {
-  --ink: #101a14;
-  --muted: #5c6b61;
-  --faint: #8b9a91;
-  --line: #e2e8e3;
-  --line-strong: #d3dcd6;
-  --bg: #f6f8f6;
+  --ink: #1c1213;
+  --muted: #6b5c5d;
+  --faint: #9c8b8c;
+  --line: #e8e0e1;
+  --line-strong: #dccfd0;
+  --bg: #f8f5f5;
   --surface: #ffffff;
-  --surface-muted: #eef3ef;
+  --surface-muted: #f4eced;
 
-  --primary: #0f7a45;
+  --primary: #d81e3e;
   --primary-ink: #ffffff;
-  --primary-soft: #e5f5ec;
-  --primary-dark: #0b5c34;
-  --primary-darker: #073d23;
+  --primary-soft: #fce7ea;
+  --primary-dark: #a3172f;
+  --primary-darker: #6e0f20;
 
   --gold: #9a6b12;
   --gold-soft: #fbf1dc;
 
-  --sidebar-bg: #08120d;
-  --sidebar-bg-raised: #0e1c14;
-  --sidebar-ink: #9bb0a2;
+  --sidebar-bg: #150a0b;
+  --sidebar-bg-raised: #1e1112;
+  --sidebar-ink: #b8a3a5;
   --sidebar-ink-active: #ffffff;
-  --sidebar-active-bg: rgba(20, 176, 96, 0.16);
+  --sidebar-active-bg: rgba(216, 30, 62, 0.18);
   --sidebar-line: rgba(255, 255, 255, 0.07);
 
-  --danger: #c0342a;
-  --danger-soft: #fbeae8;
+  --danger: #c0431f;
+  --danger-soft: #fbede6;
   --success: #0d8c78;
   --success-soft: #e6f7f3;
   --warning: #a15a09;
@@ -268,10 +268,10 @@ a:hover { text-decoration: underline; }
   justify-content: space-between;
   padding: 48px;
   background:
-    radial-gradient(720px 480px at 15% 15%, rgba(34, 193, 122, 0.30), transparent 60%),
-    radial-gradient(640px 520px at 85% 90%, rgba(11, 92, 52, 0.55), transparent 60%),
+    radial-gradient(720px 480px at 15% 15%, rgba(232, 90, 120, 0.32), transparent 60%),
+    radial-gradient(640px 520px at 85% 90%, rgba(163, 23, 47, 0.55), transparent 60%),
     linear-gradient(160deg, var(--primary-darker), var(--sidebar-bg) 75%);
-  color: #eafaf1;
+  color: #fdeef0;
   overflow: hidden;
 }
 .login-visual::after {
@@ -289,8 +289,8 @@ a:hover { text-decoration: underline; }
 .login-visual .pitch h2 {
   font-size: clamp(26px, 3vw, 34px); font-weight: 700; line-height: 1.25; margin: 0 0 14px; color: #fff;
 }
-.login-visual .pitch p { color: rgba(234, 250, 241, 0.75); font-size: 14.5px; line-height: 1.6; margin: 0; }
-.login-visual .foot { position: relative; z-index: 1; color: rgba(234, 250, 241, 0.5); font-size: 12px; }
+.login-visual .pitch p { color: rgba(253, 238, 240, 0.75); font-size: 14.5px; line-height: 1.6; margin: 0; }
+.login-visual .foot { position: relative; z-index: 1; color: rgba(253, 238, 240, 0.5); font-size: 12px; }
 
 .login-form-side {
   flex: 1;
