@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     "hr",
     "ops",
     "inventory",
+    "finance",
 ]
 
 MIDDLEWARE = [
@@ -134,6 +136,7 @@ SIMPLE_JWT = {
 }
 
 # --- CORS (React dev server + production frontend origin) ---
+CORS_ALLOW_HEADERS = (*default_headers, "x-company-id")
 CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.environ.get(

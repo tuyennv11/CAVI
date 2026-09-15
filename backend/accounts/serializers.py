@@ -25,6 +25,15 @@ class MeSerializer(serializers.Serializer):
     is_supply = serializers.SerializerMethodField()
     role_label = serializers.SerializerMethodField()
     companies = serializers.SerializerMethodField()
+    can_view_company_hub = serializers.SerializerMethodField()
+    can_use_notifications = serializers.SerializerMethodField()
+
+    def get_can_use_notifications(self, user):
+        return bool(getattr(settings, "CAVI_NOTIFICATIONS_ENABLED", False) and user.is_active)
+
+    def get_can_view_company_hub(self, user):
+        return bool(getattr(settings, "COMPANY_HUB_ENABLED", False) and user.is_active and user.is_superuser
+                    and user.username == getattr(settings, "COMPANY_HUB_OWNER_USERNAME", None))
 
     def get_full_name(self, user):
         return user.get_full_name() or user.username

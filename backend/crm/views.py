@@ -7,6 +7,7 @@ from decimal import Decimal
 import qrcode
 from django.conf import settings
 from django.contrib.staticfiles import finders
+from django.db import transaction
 from django.db.models import DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
@@ -23,6 +24,7 @@ from rest_framework.views import APIView
 from accounts.roles import is_manager, is_supply
 from approvals.models import ApprovalRequest
 from companies.mixins import CompanyScopedMixin
+from config.notification_events import notification_snapshot, notify_change
 from inventory.models import StockMovement, Warehouse
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -201,8 +203,10 @@ class PartnerViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         )
 
 
-class ActivityViewSet(CompanyScopedMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    """Chỉ hỗ trợ cập nhật (vd đánh dấu đã nhắc follow-up) — tạo/xem hoạt động đi qua PartnerViewSet.activities."""
+class ActivityViewSet(CompanyScopedMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """Xem một hoạt động theo liên kết; tạo/danh sách vẫn qua PartnerViewSet.activities.
+    Retrieve uses the same role/assignment/company restrictions as update.
+    """
 
     serializer_class = ActivitySerializer
     permission_classes = [IsAuthenticated]
@@ -240,8 +244,16 @@ class TaskViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
             qs = qs.filter(due_at__date__gt=today, status__in=open_statuses)
         return qs
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, company=self.get_active_company())
+        obj = serializer.save(created_by=self.request.user, company=self.get_active_company())
+        notify_change("task", obj, self.request.user)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        before = notification_snapshot(serializer.instance, "task")
+        obj = serializer.save()
+        notify_change("task", obj, self.request.user, before)
 
 
 class PriceInquiryViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
@@ -366,14 +378,22 @@ class QuotationViewSet(
             return qs
         return qs.filter(inquiry__customer__assigned_to=self.request.user)
 
+    @transaction.atomic
     def perform_update(self, serializer):
+        obj = get_object_or_404(self.get_queryset().select_related(None).select_for_update(), pk=self.kwargs["pk"])
+        if obj.pending_approval_id and obj.pending_approval.status == ApprovalRequest.Status.PENDING:
+            raise ValidationError("Báo giá đang chờ duyệt; không ghi đè nội dung đang được xem xét.")
+        serializer.instance = obj
         # Đây là hành động "Lưu báo giá" thật sự (PATCH trực tiếp lên Quotation) — đánh dấu saved_at
         # để phân biệt với báo giá vừa tạo/đang chờ duyệt, chưa từng được lưu lần nào.
         serializer.save(saved_at=timezone.now())
 
     @action(detail=True, methods=["post"], url_path="submit-for-approval")
+    @transaction.atomic
     def submit_for_approval(self, request, pk=None):
-        quotation = self.get_object()
+        quotation = get_object_or_404(self.get_queryset().select_related(None).select_for_update(), pk=self.kwargs["pk"])
+        if quotation.pending_approval_id and quotation.pending_approval.status == ApprovalRequest.Status.PENDING:
+            raise ValidationError("Đã có đề xuất đang chờ duyệt cho báo giá này; không gửi trùng.")
         lines_data = request.data.get("lines", [])
         note = request.data.get("note", quotation.note)
         total = sum(
@@ -405,16 +425,31 @@ class QuotationViewSet(
         # nên nếu chỉ dựa vào state phía trình duyệt thì tải lại trang là mất, nhìn như chưa lưu gì.
         quotation.pending_snapshot = {"note": note, "lines": lines_data}
         quotation.save()
+        notify_change("approval", approval, request.user)
         return Response(QuotationSerializer(quotation).data, status=201)
 
     @action(detail=True, methods=["get"], url_path="pdf")
     def pdf(self, request, pk=None):
+        quotation = self.get_object()
+        if getattr(settings, "CAVI_QUOTATION_PDF_ATLAS", False) is True:
+            from .quotation_pdf import QuotationPDFError, document_from_quotation, render_quotation_pdf
+
+            try:
+                pdf_bytes = render_quotation_pdf(document_from_quotation(quotation))
+            except QuotationPDFError as exc:
+                raise ValidationError(str(exc)) from exc
+            filename = slugify(f"bao-gia-test-{quotation.id}-{quotation.inquiry.customer.name}") + ".pdf"
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response["Cache-Control"] = "private, no-store"
+            response["X-Content-Type-Options"] = "nosniff"
+            return response
+
         # Import ở đây, không để trên đầu file — WeasyPrint cần thư viện hệ thống (pango/cairo/gdk-pixbuf)
         # chỉ có trên máy chủ Linux lúc deploy, import ở module-level sẽ làm cả app không chạy nổi trên
         # máy dev không có các thư viện đó.
         from weasyprint import HTML
 
-        quotation = self.get_object()
         lines = quotation.lines.all()
         line_rows = [
             {
@@ -755,8 +790,19 @@ class NoticeViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         if request.method not in ("GET", "HEAD", "OPTIONS") and not is_manager(request.user):
             raise PermissionDenied("Chỉ Quản lý mới đăng được thông báo nội bộ.")
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # TEST posts belong to the selected company. Do not silently broadcast
+        # to every company because the old form has no company selector.
+        scope = {"company": self.get_active_company()} if getattr(settings, "CAVI_NOTIFICATIONS_ENABLED", False) else {}
+        obj = serializer.save(created_by=self.request.user, **scope)
+        notify_change("notice", obj, self.request.user)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        before = notification_snapshot(serializer.instance, "notice")
+        obj = serializer.save()
+        notify_change("notice", obj, self.request.user, before)
 
 
 class DashboardStatsView(CompanyScopedMixin, APIView):

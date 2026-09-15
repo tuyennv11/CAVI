@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
@@ -66,6 +67,18 @@ class EmployeeViewSet(
     permission_classes = [IsAuthenticated, IsManagerOrHRForWrite]
     search_fields = ["employee_code", "user__username", "user__first_name", "user__last_name", "phone", "preferred_name"]
     pagination_class = None
+
+    @action(detail=False, methods=["get"], url_path=r"by-user/(?P<user_id>[1-9][0-9]*)")
+    def by_user(self, request, user_id=None):
+        # A user FK is not a Profile PK. Resolve only inside the caller's existing
+        # visibility AND current company; never create a missing profile on GET.
+        profile = get_object_or_404(
+            self.get_queryset().filter(companies=self.get_active_company()), user_id=user_id
+        )
+        self.check_object_permissions(request, profile)
+        response = Response({"id": profile.pk})
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     def get_queryset(self):
         qs = Profile.objects.select_related("user", "manager", "country", "province", "district", "ward")

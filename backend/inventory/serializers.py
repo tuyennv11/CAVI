@@ -31,6 +31,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class StockMovementSerializer(serializers.ModelSerializer):
+    reference_order = serializers.IntegerField(source="reference_order_item.order_id", read_only=True, default=None)
     product_name = serializers.CharField(source="product.name", read_only=True)
     product_sku = serializers.CharField(source="product.sku", read_only=True)
     warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
@@ -52,6 +53,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
             "supplier",
             "supplier_name",
             "reference_order_item",
+            "reference_order",
             "note",
             "created_by",
             "created_by_name",

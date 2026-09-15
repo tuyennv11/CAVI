@@ -48,7 +48,7 @@ class StockMovementViewSet(
 
     def get_queryset(self):
         return self.scope_by_company(
-            StockMovement.objects.select_related("product", "warehouse", "supplier", "created_by").all()
+            StockMovement.objects.select_related("product", "warehouse", "supplier", "created_by", "reference_order_item").all()
         )
 
     def get_serializer_context(self):

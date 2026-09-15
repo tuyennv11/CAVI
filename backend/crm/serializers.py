@@ -3,8 +3,10 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from accounts.roles import is_manager
 from approvals.models import ApprovalRequest
 from companies.models import Company
+from companies.utils import get_active_company
 
 from .models import (
     Activity,
@@ -262,6 +264,7 @@ class QuotationLineSerializer(serializers.ModelSerializer):
 
 
 class QuotationSerializer(serializers.ModelSerializer):
+    customer_id = serializers.IntegerField(source="inquiry.customer_id", read_only=True)
     customer_name = serializers.CharField(source="inquiry.customer.name", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     lines = QuotationLineSerializer(many=True)
@@ -280,6 +283,7 @@ class QuotationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "inquiry",
+            "customer_id",
             "customer_name",
             "note",
             "lines",
@@ -295,7 +299,7 @@ class QuotationSerializer(serializers.ModelSerializer):
             "updated_at",
             "saved_at",
         ]
-        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at", "pending_snapshot", "saved_at"]
+        read_only_fields = ["inquiry", "created_by", "created_at", "updated_at", "pending_approval", "pending_snapshot", "saved_at"]
 
     def get_total(self, obj):
         return sum((line.line_total for line in obj.lines.all()), Decimal("0"))
@@ -493,13 +497,14 @@ class NoticeSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    product = serializers.IntegerField(source="product_id", read_only=True, default=None)
     line_total = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     line_profit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
-            "id", "description", "quantity", "actual_quantity", "unit_price", "unit_cost",
+            "id", "product", "description", "quantity", "actual_quantity", "unit_price", "unit_cost",
             "line_total", "line_profit",
         ]
         # actual_quantity chỉ được ghi qua OrderViewSet.record_actual (Vận hành), không sửa tự do
@@ -571,6 +576,19 @@ class OrderSerializer(serializers.ModelSerializer):
             "floor_price",
             "ceiling_price",
         ]
+
+    def validate_customer(self, customer):
+        # Queryset scoping protects reads of existing orders, but does not stop
+        # a crafted POST/PATCH from referencing another employee's customer.
+        request = self.context.get("request")
+        if request is None:
+            raise serializers.ValidationError("Thiếu ngữ cảnh người dùng và công ty để xác minh khách hàng.")
+        company = get_active_company(request)
+        if not customer.is_customer or not customer.companies.filter(pk=company.pk).exists():
+            raise serializers.ValidationError("Khách hàng không thuộc công ty đang thao tác.")
+        if not is_manager(request.user) and customer.assigned_to_id != request.user.pk:
+            raise serializers.ValidationError("Bạn chỉ được lập hoặc đổi đơn cho khách hàng mình phụ trách.")
+        return customer
 
     def create(self, validated_data):
         items_data = validated_data.pop("items")
