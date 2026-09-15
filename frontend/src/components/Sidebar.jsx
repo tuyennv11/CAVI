@@ -156,12 +156,14 @@ function CompanySwitcher() {
   );
 }
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, open, onClose }) {
   const { activeCompany } = useAuth();
   return (
-    <aside className="sidebar">
-      <CompanySwitcher />
-      <nav className="sidebar-nav">
+    <>
+      {open && <div className="sidebar-backdrop" onClick={onClose} />}
+      <aside className={`sidebar${open ? " open" : ""}`}>
+        <CompanySwitcher />
+        <nav className="sidebar-nav" onClick={onClose}>
         <NavItem to="/" end icon={ICONS.workspace}>
           Làm việc
         </NavItem>
@@ -236,17 +238,18 @@ export default function Sidebar({ user }) {
           Hồ sơ cá nhân
         </NavItem>
       </nav>
-      {user && (
-        <div className="sidebar-foot">
-          <div className="sidebar-user">
-            <Avatar name={user.full_name} />
-            <div>
-              <div className="name">{user.full_name}</div>
-              <div className="role">{user.role_label}</div>
+        {user && (
+          <div className="sidebar-foot">
+            <div className="sidebar-user">
+              <Avatar name={user.full_name} />
+              <div>
+                <div className="name">{user.full_name}</div>
+                <div className="role">{user.role_label}</div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </aside>
+        )}
+      </aside>
+    </>
   );
 }

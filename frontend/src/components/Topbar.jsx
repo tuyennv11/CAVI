@@ -17,7 +17,7 @@ function titleFor(pathname) {
   return "";
 }
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick }) {
   const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,6 +29,11 @@ export default function Topbar() {
 
   return (
     <header className="topbar">
+      <button className="menu-toggle" onClick={onMenuClick} aria-label="Mở menu">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M3 5.5h14M3 10h14M3 14.5h14" strokeLinecap="round" />
+        </svg>
+      </button>
       <span className="page-title">{titleFor(location.pathname)}</span>
       <span className="spacer" />
       <button className="secondary" onClick={handleLogout}>

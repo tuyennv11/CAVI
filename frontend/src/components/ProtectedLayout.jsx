@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { mediaUrl } from "../api";
 import { useAuth } from "../AuthContext";
@@ -6,6 +7,7 @@ import Topbar from "./Topbar";
 
 export default function ProtectedLayout() {
   const { user, loading, activeCompany, switchCompany } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) return <p className="center-msg">Đang tải...</p>;
   if (!user) return <Navigate to="/login" replace />;
@@ -36,9 +38,9 @@ export default function ProtectedLayout() {
 
   return (
     <div className="app-shell">
-      <Sidebar user={user} />
+      <Sidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="app-main">
-        <Topbar />
+        <Topbar onMenuClick={() => setSidebarOpen(true)} />
         <main className="app-content">
           <Outlet />
         </main>
