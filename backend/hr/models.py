@@ -5,24 +5,10 @@ from companies.models import Company
 from geo.models import Country, District, Province, Ward
 
 
-class Room(models.Model):
-    """Phòng — 1 nhân sự có thể thuộc nhiều phòng cùng lúc. Chưa gắn logic gì (quyền hạn, lọc dữ
-    liệu...) — chỉ là danh mục phân loại, làm nền cho nhu cầu sau này."""
-
-    name = models.CharField("Tên phòng", max_length=100, unique=True)
-
-    class Meta:
-        verbose_name = "Phòng"
-        verbose_name_plural = "Phòng"
-        ordering = ["name"]
-
-    def __str__(self):
-        return self.name
-
-
 class Department(models.Model):
-    """Bộ phận — khác với Room (1 người thuộc nhiều Phòng), 1 người chỉ thuộc đúng 1 Bộ phận tại 1
-    thời điểm (xem Profile.department: ForeignKey, không phải ManyToMany)."""
+    """Bộ phận — 1 người chỉ thuộc đúng 1 Bộ phận tại 1 thời điểm (xem Profile.department:
+    ForeignKey). (Trước đây có thêm "Room"/Phòng cho phép thuộc nhiều phòng cùng lúc — đã gỡ bỏ hẳn,
+    chưa từng dùng thật.)"""
 
     # Tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay, giống employee_code.
     code = models.CharField("Id bộ phận", max_length=20, unique=True, blank=True, editable=False)
@@ -119,7 +105,6 @@ class Profile(models.Model):
     # Nhân viên có thể thuộc NHIỀU công ty cùng lúc (vd Quản lý/Kế toán làm việc cho cả CAVI lẫn
     # LIVI) — thay cho company_code (text tự do, không có ràng buộc, không dùng ở logic nào).
     companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="staff", blank=True)
-    rooms = models.ManyToManyField(Room, verbose_name="Phòng", related_name="staff", blank=True)
     # Chức vụ quyết định luôn Bộ phận + Cấp bậc (xem save() và model Position) — không còn 2 field
     # job_title (chữ tự do)/level (danh sách chọn) độc lập như trước.
     position = models.ForeignKey(

@@ -12,21 +12,8 @@ from .models import (
     Position,
     Profile,
     ProfileChangeLog,
-    Room,
     TrainingRecord,
 )
-
-
-class RoomResource(ExcelModelResource):
-    class Meta:
-        model = Room
-
-
-@admin.register(Room)
-class RoomAdmin(ImportExportModelAdmin):
-    resource_classes = [RoomResource]
-    list_display = ("name",)
-    search_fields = ("name",)
 
 
 class DepartmentResource(ExcelModelResource):
@@ -164,12 +151,12 @@ class ProfileAdmin(ImportExportModelAdmin):
     resource_classes = [ProfileResource]
     form = ProfileAdminForm
     # Thứ tự cột khớp đúng file Excel mẫu anh gửi (Id nhân sự, Tên đăng nhập, Tên nhân sự, Tên
-    # thường gọi, Chức vụ, Cấp bậc, Bộ Phận, Phòng, Phân quyền, Mô tả công việc...) — chỉ bỏ đúng 1
-    # cột "Mật khẩu" vì lý do bảo mật (xem ProfileResource/ProfileAdminForm), không hiện dạng chữ ở
-    # bất kỳ đâu.
+    # thường gọi, Chức vụ, Cấp bậc, Bộ Phận, Phân quyền, Mô tả công việc...) — chỉ bỏ đúng 1 cột
+    # "Mật khẩu" vì lý do bảo mật (xem ProfileResource/ProfileAdminForm), không hiện dạng chữ ở bất
+    # kỳ đâu. (Đã bỏ hẳn cột "Phòng" — tính năng Room không dùng tới, gỡ khỏi hệ thống.)
     list_display = (
         "employee_code", "username_display", "full_name_display", "preferred_name", "position",
-        "department", "rooms_display", "groups_display", "job_description",
+        "department", "groups_display", "job_description",
         "date_of_birth", "id_number", "phone", "country", "district", "province",
         "street_address", "ward", "avatar", "personnel_document_number", "hired_at",
         "contract_started_at", "contract_expires_at", "employment_type", "gender", "manager",
@@ -184,7 +171,7 @@ class ProfileAdmin(ImportExportModelAdmin):
     # department chỉ hiện để xem (editable=False ở model, tự điền theo Chức vụ) — liệt kê ở đây để
     # form hiện được giá trị hiện tại thay vì ẩn hẳn đi.
     readonly_fields = ("employee_code", "department")
-    filter_horizontal = ("companies", "rooms")
+    filter_horizontal = ("companies",)
     inlines = [EmployeeDocumentInline, EmergencyContactInline, TrainingRecordInline]
     # Quận/Huyện, Phường/Xã có hàng trăm/hàng chục nghìn dòng — bắt buộc phải là ô tìm kiếm (autocomplete)
     # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager`/`position` cũng autocomplete
@@ -198,10 +185,6 @@ class ProfileAdmin(ImportExportModelAdmin):
     @admin.display(description="Tên nhân sự")
     def full_name_display(self, obj):
         return obj.user.get_full_name() or obj.user.username
-
-    @admin.display(description="Phòng")
-    def rooms_display(self, obj):
-        return ", ".join(r.name for r in obj.rooms.all()) or "—"
 
     @admin.display(description="Phân quyền")
     def groups_display(self, obj):

@@ -15,9 +15,9 @@ from django.urls import reverse
 APP_ORDER = ["companies", "hr", "auth", "crm", "inventory", "ops", "approvals", "geo"]
 
 MODEL_ORDER = {
-    # Hồ sơ nhân sự trước, Chức vụ/Bộ phận/Phòng là danh mục tra cứu, Nhật ký thay đổi cuối cùng (ít
-    # khi cần mở trực tiếp, chỉ để tra cứu khi cần).
-    "hr": ["Profile", "EmployeeDocument", "EmergencyContact", "Position", "Department", "Room", "ProfileChangeLog"],
+    # Hồ sơ nhân sự trước, Chức vụ/Bộ phận là danh mục tra cứu ngay sau, rồi Giấy tờ nhân sự/Liên hệ
+    # khẩn cấp, Nhật ký thay đổi cuối cùng (ít khi cần mở trực tiếp, chỉ để tra cứu khi cần).
+    "hr": ["Profile", "Position", "Department", "EmployeeDocument", "EmergencyContact", "ProfileChangeLog"],
     # Kho trước, Hàng hoá sau (hàng hoá cần chọn kho lúc nhập), Nhật ký nhập-xuất cuối (tra cứu).
     "inventory": ["Warehouse", "Product", "StockMovement"],
     # Tài khoản đăng nhập trước, Nhóm quyền sau (gán nhóm cho tài khoản, không phải ngược lại).
