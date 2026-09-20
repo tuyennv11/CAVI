@@ -6,7 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 from companies.models import Company
-from geo.models import Ward
+from geo.models import Country, District, Province, Ward
 from inventory.models import Product
 
 
@@ -299,10 +299,34 @@ class PriceInquiry(models.Model):
         QUOTED = "quoted", "Đã chốt giá"
         CANCELLED = "cancelled", "Huỷ"
 
+    # Mã hỏi giá tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
+    code = models.CharField("Id hỏi giá", max_length=20, unique=True, blank=True, editable=False)
     customer = models.ForeignKey(
         Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="price_inquiries"
     )
     company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_inquiries")
+    # 1 Hỏi giá chỉ cho đúng 1 loại hàng — không cần bảng dòng riêng như Dòng dịch vụ cấu thành
+    # (PriceInquiryQuoteLine, dùng cho phía Cung ứng báo giá VỐN, khác mục đích với 3 field này).
+    item_name = models.CharField("Tên hàng", max_length=255, blank=True)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
+    unit = models.CharField("Đơn vị", max_length=50, blank=True)
+    # Điểm giao hàng — cùng cấu trúc Quốc gia/Tỉnh/Quận/Phường/Số nhà với hr.Profile (chuẩn hoá được
+    # tới cấp Phường/Xã cho Việt Nam; Phường/Xã chưa có dữ liệu chuẩn cho nước khác thì để trống, ghi
+    # chi tiết vào street_address). Không có "Điểm lấy hàng" — hỏi giá chỉ cần biết giao đến đâu, lấy
+    # hàng ở đâu xử lý sau ở bước Đơn hàng (xem Order.pickup_point/pickup_ward).
+    country = models.ForeignKey(
+        Country, verbose_name="Quốc gia", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    province = models.ForeignKey(
+        Province, verbose_name="Tỉnh/Thành phố", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    district = models.ForeignKey(
+        District, verbose_name="Quận/Huyện", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    ward = models.ForeignKey(
+        Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
     description = models.TextField("Mô tả", blank=True)
     image = models.FileField("Hình ảnh", upload_to="price_inquiries/%Y/%m/", null=True, blank=True)
     status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.OPEN)
@@ -331,6 +355,15 @@ class PriceInquiry(models.Model):
 
     def __str__(self):
         return f"Hỏi giá #{self.pk} — {self.customer}"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = PriceInquiry.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            while PriceInquiry.objects.filter(code=f"HG{next_number:06d}").exists():
+                next_number += 1
+            self.code = f"HG{next_number:06d}"
+        super().save(*args, **kwargs)
 
 
 class PriceInquiryMessage(models.Model):

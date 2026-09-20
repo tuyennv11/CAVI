@@ -276,12 +276,18 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
 @admin.register(PriceInquiry)
 class PriceInquiryAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
     resource_classes = [PriceInquiryResource]
+    # Khớp đúng cột + thứ tự với PriceInquiryResource (xem quy tắc: trang Admin luôn là bản xem trực
+    # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau).
     list_display = (
-        "id", "customer_link", "status", "description", "cost_price", "floor_price", "ceiling_price",
-        "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by", "created_at", "updated_at",
+        "code", "customer_link", "company", "item_name", "quantity", "unit", "country", "province",
+        "district", "ward", "street_address", "description", "status", "cost_price", "floor_price",
+        "ceiling_price", "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by",
+        "created_at", "updated_at",
     )
     list_filter = ("status",)
-    search_fields = ("customer__name",)
+    search_fields = ("code", "customer__name", "item_name")
+    readonly_fields = ("code",)
+    autocomplete_fields = ["country", "province", "district", "ward"]
     inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
 
     @admin.display(description="Khách hàng")

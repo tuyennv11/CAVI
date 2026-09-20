@@ -352,6 +352,10 @@ class PriceInquirySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     quoted_by_name = serializers.CharField(source="quoted_by.username", read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
+    country_name = serializers.CharField(source="country.name", read_only=True, default=None)
+    province_name = serializers.CharField(source="province.name", read_only=True, default=None)
+    district_name = serializers.CharField(source="district.name", read_only=True, default=None)
+    ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
     messages = PriceInquiryMessageSerializer(many=True, read_only=True)
     quote_lines = PriceInquiryQuoteLineSerializer(many=True, read_only=True)
     quotations = QuotationSerializer(many=True, read_only=True)
@@ -360,8 +364,21 @@ class PriceInquirySerializer(serializers.ModelSerializer):
         model = PriceInquiry
         fields = [
             "id",
+            "code",
             "customer",
             "customer_name",
+            "item_name",
+            "quantity",
+            "unit",
+            "country",
+            "country_name",
+            "province",
+            "province_name",
+            "district",
+            "district_name",
+            "ward",
+            "ward_name",
+            "street_address",
             "description",
             "image",
             "status",
@@ -382,6 +399,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "quotations",
         ]
         read_only_fields = [
+            "code",
             "status",
             "cost_price",
             "floor_price",
