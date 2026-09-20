@@ -42,16 +42,17 @@ class NoticeResource(ExcelModelResource):
 class ActivityResource(ExcelModelResource):
     class Meta:
         model = Activity
-        # File Excel "Hoạt động đối tác" khớp đúng cột + thứ tự mẫu anh gửi — không lặp lại Đối tác/
-        # Công ty (đã có ngữ cảnh riêng khi xem qua từng Đối tác) hay các cột trách nhiệm/nhật ký hệ
-        # thống (Người thực hiện/phụ trách/tạo, Ngày cập nhật). Các field bị bỏ KHÔNG bị xoá khỏi
-        # model — vẫn dùng bình thường trong app, chỉ ẩn khỏi riêng file Excel xuất/nhập của sheet
-        # này. Dùng "fields" (danh sách + thứ tự tường minh) thay vì "exclude" vì thứ tự mẫu không
-        # trùng thứ tự khai báo field trên model (vd Trạng thái nằm sau Kết quả, không phải đầu).
+        # File Excel "Hoạt động đối tác" khớp đúng cột + thứ tự mẫu anh gửi, cộng thêm "Đối tác" ở
+        # đầu — thiếu cột này thì không biết dòng nào của đối tác nào (mỗi dòng chỉ có ID số, không
+        # tra ngược lại được). Không lặp lại Công ty (Đối tác đã đủ để tra cứu) hay các cột trách
+        # nhiệm/nhật ký hệ thống (Người thực hiện/phụ trách/tạo, Ngày cập nhật) — các field bị bỏ
+        # KHÔNG bị xoá khỏi model, chỉ ẩn khỏi riêng file Excel này. Dùng "fields" (danh sách + thứ
+        # tự tường minh) thay vì "exclude" vì thứ tự mẫu không trùng thứ tự khai báo field trên model
+        # (vd Trạng thái nằm sau Kết quả, không phải đầu).
         fields = (
-            "id", "activity_type", "title", "activity_at", "contact_person", "content", "result",
-            "status", "follow_up_date", "note", "attachment", "related_reference", "created_at",
-            "related_order", "follow_up_done", "follow_up_time",
+            "id", "customer", "activity_type", "title", "activity_at", "contact_person", "content",
+            "result", "status", "follow_up_date", "note", "attachment", "related_reference",
+            "created_at", "related_order", "follow_up_done", "follow_up_time",
         )
 
 
@@ -223,14 +224,19 @@ class ActivityAdmin(ImportExportMixin, admin.ModelAdmin):
     # thương lượng với nhà cung cấp), nên dropdown "Đối tác" phải cho chọn mọi Đối tác, không chỉ
     # is_customer=True.
     # Bảng hiện trên trang Admin khớp đúng cột + thứ tự với file Excel (ActivityResource) — trang này
-    # đóng vai trò như 1 "sheet" sống, phải nhất quán với file xuất ra, không lệch nhau.
+    # đóng vai trò như 1 "sheet" sống, phải nhất quán với file xuất ra, không lệch nhau. "Đối tác" ở
+    # đầu bảng — thiếu cột này thì không biết dòng nào của đối tác nào.
     list_display = (
-        "activity_type", "title", "activity_at", "contact_person", "content", "result", "status",
-        "follow_up_date", "note", "attachment", "related_reference", "created_at", "related_order",
-        "follow_up_done", "follow_up_time",
+        "customer_link", "activity_type", "title", "activity_at", "contact_person", "content",
+        "result", "status", "follow_up_date", "note", "attachment", "related_reference",
+        "created_at", "related_order", "follow_up_done", "follow_up_time",
     )
     list_filter = ("activity_type", "status")
     search_fields = ("title", "content")
+
+    @admin.display(description="Đối tác")
+    def customer_link(self, obj):
+        return linked_fk(obj.customer)
 
 
 @admin.register(Task)
