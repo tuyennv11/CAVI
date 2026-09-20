@@ -104,18 +104,17 @@ class ProfileAdminForm(forms.ModelForm):
 class ProfileAdmin(ImportExportModelAdmin):
     resource_classes = [ProfileResource]
     form = ProfileAdminForm
-    # Hiện gần hết field ngay trên bảng danh sách (kiểu Excel — kéo ngang xem hết, không phải bấm
-    # vào từng dòng mới thấy) — chỉ tách riêng khi dữ liệu THẬT SỰ cần tách: Lương/Thưởng-phạt (nhạy
-    # cảm, khác quyền xem) đăng ký thành mục riêng bên ngoài; Giấy tờ/Liên hệ khẩn cấp/Đào tạo là
-    # quan hệ 1-nhiều (1 nhân viên có nhiều dòng) nên không thể nhét vào 1 cột, để inline bên dưới
-    # trang chi tiết. avatar (ảnh) không có ý nghĩa hiển thị dạng chữ nên bỏ qua ở bảng danh sách.
+    # Thứ tự cột khớp đúng file Excel mẫu anh gửi (Id nhân sự, Tên đăng nhập, Tên nhân sự, Tên
+    # thường gọi, Chức vụ, Cấp bậc, Bộ Phận, Phòng, Phân quyền, Mô tả công việc...) — chỉ bỏ đúng 1
+    # cột "Mật khẩu" vì lý do bảo mật (xem ProfileResource/ProfileAdminForm), không hiện dạng chữ ở
+    # bất kỳ đâu.
     list_display = (
         "employee_code", "username_display", "full_name_display", "preferred_name", "job_title",
-        "level", "department", "rooms_display", "manager", "work_status", "employment_type",
-        "gender", "phone", "date_of_birth", "id_number", "personnel_document_number",
-        "province", "district", "ward", "street_address", "hired_at", "resigned_at",
-        "contract_type", "contract_started_at", "contract_expires_at", "work_location",
-        "education_level", "major", "skills", "job_description",
+        "level", "department", "rooms_display", "groups_display", "job_description",
+        "date_of_birth", "id_number", "phone", "country", "district", "province",
+        "street_address", "ward", "avatar", "personnel_document_number", "hired_at",
+        "contract_started_at", "contract_expires_at", "employment_type", "gender", "manager",
+        "resigned_at", "work_location", "work_status", "education_level", "major", "skills",
     )
     # Bỏ "companies"/"Công ty" khỏi cột hiển thị + bộ lọc — chỉ còn đúng 1 công ty (LIVI) nên giá trị
     # luôn giống nhau ở mọi dòng, không còn tác dụng lọc/phân biệt gì nữa (xem companies/admin.py).
@@ -142,6 +141,10 @@ class ProfileAdmin(ImportExportModelAdmin):
     @admin.display(description="Phòng")
     def rooms_display(self, obj):
         return ", ".join(r.name for r in obj.rooms.all()) or "—"
+
+    @admin.display(description="Phân quyền")
+    def groups_display(self, obj):
+        return ", ".join(g.name for g in obj.user.groups.all()) or "—"
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
