@@ -12,7 +12,13 @@ sách tương ứng theo thứ tự chữ cái — không bị lỗi hay mất t
 from django.contrib import admin
 from django.urls import reverse
 
-APP_ORDER = ["companies", "hr", "auth", "crm", "inventory", "ops", "approvals", "geo"]
+APP_ORDER = ["companies", "hr", "crm", "inventory", "ops", "approvals", "geo"]
+
+# "Người sử dụng"/"Nhóm" (auth.User/Group) — Phân quyền đã gộp thẳng vào trang Hồ sơ nhân sự (xem
+# hr/admin.py ProfileAdminForm) nên không cần 2 trang riêng nữa. Chỉ ẩn khỏi menu/tab/mục lục, KHÔNG
+# xoá dữ liệu và KHÔNG bỏ đăng ký admin — vẫn vào thẳng được qua URL (/admin/auth/user/) khi cần thao
+# tác gốc như tạo tài khoản đăng nhập mới.
+HIDDEN_APPS = {"auth"}
 
 MODEL_ORDER = {
     # Hồ sơ nhân sự trước, Chức vụ/Bộ phận là danh mục tra cứu ngay sau, rồi Giấy tờ nhân sự/Liên hệ
@@ -20,8 +26,6 @@ MODEL_ORDER = {
     "hr": ["Profile", "Position", "Department", "EmployeeDocument", "EmergencyContact", "ProfileChangeLog"],
     # Kho trước, Hàng hoá sau (hàng hoá cần chọn kho lúc nhập), Nhật ký nhập-xuất cuối (tra cứu).
     "inventory": ["Warehouse", "Product", "StockMovement"],
-    # Tài khoản đăng nhập trước, Nhóm quyền sau (gán nhóm cho tài khoản, không phải ngược lại).
-    "auth": ["User", "Group"],
     "crm": [
         "Partner",  # Đối tác — điểm chạm đầu tiên với bên ngoài
         "Activity",  # Tương tác khách hàng — lưu lại mọi lần liên hệ
@@ -61,6 +65,10 @@ _original_get_app_list = admin.AdminSite.get_app_list
 
 def _get_app_list_by_workflow(self, request, app_label=None):
     app_list = _original_get_app_list(self, request, app_label=app_label)
+    # Chỉ lọc bỏ HIDDEN_APPS khỏi danh sách tổng (menu/tab/mục lục) — khi ai đó vào thẳng URL app
+    # (app_label truyền vào cụ thể, vd /admin/auth/) thì vẫn hiện bình thường, không chặn.
+    if app_label is None:
+        app_list = [app for app in app_list if app["app_label"] not in HIDDEN_APPS]
     app_list.sort(key=_app_sort_key)
     for app in app_list:
         order_list = MODEL_ORDER.get(app["app_label"])
