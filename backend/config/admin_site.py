@@ -28,7 +28,7 @@ MODEL_ORDER = {
     "inventory": ["Warehouse", "Product", "StockMovement"],
     "crm": [
         "Partner",  # Đối tác — điểm chạm đầu tiên với bên ngoài
-        "Activity",  # Tương tác khách hàng — lưu lại mọi lần liên hệ
+        "Activity",  # Tương tác với Đối tác (khách hàng lẫn nhà cung cấp) — lưu lại mọi lần liên hệ
         "PriceInquiry",  # Khách hỏi giá — Kinh doanh + Cung ứng phối hợp báo giá vốn
         "PriceListItem",  # Bảng giá dịch vụ — dữ liệu dùng để cấu thành giá trong Hỏi giá/Báo giá
         "PriceInquiryQuoteLine",  # Dòng dịch vụ cấu thành của 1 Hỏi giá

@@ -83,9 +83,10 @@ class PriceListItemResource(ExcelModelResource):
 
 
 class CustomerFieldMixin:
-    """Field "customer" (Khách hàng) trên Order/Activity/PriceInquiry chỉ nên cho chọn Đối tác có
+    """Field "customer" (Khách hàng) trên Order/PriceInquiry chỉ nên cho chọn Đối tác có
     is_customer=True — không thì 1 Đối tác chỉ đăng ký "Nhà cung cấp" (vd Chị Lụa) vẫn hiện ra khi
-    tạo Đơn hàng/Hoạt động khách hàng/Hỏi giá mới, dù field này ghi rõ là "Khách hàng"."""
+    tạo Đơn hàng/Hỏi giá mới, dù field này ghi rõ là "Khách hàng". KHÔNG áp dụng cho Activity (xem
+    ActivityAdmin) — Hoạt động đối tác ghi nhận tương tác với cả khách hàng lẫn nhà cung cấp."""
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "customer":
@@ -205,8 +206,12 @@ class NoticeAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Activity)
-class ActivityAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
+class ActivityAdmin(ImportExportMixin, admin.ModelAdmin):
     resource_classes = [ActivityResource]
+    # KHÔNG dùng CustomerFieldMixin (khác Order/PriceInquiry — 2 cái đó chỉ áp dụng cho khách hàng
+    # thật sự) — Hoạt động đối tác ghi nhận tương tác với CẢ khách hàng lẫn nhà cung cấp (vd gọi điện
+    # thương lượng với nhà cung cấp), nên dropdown "Đối tác" phải cho chọn mọi Đối tác, không chỉ
+    # is_customer=True.
     # Bỏ cột "Tiêu đề" — trùng lặp với "Nội dung" (ActivitySerializer.create() tự suy tiêu đề từ
     # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
     list_display = (
@@ -218,7 +223,7 @@ class ActivityAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
     list_filter = ("activity_type", "status")
     search_fields = ("title", "content")
 
-    @admin.display(description="Khách hàng")
+    @admin.display(description="Đối tác")
     def customer_link(self, obj):
         return linked_fk(obj.customer)
 

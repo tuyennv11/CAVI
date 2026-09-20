@@ -25,7 +25,7 @@ export const TIER_REQUEST_STATUS_LABEL = {
   rejected: "Từ chối",
 };
 
-// --- Hoạt động khách hàng (Timeline) ---
+// --- Hoạt động đối tác (Timeline) ---
 export const ACTIVITY_TYPE_GROUPS = [
   {
     label: "Tương tác",

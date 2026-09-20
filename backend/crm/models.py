@@ -203,7 +203,9 @@ class OrderItem(models.Model):
 
 
 class Activity(models.Model):
-    """Hoạt động khách hàng — lịch sử tương tác/công việc/kinh doanh/chăm sóc theo dòng thời gian."""
+    """Hoạt động đối tác — lịch sử tương tác/công việc/kinh doanh/chăm sóc theo dòng thời gian. Gắn
+    với 1 Đối tác (Partner) nói chung, không riêng khách hàng — Partner có thể vừa là khách hàng vừa
+    là nhà cung cấp (is_customer/is_supplier độc lập), nên hoạt động ở đây cũng áp dụng cho cả 2."""
 
     class ActivityType(models.TextChoices):
         # Tương tác
@@ -241,9 +243,13 @@ class Activity(models.Model):
         DONE = "done", "Hoàn thành"
         CANCELLED = "cancelled", "Huỷ"
 
-    customer = models.ForeignKey(Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="activities")
+    # Thứ tự field khớp đúng thứ tự cột lúc xuất Excel (xem ExcelModelResource) — nhóm theo: đối
+    # tượng (đối tác/công ty/loại/trạng thái/tiêu đề) -> thời điểm -> người liên quan -> nội dung chi
+    # tiết -> nhóm theo dõi lại -> tham chiếu liên quan -> nhật ký tạo/sửa.
+    customer = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="activities")
     company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="activities")
     activity_type = models.CharField("Loại hoạt động", max_length=20, choices=ActivityType.choices)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
     title = models.CharField("Tiêu đề", max_length=255)
     activity_at = models.DateTimeField("Ngày giờ", default=timezone.now)
     performed_by = models.ForeignKey(
@@ -256,15 +262,14 @@ class Activity(models.Model):
     contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
     content = models.TextField("Nội dung", blank=True)
     result = models.TextField("Kết quả", blank=True)
-    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
+    note = models.TextField("Ghi chú", blank=True)
+    attachment = models.FileField("File đính kèm", upload_to="activities/%Y/%m/", null=True, blank=True)
     follow_up_date = models.DateField("Ngày cần theo dõi lại", null=True, blank=True)
     # Tuỳ chọn — vd khách hẹn "15h gọi lại" thì ghi rõ giờ, còn hẹn kiểu "thứ 4 tuần sau" thì để trống.
     follow_up_time = models.TimeField("Giờ hẹn nhắc", null=True, blank=True)
     # Tách riêng khỏi `status` — trạng thái hoạt động gốc (vd cuộc gọi đã "Hoàn thành") không
     # đồng nghĩa với việc đã nhắc/xử lý xong follow-up gắn với nó.
     follow_up_done = models.BooleanField("Đã nhắc việc cần theo dõi lại", default=False)
-    note = models.TextField("Ghi chú", blank=True)
-    attachment = models.FileField("File đính kèm", upload_to="activities/%Y/%m/", null=True, blank=True)
     related_order = models.ForeignKey(
         Order, verbose_name="Đơn hàng liên quan", on_delete=models.SET_NULL, null=True, blank=True, related_name="activities"
     )
@@ -279,8 +284,8 @@ class Activity(models.Model):
 
     class Meta:
         ordering = ["-activity_at"]
-        verbose_name = "Hoạt động khách hàng"
-        verbose_name_plural = "Hoạt động khách hàng"
+        verbose_name = "Hoạt động đối tác"
+        verbose_name_plural = "Hoạt động đối tác"
 
     def __str__(self):
         return f"{self.get_activity_type_display()}: {self.title}"
@@ -531,7 +536,7 @@ class QuotationLine(models.Model):
 
 
 class Task(models.Model):
-    """Công việc — có thể tạo độc lập, từ một Hoạt động khách hàng, hoặc từ Chat."""
+    """Công việc — có thể tạo độc lập, từ một Hoạt động đối tác, hoặc từ Chat."""
 
     class Priority(models.TextChoices):
         LOW = "low", "Thấp"
