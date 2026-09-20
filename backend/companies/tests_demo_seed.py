@@ -134,14 +134,13 @@ class SyntheticFixtureTests(TestCase):
         self.assertEqual(Order.objects.count(), 0)
         self.assertEqual(Task.objects.count(), 0)
 
-    def test_changed_builtin_catalogue_is_not_treated_as_an_empty_database(self):
-        item = PriceListItem.objects.first()
-        item.name = "Catalogue edited by owner"
-        item.save(update_fields=["name"])
+    def test_refuses_database_with_existing_price_list_item(self):
+        PriceListItem.objects.create(
+            company=Company.objects.get(code="LIVI"), category=PriceListItem.Category.I,
+            group_name="Nhóm thử", group_code="TEST", item_code="TEST-001", name="Dịch vụ thử",
+        )
         with self.assertRaises(CommandError):
             self.seed()
-        item.refresh_from_db()
-        self.assertEqual(item.name, "Catalogue edited by owner")
         self.assertEqual(get_user_model().objects.count(), 0)
 
 

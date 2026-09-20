@@ -2,8 +2,6 @@
 
 from datetime import timedelta
 from decimal import Decimal
-from collections import Counter
-from importlib import import_module
 
 from django.apps import apps
 from django.conf import settings
@@ -44,32 +42,15 @@ def _check_empty_business_database():
         raise CommandError("Database đã có tài khoản. Không trộn dữ liệu mẫu vào bản copy hoặc dữ liệu đang dùng.")
     for app_label in ("crm", "hr", "ops", "inventory", "finance", "approvals"):
         for model in apps.get_app_config(app_label).get_models():
-            if model._meta.label == "crm.PriceListItem":
-                _check_builtin_price_list(model)
-                continue
             if model.objects.exists():
                 raise CommandError(f"Database đã có dữ liệu trong {model._meta.label}. Không nhập mẫu, không xóa hay thay thế dữ liệu đó.")
-    # Existing data migrations seed only these three empty company definitions.
-    baseline = {"CAVI": ("CAVI", "transport"), "LIVI": ("LIVI", "trading"), "AVI": ("AVI", "trading")}
+    # Công ty CAVI/AVI đã bị gộp/xoá hẳn (companies.migrations.0004) — từ giờ chỉ còn đúng 1 công ty
+    # trống từ migration: LIVI.
+    baseline = {"LIVI": ("LIVI", "trading")}
     for company in Company.objects.all():
         if ((company.name, company.business_type) != baseline.get(company.code)
                 or any((company.legal_name, company.tax_code, company.hotline, company.address, company.logo))):
             raise CommandError("Có công ty ngoài định nghĩa trống từ migration. Không nhập dữ liệu mẫu vào database này.")
-
-
-def _check_builtin_price_list(model):
-    # A fresh schema already contains catalogue rows from migration 0014, later
-    # scoped to CAVI by 0034. Compare exact values; never replay that migration
-    # (its reseed function deletes data) and never allow an edited live catalogue.
-    groups = import_module("crm.migrations.0014_reseed_price_list").GROUPS
-    expected = Counter(
-        (f"{code}-{index:03d}", category, code, group, name, unit, Decimal(floor), Decimal(ceiling), True, "CAVI")
-        for category, code, group, items in groups
-        for index, (name, unit, floor, ceiling) in enumerate(items, 1)
-    )
-    actual = Counter(model.objects.values_list("item_code", "category", "group_code", "group_name", "name", "unit", "floor_pct", "ceiling_pct", "is_active", "company__code"))
-    if actual != expected:
-        raise CommandError("Bảng giá đã khác dữ liệu gốc của migration. Không nhập bộ mẫu vào database đang dùng.")
 
 
 def seed_synthetic_data():
