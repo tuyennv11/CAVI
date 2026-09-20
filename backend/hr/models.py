@@ -170,7 +170,10 @@ class Profile(models.Model):
         verbose_name_plural = "Hồ sơ nhân sự"
 
     def __str__(self):
-        return f"Hồ sơ {self.user.username}"
+        # Hiện tên thật (vd "Nguyễn Vũ Tuyên") thay vì "Hồ sơ <tên đăng nhập>" — chuỗi này được dùng
+        # ở MỌI nơi Hồ sơ nhân sự bị tham chiếu dạng khoá ngoại (dropdown chọn Quản lý trực tiếp,
+        # Nhân sự phụ trách của Đối tác, cột "id — tên" lúc xuất Excel...), nên phải dễ đọc.
+        return self.user.get_full_name() or self.user.username
 
     def save(self, *args, **kwargs):
         if not self.employee_code:
