@@ -133,14 +133,15 @@ class Profile(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.employee_code:
-            # NV-00001 kiểu tăng dần đơn giản — đủ dùng cho quy mô công ty này, không cần cơ chế
-            # counter riêng phức tạp hơn.
+            # NS000001 kiểu tăng dần đơn giản — đủ dùng cho quy mô công ty này, không cần cơ chế
+            # counter riêng phức tạp hơn. (Trước đây là "NV-00001" — đổi sang "NS" khớp đúng mẫu
+            # "Id nhân sự" anh gửi, xem hr/migrations/0015_renumber_employee_code_to_ns.py.)
             last = Profile.objects.exclude(pk=self.pk).order_by("-id").first()
             next_number = (last.id + 1) if last else 1
             # Dùng id kế tiếp làm số thứ tự — không trùng vì id tự tăng, dù đã có bản ghi bị xoá.
-            while Profile.objects.filter(employee_code=f"NV-{next_number:05d}").exists():
+            while Profile.objects.filter(employee_code=f"NS{next_number:06d}").exists():
                 next_number += 1
-            self.employee_code = f"NV-{next_number:05d}"
+            self.employee_code = f"NS{next_number:06d}"
         super().save(*args, **kwargs)
 
 
