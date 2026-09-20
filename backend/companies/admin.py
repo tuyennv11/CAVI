@@ -1,23 +1,4 @@
-from django.contrib import admin
-from import_export.admin import ImportExportModelAdmin
-
-from config.admin_import_export import ExcelModelResource
-
-from .models import Company
-
-
-class CompanyResource(ExcelModelResource):
-    class Meta:
-        model = Company
-        exclude = ("logo",)  # FileField — không xuất/nhập file qua Excel, xem admin_import_export.py
-
-
-@admin.register(Company)
-class CompanyAdmin(ImportExportModelAdmin):
-    resource_classes = [CompanyResource]
-    list_display = (
-        "name", "code", "business_type", "legal_name", "tax_code", "hotline", "address",
-        "is_active", "created_at",
-    )
-    list_filter = ("business_type", "is_active")
-    search_fields = ("name", "code", "legal_name", "tax_code")
+# Cố ý KHÔNG đăng ký Company vào admin — hệ thống giờ chỉ vận hành đúng 1 công ty (LIVI, xem
+# companies/migrations/0004_merge_cavi_avi_into_livi.py), nên 1 bảng/tab chỉ có đúng 1 dòng không
+# còn ý nghĩa để duyệt/lọc/xuất-nhập trong trang quản trị nữa. Cần sửa thông tin LIVI (logo, địa chỉ,
+# mã số thuế, hotline...) thì sửa trực tiếp trong code/migration hoặc Django shell.
