@@ -316,21 +316,32 @@ class TrainingRecord(models.Model):
 class EmergencyContact(models.Model):
     """Người liên hệ khẩn cấp của nhân viên."""
 
+    # Tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay, giống employee_code/Department.code.
+    code = models.CharField("Id liên hệ khẩn cấp", max_length=20, unique=True, blank=True, editable=False)
     profile = models.ForeignKey(
         Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="emergency_contacts"
     )
-    name = models.CharField("Họ tên", max_length=255)
+    name = models.CharField("Tên liên hệ khẩn cấp", max_length=255)
     relationship = models.CharField("Quan hệ", max_length=100, blank=True)
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
     address = models.CharField("Địa chỉ", max_length=255, blank=True)
     note = models.TextField("Ghi chú", blank=True)
 
     class Meta:
-        verbose_name = "Người liên hệ khẩn cấp"
-        verbose_name_plural = "Người liên hệ khẩn cấp"
+        verbose_name = "Liên hệ khẩn cấp"
+        verbose_name_plural = "Liên hệ khẩn cấp"
 
     def __str__(self):
         return f"{self.name} — {self.profile.user.username}"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = EmergencyContact.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            while EmergencyContact.objects.filter(code=f"KC{next_number:05d}").exists():
+                next_number += 1
+            self.code = f"KC{next_number:05d}"
+        super().save(*args, **kwargs)
 
 # Lương/Thưởng-phạt/Số ngày phép/Chấm công đã bị gỡ bỏ hẳn (anh yêu cầu xoá vì đang trống, sẽ sắp
 # xếp lại cấu trúc dữ liệu sau) — xem hr/migrations/0022_remove_compensation_bonus_leave_attendance.py.

@@ -101,9 +101,35 @@ class EmployeeDocumentInline(admin.TabularInline):
     readonly_fields = ("created_by", "created_at")
 
 
+class EmergencyContactResource(ExcelModelResource):
+    class Meta:
+        model = EmergencyContact
+
+
+@admin.register(EmergencyContact)
+class EmergencyContactAdmin(ImportExportModelAdmin):
+    resource_classes = [EmergencyContactResource]
+    list_display = (
+        "code", "name", "relationship", "phone", "address", "note",
+        "profile_full_name", "profile_employee_code",
+    )
+    search_fields = ("code", "name", "phone", "profile__employee_code", "profile__user__username")
+    autocomplete_fields = ["profile"]
+    readonly_fields = ("code",)
+
+    @admin.display(description="Tên nhân sự")
+    def profile_full_name(self, obj):
+        return obj.profile.user.get_full_name() or obj.profile.user.username
+
+    @admin.display(description="Id nhân sự")
+    def profile_employee_code(self, obj):
+        return obj.profile.employee_code
+
+
 class EmergencyContactInline(admin.TabularInline):
     model = EmergencyContact
     extra = 0
+    readonly_fields = ("code",)
 
 
 class TrainingRecordInline(admin.TabularInline):

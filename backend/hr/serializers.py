@@ -154,7 +154,7 @@ class TrainingRecordSerializer(serializers.ModelSerializer):
 class EmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmergencyContact
-        fields = ["id", "profile", "name", "relationship", "phone", "address", "note"]
+        fields = ["id", "code", "profile", "name", "relationship", "phone", "address", "note"]
 
 
 # Lương/Thưởng-phạt/Số ngày phép/Chấm công đã bị gỡ bỏ hẳn (anh yêu cầu xoá vì đang trống, sẽ sắp
