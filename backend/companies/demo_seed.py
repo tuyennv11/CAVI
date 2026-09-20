@@ -13,8 +13,25 @@ from django.utils import timezone
 
 from crm.models import KPITarget, Notice, Order, OrderItem, Partner, Task
 from finance.models import OrderCost, OrderFinance, OrderPayment
+from hr.models import Department
 
 from .models import Company
+
+# Đúng 11 Bộ phận nạp sẵn từ migration hr.0017 — coi là "trống" giống công ty LIVI, không phải dữ
+# liệu nghiệp vụ thật do người dùng nhập.
+DEPARTMENT_BASELINE = {
+    "Bộ phận kinh doanh": "Bo_phan_kinh_doanh",
+    "Bộ phận cung ứng": "Bo_phan_cung_ung",
+    "Bộ phận kho Việt Nam": "Bo_phan_kho_viet_nam",
+    "Bộ phận kho Campuchia": "Bo_phan_kho_campuchia",
+    "Bộ phận R&D": "Bo_phan_r_d",
+    "Bộ phận thủ quỹ": "Bo_phan_thu_quy",
+    "Bộ phận tài chính - kế toán": "Bo_phan_tai_chinh_ke_toan",
+    "Bộ phận pháp chế": "Bo_phan_phap_che",
+    "Bộ phận hành chính nhân sự": "Bo_phan_hanh_chinh_nhan_su",
+    "Tổng giám đốc": "Bo_phan_tong_giam_doc",
+    "Cổ đông": "Bo_phan_co_dong",
+}
 
 SEED_MARKER = "CAVI_SYNTHETIC_FIXTURES_V1"
 COMPANY_CODE = "CAVI_TEST"
@@ -42,6 +59,9 @@ def _check_empty_business_database():
         raise CommandError("Database đã có tài khoản. Không trộn dữ liệu mẫu vào bản copy hoặc dữ liệu đang dùng.")
     for app_label in ("crm", "hr", "ops", "inventory", "finance", "approvals"):
         for model in apps.get_app_config(app_label).get_models():
+            if model._meta.label == "hr.Department":
+                _check_department_baseline(model)
+                continue
             if model.objects.exists():
                 raise CommandError(f"Database đã có dữ liệu trong {model._meta.label}. Không nhập mẫu, không xóa hay thay thế dữ liệu đó.")
     # Công ty CAVI/AVI đã bị gộp/xoá hẳn (companies.migrations.0004) — từ giờ chỉ còn đúng 1 công ty
@@ -51,6 +71,14 @@ def _check_empty_business_database():
         if ((company.name, company.business_type) != baseline.get(company.code)
                 or any((company.legal_name, company.tax_code, company.hotline, company.address, company.logo))):
             raise CommandError("Có công ty ngoài định nghĩa trống từ migration. Không nhập dữ liệu mẫu vào database này.")
+
+
+def _check_department_baseline(model):
+    # Fresh schema đã có sẵn 11 Bộ phận từ migration hr.0017 (giống Company/LIVI) — so khớp đúng tên
+    # + mã hệ thống, không so "code" (BP001...) vì đó chỉ là số thứ tự tự sinh.
+    actual = {d.name: d.system_code for d in model.objects.all()}
+    if actual != DEPARTMENT_BASELINE:
+        raise CommandError("Danh mục Bộ phận đã khác dữ liệu gốc của migration. Không nhập bộ mẫu vào database đang dùng.")
 
 
 def seed_synthetic_data():
@@ -74,7 +102,7 @@ def _create_synthetic_data():
         settings.GROUP_MANAGER, settings.GROUP_SALES, settings.GROUP_HR, settings.GROUP_ACCOUNTING, settings.GROUP_SUPPLY,
     )}
 
-    def user(username, label, department, memberships, group, owner=False):
+    def user(username, label, department_name, memberships, group, owner=False):
         result = get_user_model().objects.create_user(
             username=username, password=None, first_name=f"{label} (TEST)", email="",
             is_staff=owner, is_superuser=owner,
@@ -82,7 +110,9 @@ def _create_synthetic_data():
         result.groups.add(groups[group])
         profile = result.profile
         profile.preferred_name = result.first_name
-        profile.department = department
+        # department giờ là FK vào danh mục Bộ phận có sẵn (xem DEPARTMENT_BASELINE) — không còn
+        # nhận chữ tự do như trước.
+        profile.department = Department.objects.get(name=department_name)
         profile.job_title = label
         profile.job_description = "Hồ sơ hoàn toàn giả để thử app; không phải nhân sự thật."
         profile.work_location = "Kho mô phỏng — không phải điểm nhận hàng thật"
@@ -90,11 +120,11 @@ def _create_synthetic_data():
         profile.companies.add(*memberships)
         return result
 
-    owner = user(SEED_USERS[0], "Chủ doanh nghiệp", "management", [company, other], settings.GROUP_MANAGER, owner=True)
-    sales = user(SEED_USERS[1], "Kinh doanh A", "sales", [company], settings.GROUP_SALES)
-    colleague = user(SEED_USERS[2], "Kinh doanh B", "sales", [company], settings.GROUP_SALES)
-    accountant = user(SEED_USERS[3], "Kế toán", "accounting", [company], settings.GROUP_ACCOUNTING)
-    other_sales = user(SEED_USERS[4], "Kinh doanh công ty khác", "sales", [other], settings.GROUP_SALES)
+    owner = user(SEED_USERS[0], "Chủ doanh nghiệp", "Tổng giám đốc", [company, other], settings.GROUP_MANAGER, owner=True)
+    sales = user(SEED_USERS[1], "Kinh doanh A", "Bộ phận kinh doanh", [company], settings.GROUP_SALES)
+    colleague = user(SEED_USERS[2], "Kinh doanh B", "Bộ phận kinh doanh", [company], settings.GROUP_SALES)
+    accountant = user(SEED_USERS[3], "Kế toán", "Bộ phận tài chính - kế toán", [company], settings.GROUP_ACCOUNTING)
+    other_sales = user(SEED_USERS[4], "Kinh doanh công ty khác", "Bộ phận kinh doanh", [other], settings.GROUP_SALES)
 
     def partner(label, assigned, target):
         result = Partner.objects.create(name=f"[TEST] {label}", assigned_to=assigned, note="Khách hàng giả. Không liên hệ, không giao hàng, không thu tiền.")

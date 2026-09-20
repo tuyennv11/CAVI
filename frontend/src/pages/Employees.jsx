@@ -87,7 +87,7 @@ export default function Employees() {
                     </div>
                   </td>
                   <td>{e.job_title || "—"}</td>
-                  <td>{e.department || "—"}</td>
+                  <td>{e.department_name || "—"}</td>
                   <td>
                     <span className={`badge badge-${e.work_status === "active" ? "done" : e.work_status === "on_leave" ? "processing" : "cancelled"}`}>
                       {WORK_STATUS_LABEL[e.work_status]}

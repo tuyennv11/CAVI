@@ -21,6 +21,34 @@ class Room(models.Model):
         return self.name
 
 
+class Department(models.Model):
+    """Bộ phận — khác với Room (1 người thuộc nhiều Phòng), 1 người chỉ thuộc đúng 1 Bộ phận tại 1
+    thời điểm (xem Profile.department: ForeignKey, không phải ManyToMany)."""
+
+    # Tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay, giống employee_code.
+    code = models.CharField("Id bộ phận", max_length=20, unique=True, blank=True, editable=False)
+    name = models.CharField("Tên", max_length=100, unique=True)
+    # Nhập tay, không tự suy ra từ "Tên" — chưa dùng ở logic nào, chỉ là mã tham chiếu nội bộ.
+    system_code = models.CharField("Mã hệ thống", max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = "Bộ phận"
+        verbose_name_plural = "Bộ phận"
+        ordering = ["code"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = Department.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            while Department.objects.filter(code=f"BP{next_number:03d}").exists():
+                next_number += 1
+            self.code = f"BP{next_number:03d}"
+        super().save(*args, **kwargs)
+
+
 class Profile(models.Model):
     # Tách riêng 2 khái niệm khác nhau (trước đây gộp nhầm vào 1 field employment_status):
     # WorkStatus = đang/tạm/thôi làm việc; EmploymentType = hình thức hợp đồng lao động.
@@ -81,11 +109,13 @@ class Profile(models.Model):
     contract_type = models.CharField("Loại hợp đồng", max_length=100, blank=True)
     contract_started_at = models.DateField("Ngày bắt đầu hợp đồng", null=True, blank=True)
     contract_expires_at = models.DateField("Ngày hết hạn hợp đồng", null=True, blank=True)
-    # Phòng ban — chữ tự do (không còn ràng buộc danh sách chọn sẵn, theo đúng cách công ty đặt tên
-    # bộ phận thực tế, vd "Ban Giám đốc" không nằm trong 6 lựa chọn cũ). Chưa gắn với quyền hạn kỹ
-    # thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền riêng, xem accounts/roles.py và
+    # Trước đây là chữ tự do, giờ đổi sang danh mục Bộ phận riêng (mỗi người 1 bộ phận, xem model
+    # Department ở trên) — theo đúng danh mục Id bộ phận/Mã hệ thống anh đã lập. Chưa gắn với quyền
+    # hạn kỹ thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền riêng, xem accounts/roles.py và
     # project_supply_role_deferred), chỉ là dữ liệu phân loại nhân viên.
-    department = models.CharField("Phòng ban", max_length=100, blank=True)
+    department = models.ForeignKey(
+        Department, verbose_name="Bộ Phận", on_delete=models.SET_NULL, null=True, blank=True, related_name="staff"
+    )
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
     date_of_birth = models.DateField("Ngày sinh", null=True, blank=True)
     id_number = models.CharField("Số CCCD/CMND", max_length=20, blank=True)

@@ -46,6 +46,7 @@ export default function EmployeeDetail() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState(null);
   const [companies, setCompanies] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [tab, setTab] = useState("overview");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -168,6 +169,7 @@ export default function EmployeeDetail() {
     loadCompensation();
     loadChangeLog();
     apiFetch("/api/companies/").then(setCompanies).catch(() => {});
+    apiFetch("/api/hr/departments/").then(setDepartments).catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -335,7 +337,7 @@ export default function EmployeeDetail() {
             <h1 style={{ margin: 0 }}>{profile.preferred_name || profile.full_name}</h1>
             <div className="page-head-sub">
               {profile.employee_code} · {profile.job_title || "Chưa có chức vụ"} ·{" "}
-              {profile.department || "Chưa có phòng ban"}
+              {profile.department_name || "Chưa có phòng ban"}
               {(profile.companies_detail || []).length > 0 && (
                 <>
                   {" · "}
@@ -436,7 +438,14 @@ export default function EmployeeDetail() {
           </label>
           <label>
             Phòng ban
-            <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+            <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+              <option value="">—</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Địa điểm làm việc

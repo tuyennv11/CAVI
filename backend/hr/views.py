@@ -16,6 +16,7 @@ from .models import (
     AttendanceRecord,
     BonusPenaltyRecord,
     CompensationRecord,
+    Department,
     EmergencyContact,
     EmployeeDocument,
     LeaveBalance,
@@ -27,6 +28,7 @@ from .serializers import (
     AttendanceRecordSerializer,
     BonusPenaltyRecordSerializer,
     CompensationRecordSerializer,
+    DepartmentSerializer,
     EmergencyContactSerializer,
     EmployeeDocumentSerializer,
     LeaveBalanceSerializer,
@@ -34,6 +36,15 @@ from .serializers import (
     ProfileSerializer,
     TrainingRecordSerializer,
 )
+
+
+class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
+    """Danh mục Bộ phận — dùng để chọn khi sửa Hồ sơ nhân sự (giống CompanyViewSet cho companies)."""
+
+    serializer_class = DepartmentSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Department.objects.all()
+    pagination_class = None
 
 
 class MyProfileView(APIView):
@@ -81,7 +92,7 @@ class EmployeeViewSet(
         return response
 
     def get_queryset(self):
-        qs = Profile.objects.select_related("user", "manager", "country", "province", "district", "ward")
+        qs = Profile.objects.select_related("user", "manager", "department", "country", "province", "district", "ward")
         if is_manager(self.request.user) or is_hr(self.request.user) or is_accountant(self.request.user):
             return qs.all()
         # Không có vai trò đặc biệt: chỉ thấy chính mình + những người có "Người quản lý trực

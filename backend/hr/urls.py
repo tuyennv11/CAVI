@@ -5,6 +5,7 @@ from .views import (
     AttendanceRecordViewSet,
     BonusPenaltyRecordViewSet,
     CompensationRecordViewSet,
+    DepartmentViewSet,
     EmergencyContactViewSet,
     EmployeeDocumentViewSet,
     EmployeeViewSet,
@@ -14,6 +15,7 @@ from .views import (
 )
 
 router = DefaultRouter()
+router.register("departments", DepartmentViewSet, basename="department")
 router.register("leave-balances", LeaveBalanceViewSet, basename="leave-balance")
 router.register("attendance", AttendanceRecordViewSet, basename="attendance")
 router.register("employees", EmployeeViewSet, basename="employee")

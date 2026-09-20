@@ -4,12 +4,19 @@ from .models import (
     AttendanceRecord,
     BonusPenaltyRecord,
     CompensationRecord,
+    Department,
     EmergencyContact,
     EmployeeDocument,
     LeaveBalance,
     Profile,
     TrainingRecord,
 )
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ["id", "code", "name", "system_code"]
 
 # Field do Quản lý quyết định qua trang quản lý nhân sự — nhân viên không tự sửa được trên trang
 # "Hồ sơ cá nhân" của chính mình.
@@ -45,6 +52,7 @@ PROFILE_FIELDS = [
     "contract_started_at",
     "contract_expires_at",
     "department",
+    "department_name",
     "phone",
     "date_of_birth",
     "id_number",
@@ -76,6 +84,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     province_name = serializers.CharField(source="province.name", read_only=True, default=None)
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
+    department_name = serializers.CharField(source="department.name", read_only=True, default=None)
     companies_detail = serializers.SerializerMethodField()
     rooms_detail = serializers.SerializerMethodField()
 

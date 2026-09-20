@@ -9,6 +9,7 @@ from .models import (
     AttendanceRecord,
     BonusPenaltyRecord,
     CompensationRecord,
+    Department,
     EmergencyContact,
     EmployeeDocument,
     LeaveBalance,
@@ -29,6 +30,19 @@ class RoomAdmin(ImportExportModelAdmin):
     resource_classes = [RoomResource]
     list_display = ("name",)
     search_fields = ("name",)
+
+
+class DepartmentResource(ExcelModelResource):
+    class Meta:
+        model = Department
+
+
+@admin.register(Department)
+class DepartmentAdmin(ImportExportModelAdmin):
+    resource_classes = [DepartmentResource]
+    list_display = ("code", "name", "system_code")
+    search_fields = ("code", "name", "system_code")
+    readonly_fields = ("code",)
 
 
 class ProfileResource(ExcelModelResource):
