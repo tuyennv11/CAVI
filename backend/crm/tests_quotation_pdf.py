@@ -120,7 +120,7 @@ class QuotationPDFAPITests(TestCase):
         self.manager = users.create_user("synthetic-pdf-manager", is_staff=True)
         self.owner.profile.companies.add(self.a)
         self.peer.profile.companies.add(self.a)
-        self.partner = Partner.objects.create(name="Synthetic client", assigned_to=self.owner, note="PRIVATE CRM NOTE")
+        self.partner = Partner.objects.create(name="Synthetic client", assigned_to=self.owner.profile, note="PRIVATE CRM NOTE")
         self.partner.companies.add(self.a)
         self.inquiry = PriceInquiry.objects.create(customer=self.partner, company=self.a, cost_price=333, floor_price=444)
         self.quote = Quotation.objects.create(inquiry=self.inquiry, note="Customer-facing note", saved_at=timezone.now())

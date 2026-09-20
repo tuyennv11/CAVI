@@ -19,7 +19,9 @@ class IsManagerOrAssignedSales(permissions.BasePermission):
             partner = obj.customer
         else:
             partner = obj.partner
-        return partner.assigned_to_id == request.user.id
+        # Partner.assigned_to liên kết Hồ sơ nhân sự (hr.Profile), không phải Tài khoản đăng nhập
+        # (User) — phải so với request.user.profile, không phải request.user thẳng.
+        return partner.assigned_to_id == request.user.profile.id
 
 
 class IsAssignedOrCreatorOrManager(permissions.BasePermission):

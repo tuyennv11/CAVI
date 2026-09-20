@@ -82,7 +82,7 @@ class FundApiTests(TestCase):
         self.other = User.objects.create_user("fund-other", is_superuser=True, is_staff=True)
         self.company, _ = Company.objects.get_or_create(code="CAVI", defaults={"name": "CAVI", "business_type": "transport"})
         self.other_company, _ = Company.objects.get_or_create(code="LIVI", defaults={"name": "LIVI", "business_type": "trading"})
-        self.customer = Partner.objects.create(name="Khách minh họa kiểm thử", assigned_to=self.owner)
+        self.customer = Partner.objects.create(name="Khách minh họa kiểm thử", assigned_to=self.owner.profile)
         self.customer.companies.add(self.company)
         self.order = Order.objects.create(company=self.company, customer=self.customer, status="done", floor_price=10000000)
         self.item = OrderItem.objects.create(order=self.order, description="Dịch vụ giả", quantity=1, unit_price=12000000, unit_cost=8000000)

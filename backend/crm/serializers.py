@@ -7,6 +7,7 @@ from accounts.roles import is_manager
 from approvals.models import ApprovalRequest
 from companies.models import Company
 from companies.utils import get_active_company
+from hr.models import Profile
 
 from .models import (
     Activity,
@@ -32,6 +33,21 @@ class AssignedToSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "first_name", "last_name"]
+
+
+class AssignedProfileSerializer(serializers.ModelSerializer):
+    """Đối tác.assigned_to liên kết Hồ sơ nhân sự (không phải User) — khác AssignedToSerializer ở
+    trên (dùng cho Activity/Task, vẫn liên kết User)."""
+
+    username = serializers.CharField(source="user.username", read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ["id", "employee_code", "username", "full_name"]
+
+    def get_full_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
 
 
 class ActivitySerializer(serializers.ModelSerializer):
@@ -388,7 +404,7 @@ class PartnerSerializer(serializers.ModelSerializer):
     đã tick), không thì 1 đối tác giao dịch cả CAVI lẫn LIVI sẽ bị trộn lẫn số liệu sai. View truyền
     company đang hoạt động vào context (key "company") — xem PartnerViewSet.get_serializer_context."""
 
-    assigned_to_detail = AssignedToSerializer(source="assigned_to", read_only=True)
+    assigned_to_detail = AssignedProfileSerializer(source="assigned_to", read_only=True)
     companies_detail = serializers.SerializerMethodField()
     activity_count = serializers.SerializerMethodField()
     order_count = serializers.SerializerMethodField()
@@ -427,6 +443,7 @@ class PartnerSerializer(serializers.ModelSerializer):
         model = Partner
         fields = [
             "id",
+            "code",
             "name",
             "contact_person",
             "phone",
@@ -446,8 +463,12 @@ class PartnerSerializer(serializers.ModelSerializer):
             "activity_count",
             "order_count",
             "address",
+            "status",
+            "created_by",
             "created_at",
+            "updated_at",
         ]
+        read_only_fields = ["created_by"]
 
     def validate(self, attrs):
         is_customer = attrs.get("is_customer", getattr(self.instance, "is_customer", None))
@@ -586,7 +607,7 @@ class OrderSerializer(serializers.ModelSerializer):
         company = get_active_company(request)
         if not customer.is_customer or not customer.companies.filter(pk=company.pk).exists():
             raise serializers.ValidationError("Khách hàng không thuộc công ty đang thao tác.")
-        if not is_manager(request.user) and customer.assigned_to_id != request.user.pk:
+        if not is_manager(request.user) and customer.assigned_to_id != request.user.profile.id:
             raise serializers.ValidationError("Bạn chỉ được lập hoặc đổi đơn cho khách hàng mình phụ trách.")
         return customer
 

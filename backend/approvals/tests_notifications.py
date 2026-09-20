@@ -34,7 +34,7 @@ class ApprovalNotificationTests(TestCase):
             **{"request_type": "proposal", "title": "Synthetic private proposal", "amount": "200", **changes})
 
     def quotation(self, approval=None):
-        partner = Partner.objects.create(name="Synthetic quotation customer", assigned_to=self.requester)
+        partner = Partner.objects.create(name="Synthetic quotation customer", assigned_to=self.requester.profile)
         partner.companies.add(self.company)
         inquiry = PriceInquiry.objects.create(company=self.company, customer=partner, floor_price=100, ceiling_price=150)
         obj = Quotation.objects.create(inquiry=inquiry, note="Synthetic previous note", pending_approval=approval,

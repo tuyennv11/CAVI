@@ -173,7 +173,8 @@ def _create_synthetic_data():
     other_sales = user(SEED_USERS[4], "Kinh doanh công ty khác", "Nhân viên kinh doanh", [other], settings.GROUP_SALES)
 
     def partner(label, assigned, target):
-        result = Partner.objects.create(name=f"[TEST] {label}", assigned_to=assigned, note="Khách hàng giả. Không liên hệ, không giao hàng, không thu tiền.")
+        # Partner.assigned_to liên kết Hồ sơ nhân sự (hr.Profile), không phải Tài khoản đăng nhập (User).
+        result = Partner.objects.create(name=f"[TEST] {label}", assigned_to=assigned.profile, note="Khách hàng giả. Không liên hệ, không giao hàng, không thu tiền.")
         result.companies.add(target)
         return result
 

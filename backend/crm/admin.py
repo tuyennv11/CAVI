@@ -174,16 +174,22 @@ class PartnerAdmin(ImportExportModelAdmin):
     resource_classes = [PartnerResource]
     # Mỗi Đối tác chỉ có 1 dòng — hiện hết field trên bảng danh sách (kéo ngang xem), chỉ Hoạt động/
     # Yêu cầu nâng hạng/Đơn hàng/Hỏi giá (1 đối tác có NHIỀU dòng) mới tách bảng riêng theo mã đối tác.
+    # Thứ tự cột khớp đúng file Excel mẫu anh gửi (Id đối tác, Là khách hàng, Là nhà cung cấp, Tên
+    # đối tác, Người liên hệ, Số điện thoại, Id nhân sự phụ trách, Mô tả thêm, Xếp hạng, Địa chỉ,
+    # Trạng thái, Người tạo, Ngày tạo, Ngày cập nhật).
     list_display = (
-        "name", "is_customer", "is_supplier", "tier", "tier_override", "contact_person", "phone",
-        "address", "note", "assigned_to", "created_at",
+        "code", "is_customer", "is_supplier", "name", "contact_person", "phone", "assigned_to",
+        "note", "tier", "tier_override", "address", "status", "created_by", "created_at", "updated_at",
     )
     # Bỏ "companies" khỏi bộ lọc — chỉ còn đúng 1 công ty (LIVI) nên không còn tác dụng lọc/phân biệt
     # gì nữa (xem companies/admin.py). Field companies vẫn giữ trong form thêm/sửa (filter_horizontal)
     # vì logic phân quyền theo công ty trong code vẫn dựa vào đó.
-    list_filter = ("is_customer", "is_supplier", "assigned_to")
-    search_fields = ("name", "contact_person", "phone")
+    list_filter = ("is_customer", "is_supplier", "status", "assigned_to")
+    search_fields = ("code", "name", "contact_person", "phone")
+    readonly_fields = ("code", "created_by", "created_at", "updated_at")
     filter_horizontal = ("companies",)
+    # Hồ sơ nhân sự có thể ngày càng nhiều — dùng ô tìm kiếm (autocomplete) thay vì dropdown liệt kê hết.
+    autocomplete_fields = ["assigned_to"]
     inlines = [PriceInquiryInline, OrderInline, ShipmentInline, TierUpgradeRequestInline, ActivityInline]
 
 

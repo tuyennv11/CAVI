@@ -26,7 +26,7 @@ class RecordNavigationTests(TestCase):
         self.member.profile.companies.add(self.a)
         self.peer.profile.companies.add(self.a)
         self.other.profile.companies.add(self.b)
-        self.partner = Partner.objects.create(name="Synthetic customer", assigned_to=self.member)
+        self.partner = Partner.objects.create(name="Synthetic customer", assigned_to=self.member.profile)
         self.partner.companies.add(self.a)
         self.activity = Activity.objects.create(company=self.a, customer=self.partner, activity_type="call", title="Synthetic activity", assigned_to=self.member)
         self.client = APIClient()

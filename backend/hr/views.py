@@ -139,8 +139,10 @@ class EmployeeViewSet(
         year, month = now.year, now.month
         for _ in range(6):
             month_start, month_end = _month_bounds(year, month)
+            # customer__assigned_to đi qua Partner.assigned_to (liên kết hr.Profile) — so thẳng với
+            # profile đang xem, không phải user nữa.
             orders = Order.objects.filter(
-                customer__assigned_to=user, created_at__gte=month_start, created_at__lte=month_end, company=company,
+                customer__assigned_to=profile, created_at__gte=month_start, created_at__lte=month_end, company=company,
             ).exclude(status=Order.Status.CANCELLED)
             revenue = _sum_revenue(orders)
             target = KPITarget.objects.filter(user=user, year=year, month=month).first()

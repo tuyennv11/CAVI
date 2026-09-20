@@ -118,7 +118,9 @@ class WorkspaceKPIView(CompanyScopedMixin, APIView):
         quarter_start, _ = _month_bounds(year, quarter_start_month)
         year_start, _ = _month_bounds(year, 1)
 
-        my_orders = Order.objects.filter(customer__assigned_to=user, company=company).exclude(
+        # customer__assigned_to đi qua Partner.assigned_to (liên kết hr.Profile) — phải so với
+        # user.profile, không phải user thẳng.
+        my_orders = Order.objects.filter(customer__assigned_to=user.profile, company=company).exclude(
             status=Order.Status.CANCELLED
         )
 
@@ -136,7 +138,7 @@ class WorkspaceKPIView(CompanyScopedMixin, APIView):
         revenue_last_year_same_month = revenue_between(last_year_month_start, last_year_month_end)
         orders_closed_month = my_orders.filter(created_at__gte=month_start, created_at__lte=month_end).count()
 
-        new_customers_month = Partner.objects.filter(assigned_to=user, created_at__gte=month_start).count()
+        new_customers_month = Partner.objects.filter(assigned_to=user.profile, created_at__gte=month_start).count()
         quotes_month = Activity.objects.filter(
             assigned_to=user, activity_type=Activity.ActivityType.QUOTE, activity_at__gte=month_start,
             company=company,
@@ -229,7 +231,7 @@ class WorkspaceRankingView(CompanyScopedMixin, APIView):
         rows = []
         for u in sales_users:
             orders = Order.objects.filter(
-                customer__assigned_to=u, created_at__gte=month_start, created_at__lte=month_end, company=company,
+                customer__assigned_to=u.profile, created_at__gte=month_start, created_at__lte=month_end, company=company,
             ).exclude(status=Order.Status.CANCELLED)
             revenue = _sum_revenue(orders)
             target = KPITarget.objects.filter(user=u, year=year, month=month).first()
@@ -238,7 +240,7 @@ class WorkspaceRankingView(CompanyScopedMixin, APIView):
                 assigned_to=u, status=Task.Status.DONE, updated_at__gte=month_start, updated_at__lte=month_end
             ).filter(Q(company__isnull=True) | Q(company=company)).count()
             new_customers = Partner.objects.filter(
-                assigned_to=u, created_at__gte=month_start, created_at__lte=month_end
+                assigned_to=u.profile, created_at__gte=month_start, created_at__lte=month_end
             ).count()
             rows.append(
                 {

@@ -121,7 +121,8 @@ class PartnerViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         qs = self.scope_by_company(Partner.objects.select_related("assigned_to").all())
         if is_manager(self.request.user):
             return qs
-        return qs.filter(assigned_to=self.request.user)
+        # assigned_to liên kết Hồ sơ nhân sự (hr.Profile), không phải Tài khoản đăng nhập (User).
+        return qs.filter(assigned_to=self.request.user.profile)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -133,9 +134,9 @@ class PartnerViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         # bắt buộc tick ít nhất 1 công ty (validate()) — frontend mặc định tick sẵn công ty đang
         # thao tác, không cần server tự suy thêm ở đây.
         if is_manager(self.request.user) and serializer.validated_data.get("assigned_to"):
-            serializer.save()
+            serializer.save(created_by=self.request.user)
         else:
-            serializer.save(assigned_to=self.request.user)
+            serializer.save(assigned_to=self.request.user.profile, created_by=self.request.user)
 
     def _get_partner(self, request, pk):
         # Không dùng self.get_object() ở đây — nó áp cả filter_backends (vd search_fields của
@@ -217,7 +218,11 @@ class ActivityViewSet(CompanyScopedMixin, mixins.RetrieveModelMixin, mixins.Upda
         )
         if is_manager(self.request.user):
             return qs
-        return qs.filter(Q(assigned_to=self.request.user) | Q(customer__assigned_to=self.request.user)).distinct()
+        # Activity.assigned_to vẫn liên kết User (không đổi); customer__assigned_to đi qua Partner
+        # (đã đổi sang hr.Profile) nên phải so với request.user.profile.
+        return qs.filter(
+            Q(assigned_to=self.request.user) | Q(customer__assigned_to=self.request.user.profile)
+        ).distinct()
 
 
 class TaskViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
@@ -269,7 +274,7 @@ class PriceInquiryViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         )
         if is_manager(self.request.user):
             return qs
-        return qs.filter(customer__assigned_to=self.request.user)
+        return qs.filter(customer__assigned_to=self.request.user.profile)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, company=self.get_active_company())
@@ -376,7 +381,7 @@ class QuotationViewSet(
         )
         if is_manager(self.request.user):
             return qs
-        return qs.filter(inquiry__customer__assigned_to=self.request.user)
+        return qs.filter(inquiry__customer__assigned_to=self.request.user.profile)
 
     @transaction.atomic
     def perform_update(self, serializer):
@@ -537,7 +542,7 @@ class PriceInquiryQuoteLineViewSet(
         # Cung ứng của công ty này sẽ thấy luôn cả dữ liệu đấu giá của công ty khác.
         if is_supply(self.request.user):
             return qs.filter(inquiry__status=PriceInquiry.Status.OPEN)
-        return qs.filter(inquiry__customer__assigned_to=self.request.user)
+        return qs.filter(inquiry__customer__assigned_to=self.request.user.profile)
 
     @action(detail=True, methods=["post"])
     def award(self, request, pk=None):
@@ -610,7 +615,7 @@ class TierUpgradeRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         )
         if is_manager(self.request.user):
             return qs
-        return qs.filter(partner__assigned_to=self.request.user)
+        return qs.filter(partner__assigned_to=self.request.user.profile)
 
     def perform_create(self, serializer):
         serializer.save(requested_by=self.request.user, company=self.get_active_company())
@@ -657,7 +662,7 @@ class OrderViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
             return qs
         if is_manager(self.request.user):
             return qs
-        return qs.filter(customer__assigned_to=self.request.user)
+        return qs.filter(customer__assigned_to=self.request.user.profile)
 
     def get_permissions(self):
         if self.action in ("pending_receipt", "record_actual"):
@@ -818,9 +823,9 @@ class DashboardStatsView(CompanyScopedMixin, APIView):
         # công ty đang chọn, nếu không "tổng khách hàng" sẽ lẫn cả khách của công ty khác.
         partners = Partner.objects.filter(orders__company=company).distinct()
         if not is_manager(request.user):
-            partners = partners.filter(assigned_to=request.user)
-            orders = orders.filter(customer__assigned_to=request.user)
-            acts = acts.filter(customer__assigned_to=request.user)
+            partners = partners.filter(assigned_to=request.user.profile)
+            orders = orders.filter(customer__assigned_to=request.user.profile)
+            acts = acts.filter(customer__assigned_to=request.user.profile)
 
         now = timezone.now()
         week_ago = now - timedelta(days=7)

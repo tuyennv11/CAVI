@@ -17,7 +17,7 @@ class FinancePolicyTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="finance-test")
         self.company = Company.objects.create(name="CAVI Test", code="CVT", business_type="transport")
-        self.partner = Partner.objects.create(name="Khách thử nghiệm", assigned_to=self.user)
+        self.partner = Partner.objects.create(name="Khách thử nghiệm", assigned_to=self.user.profile)
         self.partner.companies.add(self.company)
         self.order = Order.objects.create(customer=self.partner, company=self.company, created_by=self.user)
         OrderItem.objects.create(

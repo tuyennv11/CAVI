@@ -168,7 +168,7 @@ class SyntheticAppPermissionTests(TestCase):
     def test_sales_sees_only_assigned_customers_and_orders(self):
         self.client.force_authenticate(self.sales)
         partners = self.rows(self.client.get("/api/partners/", **self.headers))
-        self.assertEqual({row["id"] for row in partners}, set(Partner.objects.filter(assigned_to=self.sales).values_list("id", flat=True)))
+        self.assertEqual({row["id"] for row in partners}, set(Partner.objects.filter(assigned_to=self.sales.profile).values_list("id", flat=True)))
         orders = self.rows(self.client.get("/api/orders/", **self.headers))
         self.assertEqual(len(orders), 3)
         colleague_order = Order.objects.get(created_by=self.colleague)
@@ -213,7 +213,7 @@ class SyntheticAppPermissionTests(TestCase):
 
     def test_cannot_create_order_for_unassigned_or_cross_company_customer(self):
         self.client.force_authenticate(self.sales)
-        inaccessible = [Partner.objects.get(assigned_to=self.colleague), Partner.objects.get(companies=self.other)]
+        inaccessible = [Partner.objects.get(assigned_to=self.colleague.profile), Partner.objects.get(companies=self.other)]
         for partner in inaccessible:
             previous = Order.objects.count()
             response = self.client.post("/api/orders/", {"customer": partner.pk, "description": "Blocked fixture", "items": [{"description": "Sample", "quantity": "1", "unit_price": "100", "unit_cost": "50"}]}, format="json", **self.headers)
@@ -221,7 +221,7 @@ class SyntheticAppPermissionTests(TestCase):
             self.assertEqual(Order.objects.count(), previous)
 
     def test_valid_sales_order_and_manager_order_for_colleague_remain_available(self):
-        for actor, customer in [(self.sales, Partner.objects.get(assigned_to=self.sales)), (self.owner, Partner.objects.get(assigned_to=self.colleague))]:
+        for actor, customer in [(self.sales, Partner.objects.get(assigned_to=self.sales.profile)), (self.owner, Partner.objects.get(assigned_to=self.colleague.profile))]:
             self.client.force_authenticate(actor)
             response = self.client.post("/api/orders/", {"customer": customer.pk, "description": "[TEST] Valid sample", "items": [{"description": "Sample", "quantity": "1", "unit_price": "100", "unit_cost": "50"}]}, format="json", **self.headers)
             self.assertEqual(response.status_code, 201)
@@ -231,7 +231,7 @@ class SyntheticAppPermissionTests(TestCase):
         self.client.force_authenticate(self.sales)
         order = Order.objects.filter(created_by=self.sales).first()
         customer_id = order.customer_id
-        for customer in [Partner.objects.get(assigned_to=self.colleague), Partner.objects.get(companies=self.other)]:
+        for customer in [Partner.objects.get(assigned_to=self.colleague.profile), Partner.objects.get(companies=self.other)]:
             response = self.client.patch(f"/api/orders/{order.pk}/", {"customer": customer.pk}, format="json", **self.headers)
             self.assertEqual(response.status_code, 400)
             order.refresh_from_db()
@@ -250,7 +250,7 @@ class SyntheticAppPermissionTests(TestCase):
 
     def test_cost_accepts_own_company_supplier_but_patch_cannot_switch_to_other_company(self):
         self.client.force_authenticate(self.accountant)
-        supplier = Partner.objects.get(assigned_to=self.sales)
+        supplier = Partner.objects.get(assigned_to=self.sales.profile)
         supplier.is_supplier = True
         supplier.save(update_fields=["is_supplier"])
         finance = OrderFinance.objects.filter(order__company=self.company).first()

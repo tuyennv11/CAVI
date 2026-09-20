@@ -16,37 +16,54 @@ class Partner(models.Model):
         VIP = "vip", "VIP"
         SUPER_VIP = "super_vip", "Siêu VIP"
 
-    name = models.CharField("Tên", max_length=255)
-    contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
-    phone = models.CharField("Số điện thoại", max_length=32, blank=True)
-    # Chỉ 1 ô địa chỉ tự do — khác với hr.Profile/Order (giữ cấu trúc Quốc gia/Tỉnh/Quận/Phường vì
-    # cần cho tính giá gửi hàng theo khu vực), địa chỉ của Đối tác chỉ mang tính tham khảo/liên hệ,
-    # không dùng để tính giá (điểm lấy/giao hàng thực tế của từng đơn đã có riêng ở Order), nên
-    # không cần chuẩn hoá tới cấp Phường/Xã.
-    address = models.CharField("Địa chỉ", max_length=255, blank=True)
-    note = models.TextField("Mô tả thêm", blank=True)
+    class Status(models.TextChoices):
+        ACTIVE = "dang_hoat_dong", "Đang hoạt động"
+        PAUSED = "tam_ngung", "Tạm ngừng"
+        STOPPED = "ngung_hop_tac", "Ngừng hợp tác"
+
+    # Mã đối tác tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
+    code = models.CharField("Id đối tác", max_length=20, unique=True, blank=True, editable=False)
     # 2 cờ độc lập thay vì 1 field "Loại đối tác" (khách hàng/nhà cung cấp/cả hai) — 1 đối tác có
     # thể vừa là khách hàng vừa là nhà cung cấp, đây là 2 sự thật độc lập, không phải 1 lựa chọn
     # duy nhất. Cách cũ buộc mọi chỗ lọc "ai là khách hàng" phải viết thêm điều kiện xử lý riêng
     # cho giá trị "cả hai" (dễ quên, dễ sót).
     is_customer = models.BooleanField("Là khách hàng", default=True)
     is_supplier = models.BooleanField("Là nhà cung cấp", default=False)
-    # Đối tác dùng 1 hồ sơ chung, nhưng chỉ hiển thị/giao dịch được ở đúng những công ty đã tick —
-    # 1 đối tác có thể thuộc 1 công ty, hoặc nhiều công ty cùng lúc (vd vừa CAVI vừa LIVI).
-    companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="partners", blank=True)
-    # Hạng do hệ thống tự tính (xem computed_tier) — chỉ bị ghi đè khi có yêu cầu nâng hạng được duyệt.
-    tier_override = models.CharField(
-        "Hạng đã duyệt vượt bậc", max_length=20, choices=Tier.choices, null=True, blank=True
-    )
+    name = models.CharField("Tên đối tác", max_length=255)
+    contact_person = models.CharField("Người liên hệ", max_length=255, blank=True)
+    phone = models.CharField("Số điện thoại", max_length=32, blank=True)
+    # Nhân sự phụ trách — liên kết thẳng tới Hồ sơ nhân sự (hr.Profile), KHÔNG phải Tài khoản đăng
+    # nhập (User) như trước đây, để hiện đúng "Id nhân sự" (NS000001) thay vì tài khoản đăng nhập.
+    # QUAN TRỌNG: field này còn dùng để PHÂN QUYỀN xem dữ liệu khắp hệ thống (crm/permissions.py,
+    # crm/views.py, crm/workspace_views.py, ops/views.py, hr/views.py) — mọi nơi so sánh với
+    # request.user PHẢI so với request.user.profile (không phải request.user thẳng) từ giờ trở đi.
     assigned_to = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        verbose_name="Nhân viên phụ trách",
+        "hr.Profile",
+        verbose_name="Nhân sự phụ trách",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="partners",
     )
+    note = models.TextField("Mô tả thêm", blank=True)
+    # Hạng do hệ thống tự tính (xem computed_tier) — chỉ bị ghi đè khi có yêu cầu nâng hạng được duyệt.
+    tier_override = models.CharField(
+        "Xếp hạng", max_length=20, choices=Tier.choices, null=True, blank=True
+    )
+    # Chỉ 1 ô địa chỉ tự do — khác với hr.Profile/Order (giữ cấu trúc Quốc gia/Tỉnh/Quận/Phường vì
+    # cần cho tính giá gửi hàng theo khu vực), địa chỉ của Đối tác chỉ mang tính tham khảo/liên hệ,
+    # không dùng để tính giá (điểm lấy/giao hàng thực tế của từng đơn đã có riêng ở Order), nên
+    # không cần chuẩn hoá tới cấp Phường/Xã.
+    address = models.CharField("Địa chỉ", max_length=255, blank=True)
+    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    # Đối tác dùng 1 hồ sơ chung, nhưng chỉ hiển thị/giao dịch được ở đúng những công ty đã tick —
+    # 1 đối tác có thể thuộc 1 công ty, hoặc nhiều công ty cùng lúc (vd vừa CAVI vừa LIVI).
+    companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="partners", blank=True)
     created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -55,6 +72,15 @@ class Partner(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = Partner.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            while Partner.objects.filter(code=f"DT{next_number:010d}").exists():
+                next_number += 1
+            self.code = f"DT{next_number:010d}"
+        super().save(*args, **kwargs)
 
     @property
     def tenure_months(self):
