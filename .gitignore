@@ -16,3 +16,16 @@ frontend/dist/
 
 # Backups (never commit real dumps)
 infra/backups/
+
+# Scratch/debug scripts and output (should live outside the repo, but ignore
+# just in case one ends up here again)
+backend/*.log
+backend/test_*.cjs
+backend/test_*.py
+backend/debug_*.cjs
+backend/screenshot_*.cjs
+backend/repro_*.cjs
+backend/verify_*.cjs
+backend/drive*.js
+backend/*.png
+backend/*.pdf
