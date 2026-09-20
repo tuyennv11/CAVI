@@ -222,20 +222,15 @@ class ActivityAdmin(ImportExportMixin, admin.ModelAdmin):
     # thật sự) — Hoạt động đối tác ghi nhận tương tác với CẢ khách hàng lẫn nhà cung cấp (vd gọi điện
     # thương lượng với nhà cung cấp), nên dropdown "Đối tác" phải cho chọn mọi Đối tác, không chỉ
     # is_customer=True.
-    # Bỏ cột "Tiêu đề" — trùng lặp với "Nội dung" (ActivitySerializer.create() tự suy tiêu đề từ
-    # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
+    # Bảng hiện trên trang Admin khớp đúng cột + thứ tự với file Excel (ActivityResource) — trang này
+    # đóng vai trò như 1 "sheet" sống, phải nhất quán với file xuất ra, không lệch nhau.
     list_display = (
-        "customer_link", "activity_type", "status", "activity_at", "performed_by", "assigned_to",
-        "contact_person", "content", "result", "note", "follow_up_date",
-        "follow_up_time", "follow_up_done", "related_order", "related_reference", "created_by",
-        "created_at", "updated_at",
+        "activity_type", "title", "activity_at", "contact_person", "content", "result", "status",
+        "follow_up_date", "note", "attachment", "related_reference", "created_at", "related_order",
+        "follow_up_done", "follow_up_time",
     )
     list_filter = ("activity_type", "status")
     search_fields = ("title", "content")
-
-    @admin.display(description="Đối tác")
-    def customer_link(self, obj):
-        return linked_fk(obj.customer)
 
 
 @admin.register(Task)
