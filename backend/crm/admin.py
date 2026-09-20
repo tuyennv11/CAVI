@@ -42,12 +42,17 @@ class NoticeResource(ExcelModelResource):
 class ActivityResource(ExcelModelResource):
     class Meta:
         model = Activity
-        # File Excel "Hoạt động đối tác" chỉ cần đúng các cột mô tả nội dung hoạt động (theo mẫu anh
-        # gửi) — không cần lặp lại Đối tác/Công ty (đã có ngữ cảnh riêng khi xem qua từng Đối tác) hay
-        # các cột trách nhiệm/nhật ký hệ thống (Người thực hiện/phụ trách/tạo, Ngày cập nhật). Các
-        # field này KHÔNG bị xoá khỏi model — vẫn dùng bình thường trong app, chỉ ẩn khỏi riêng file
-        # Excel xuất/nhập của sheet này.
-        exclude = ("attachment", "customer", "company", "performed_by", "assigned_to", "created_by", "updated_at")
+        # File Excel "Hoạt động đối tác" khớp đúng cột + thứ tự mẫu anh gửi — không lặp lại Đối tác/
+        # Công ty (đã có ngữ cảnh riêng khi xem qua từng Đối tác) hay các cột trách nhiệm/nhật ký hệ
+        # thống (Người thực hiện/phụ trách/tạo, Ngày cập nhật). Các field bị bỏ KHÔNG bị xoá khỏi
+        # model — vẫn dùng bình thường trong app, chỉ ẩn khỏi riêng file Excel xuất/nhập của sheet
+        # này. Dùng "fields" (danh sách + thứ tự tường minh) thay vì "exclude" vì thứ tự mẫu không
+        # trùng thứ tự khai báo field trên model (vd Trạng thái nằm sau Kết quả, không phải đầu).
+        fields = (
+            "id", "activity_type", "title", "activity_at", "contact_person", "content", "result",
+            "status", "follow_up_date", "note", "attachment", "related_reference", "created_at",
+            "related_order", "follow_up_done", "follow_up_time",
+        )
 
 
 class TaskResource(ExcelModelResource):
