@@ -17,6 +17,20 @@ ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").
 # nếu không các URL tuyệt đối tự sinh (vd ảnh hỏi giá) sẽ ra http:// và bị trình duyệt chặn mixed-content.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Vì is_secure() ở trên trả về True, Django (từ bản 4.0) bắt buộc request POST/PUT/... phải có
+# Origin/Referer khớp đúng 1 domain "tin cậy" khai báo sẵn — không khai thì đăng nhập /admin/ (và
+# mọi form POST khác) báo lỗi "CSRF verification failed" dù cookie/session vẫn đúng.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "https://app.vantaiduongbo.net").split(",")
+    if o.strip()
+]
+# Cookie CSRF/session chỉ nên gửi qua kênh https thật (sản xuất) — tắt ở local vì dev server chạy
+# http thường, bật cờ Secure lúc DEBUG=True sẽ khiến trình duyệt âm thầm không gửi cookie, không
+# đăng nhập được.
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
