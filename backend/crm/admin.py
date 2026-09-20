@@ -42,7 +42,12 @@ class NoticeResource(ExcelModelResource):
 class ActivityResource(ExcelModelResource):
     class Meta:
         model = Activity
-        exclude = ("attachment",)  # FileField — không xuất/nhập file qua Excel
+        # File Excel "Hoạt động đối tác" chỉ cần đúng các cột mô tả nội dung hoạt động (theo mẫu anh
+        # gửi) — không cần lặp lại Đối tác/Công ty (đã có ngữ cảnh riêng khi xem qua từng Đối tác) hay
+        # các cột trách nhiệm/nhật ký hệ thống (Người thực hiện/phụ trách/tạo, Ngày cập nhật). Các
+        # field này KHÔNG bị xoá khỏi model — vẫn dùng bình thường trong app, chỉ ẩn khỏi riêng file
+        # Excel xuất/nhập của sheet này.
+        exclude = ("attachment", "customer", "company", "performed_by", "assigned_to", "created_by", "updated_at")
 
 
 class TaskResource(ExcelModelResource):
