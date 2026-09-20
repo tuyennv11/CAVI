@@ -1,0 +1,93 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+{% comment %}
+Trang chủ /admin/ — thay danh sách app/model mặc định của Django (từng khối riêng theo app) bằng
+1 bảng phẳng duy nhất Tên bảng | Nhóm | Số dòng, đúng bố cục sheet "Mục lục" trong file Excel xuất từ
+database — dữ liệu (excel_index_rows) tính sẵn ở config/admin_site.py:_index_with_excel_rows, không
+tính lại trong template.
+{% endcomment %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  #excel-index-table { width: 100%; border-collapse: collapse; background: #fff; }
+  #excel-index-table th {
+    text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
+    color: #fff; background: #c41e3a; padding: 10px 14px; position: sticky; top: 0;
+  }
+  #excel-index-table th.num, #excel-index-table td.num { text-align: right; }
+  #excel-index-table td { padding: 9px 14px; border-bottom: 1px solid #eee1de; font-size: 13.5px; }
+  #excel-index-table tbody tr:hover { background: #fbe9ec; }
+  #excel-index-table a.row-link { color: #241a18; text-decoration: none; font-weight: 500; }
+  #excel-index-table a.row-link:hover { color: #c41e3a; text-decoration: underline; }
+  #excel-index-table .group-badge {
+    display: inline-block; font-size: 11px; color: #8a726a; background: #f3ece9;
+    border-radius: 999px; padding: 2px 9px;
+  }
+  #excel-index-table .count-badge {
+    font-variant-numeric: tabular-nums; color: #5a5049;
+  }
+  #excel-index-title { font-size: 13px; color: #8a726a; margin: 0 0 10px; }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <p id="excel-index-title">Toàn bộ dữ liệu hệ thống — bấm vào tên bảng để xem/nhập dữ liệu, giống hệt sheet "Mục lục" trong file Excel xuất từ database.</p>
+  <table id="excel-index-table">
+    <thead>
+      <tr>
+        <th>Tên bảng</th>
+        <th>Nhóm</th>
+        <th class="num">Số dòng</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in excel_index_rows %}
+      <tr>
+        <td><a class="row-link" href="{{ row.url }}">{{ row.label }}</a></td>
+        <td><span class="group-badge">{{ row.group }}</span></td>
+        <td class="num"><span class="count-badge">{% if row.count is not None %}{{ row.count }}{% else %}—{% endif %}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% translate 'Recent actions' %}</h2>
+        <h3>{% translate 'My actions' %}</h3>
+            {% load log %}
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+            <p>{% translate 'None available' %}</p>
+            {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                    {{ entry.object_repr }}
+                {% else %}
+                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                {% endif %}
+                <br>
+                {% if entry.content_type %}
+                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                {% else %}
+                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}

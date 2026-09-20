@@ -54,7 +54,7 @@ class OrderFinance(models.Model):
     revenue_recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", verbose_name="Người ghi nhận doanh thu")
     revenue_recorded_at = models.DateTimeField(null=True, blank=True, verbose_name="Thời điểm ghi nhận doanh thu")
     note = models.TextField(blank=True, verbose_name="Ghi chú tài chính")
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
 
     class Meta:
         ordering = ["-order__created_at"]
@@ -152,16 +152,16 @@ class OrderCost(models.Model):
         COD = "cod", "Thu hộ"
         OTHER = "other", "Khác"
 
-    finance = models.ForeignKey(OrderFinance, on_delete=models.CASCADE, related_name="costs")
-    category = models.CharField(max_length=30, choices=Category.choices)
-    supplier = models.ForeignKey(Partner, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_costs")
-    description = models.CharField(max_length=255, blank=True)
-    amount = models.DecimalField(max_digits=18, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
-    currency = models.CharField(max_length=3, choices=OrderFinance.Currency.choices, default=OrderFinance.Currency.VND)
-    exchange_rate = models.DecimalField(max_digits=14, decimal_places=4, default=1, validators=[MinValueValidator(Decimal("0.0001"))])
-    incurred_at = models.DateField(default=timezone.localdate)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
+    finance = models.ForeignKey(OrderFinance, on_delete=models.CASCADE, related_name="costs", verbose_name="Hồ sơ tài chính đơn hàng")
+    category = models.CharField(max_length=30, choices=Category.choices, verbose_name="Loại chi phí")
+    supplier = models.ForeignKey(Partner, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_costs", verbose_name="Nhà cung cấp")
+    description = models.CharField(max_length=255, blank=True, verbose_name="Mô tả")
+    amount = models.DecimalField(max_digits=18, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))], verbose_name="Số tiền")
+    currency = models.CharField(max_length=3, choices=OrderFinance.Currency.choices, default=OrderFinance.Currency.VND, verbose_name="Tiền tệ")
+    exchange_rate = models.DecimalField(max_digits=14, decimal_places=4, default=1, validators=[MinValueValidator(Decimal("0.0001"))], verbose_name="Tỷ giá")
+    incurred_at = models.DateField(default=timezone.localdate, verbose_name="Ngày phát sinh")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+", verbose_name="Người tạo")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
 
     class Meta:
         ordering = ["-incurred_at", "-id"]
@@ -184,16 +184,16 @@ class OrderPayment(models.Model):
         COD = "cod", "Thu hộ COD"
         REFUND = "refund", "Hoàn tiền khách"
 
-    finance = models.ForeignKey(OrderFinance, on_delete=models.CASCADE, related_name="payments")
-    payment_type = models.CharField(max_length=20, choices=PaymentType.choices)
-    amount = models.DecimalField(max_digits=18, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
-    currency = models.CharField(max_length=3, choices=OrderFinance.Currency.choices, default=OrderFinance.Currency.VND)
-    exchange_rate = models.DecimalField(max_digits=14, decimal_places=4, default=1, validators=[MinValueValidator(Decimal("0.0001"))])
-    paid_at = models.DateTimeField(default=timezone.now)
-    reference = models.CharField(max_length=100, blank=True)
-    note = models.TextField(blank=True)
-    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
+    finance = models.ForeignKey(OrderFinance, on_delete=models.CASCADE, related_name="payments", verbose_name="Hồ sơ tài chính đơn hàng")
+    payment_type = models.CharField(max_length=20, choices=PaymentType.choices, verbose_name="Loại thanh toán")
+    amount = models.DecimalField(max_digits=18, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))], verbose_name="Số tiền")
+    currency = models.CharField(max_length=3, choices=OrderFinance.Currency.choices, default=OrderFinance.Currency.VND, verbose_name="Tiền tệ")
+    exchange_rate = models.DecimalField(max_digits=14, decimal_places=4, default=1, validators=[MinValueValidator(Decimal("0.0001"))], verbose_name="Tỷ giá")
+    paid_at = models.DateTimeField(default=timezone.now, verbose_name="Ngày thanh toán")
+    reference = models.CharField(max_length=100, blank=True, verbose_name="Số tham chiếu")
+    note = models.TextField(blank=True, verbose_name="Ghi chú")
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+", verbose_name="Người ghi nhận")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
 
     class Meta:
         ordering = ["-paid_at", "-id"]
@@ -217,13 +217,13 @@ class OrderDocument(models.Model):
         IMAGE = "image", "Hình ảnh hàng"
         OTHER = "other", "Khác"
 
-    finance = models.ForeignKey(OrderFinance, on_delete=models.CASCADE, related_name="documents")
-    document_type = models.CharField(max_length=20, choices=DocumentType.choices)
-    title = models.CharField(max_length=255)
-    file = models.FileField(upload_to="order_documents/%Y/%m/")
-    document_number = models.CharField(max_length=100, blank=True)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
+    finance = models.ForeignKey(OrderFinance, on_delete=models.CASCADE, related_name="documents", verbose_name="Hồ sơ tài chính đơn hàng")
+    document_type = models.CharField(max_length=20, choices=DocumentType.choices, verbose_name="Loại chứng từ")
+    title = models.CharField(max_length=255, verbose_name="Tiêu đề")
+    file = models.FileField(upload_to="order_documents/%Y/%m/", verbose_name="File")
+    document_number = models.CharField(max_length=100, blank=True, verbose_name="Số chứng từ")
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+", verbose_name="Người tải lên")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
 
     class Meta:
         ordering = ["-created_at"]

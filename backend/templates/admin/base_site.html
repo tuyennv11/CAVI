@@ -12,6 +12,73 @@
 
 {% block nav-global %}{% endblock %}
 
+{% block footer %}
+{{ block.super }}
+{% comment %}
+Thanh tab cố định dưới cùng, giống thanh sheet của Excel (Mục lục, Công ty, Đối tác...) — bấm vào
+tên là nhảy thẳng tới danh sách dữ liệu tương ứng, không cần mở lại menu/sidebar từng cấp. Danh sách
+tab lấy từ excel_tabs (config/admin_site.py, each_context) nên tự khớp đúng quyền + thứ tự nghiệp vụ
+đã có sẵn — không khai báo trùng ở đây. Tab đang mở được đánh dấu bằng JS (so khớp path dài nhất,
+xem bên dưới) vì Django không cho biết sẵn "app/model hiện tại" ở mọi loại trang admin (đổi mật khẩu,
+lịch sử, xoá hàng loạt...) một cách đồng nhất. Ẩn hẳn trong popup (ô chọn nhanh 1 đối tượng liên
+quan) — cửa sổ đó rất nhỏ, thanh tab chỉ choán chỗ chứ không có tác dụng điều hướng.
+{% endcomment %}
+{% if not is_popup %}
+<div id="excel-tabbar">
+  <div id="excel-tabbar-inner">
+    {% for tab in excel_tabs %}
+    <a class="excel-tab" href="{{ tab.url }}">{{ tab.label }}</a>
+    {% endfor %}
+  </div>
+</div>
+<style>
+  body { padding-bottom: 46px; }
+  #excel-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+    background: #e8e2dd; border-top: 1px solid #c9beb6;
+    box-shadow: 0 -2px 8px rgba(0,0,0,.08);
+  }
+  #excel-tabbar-inner {
+    display: flex; align-items: stretch; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .excel-tab {
+    flex: none; padding: 12px 16px; font-size: 12.5px; font-weight: 500;
+    color: #5a5049; text-decoration: none; white-space: nowrap;
+    border-right: 1px solid #d6cdc5; background: #ddd5cd;
+  }
+  .excel-tab:hover { background: #eee7e0; color: #2c2721; }
+  .excel-tab.excel-tab-active {
+    background: #fff; color: #c41e3a; font-weight: 700;
+    box-shadow: inset 0 2px 0 #c41e3a;
+  }
+  @media (max-width: 767px) {
+    .excel-tab { padding: 11px 12px; font-size: 12px; }
+  }
+</style>
+<script>
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    var tabs = document.querySelectorAll(".excel-tab");
+    var path = window.location.pathname;
+    var best = null;
+    tabs.forEach(function (a) {
+      var href = a.getAttribute("href");
+      if (!href) return;
+      if (path === href || path.indexOf(href) === 0) {
+        if (!best || href.length > best.getAttribute("href").length) best = a;
+      }
+    });
+    if (best) {
+      best.classList.add("excel-tab-active");
+      best.scrollIntoView({ inline: "center", block: "nearest" });
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
+
 {% block extrastyle %}
 {{ block.super }}
 {% comment %}

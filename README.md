@@ -1,4 +1,4 @@
-# CRM — Vận Tải Đường Bộ
+# Wed app quản lý tổng thể công ty LIVI
 
 Hệ thống quản lý công ty, bắt đầu bằng module **CRM (khách hàng/bán hàng)**. Kiến trúc API-first (Django REST Framework) để sau này app điện thoại dùng chung một API với web, không phải viết lại.
 
