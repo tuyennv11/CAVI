@@ -2,7 +2,6 @@ import { Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
 import ProtectedLayout from "./components/ProtectedLayout";
 import ApprovalsPage from "./pages/ApprovalsPage";
-import Attendance from "./pages/Attendance";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetail from "./pages/EmployeeDetail";
 import Employees from "./pages/Employees";
@@ -39,7 +38,6 @@ export default function App() {
           <Route path="/shipment-batches" element={<ShipmentBatches />} />
           <Route path="/supply-board" element={<SupplyBoard />} />
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/attendance" element={<Attendance />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/employees/:id" element={<EmployeeDetail />} />
           <Route path="/profile" element={<Profile />} />

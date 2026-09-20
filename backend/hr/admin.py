@@ -6,13 +6,9 @@ from import_export.admin import ImportExportModelAdmin
 from config.admin_import_export import ExcelModelResource, ExportOnlyAdmin
 
 from .models import (
-    AttendanceRecord,
-    BonusPenaltyRecord,
-    CompensationRecord,
     Department,
     EmergencyContact,
     EmployeeDocument,
-    LeaveBalance,
     Position,
     Profile,
     ProfileChangeLog,
@@ -65,26 +61,6 @@ class ProfileResource(ExcelModelResource):
     class Meta:
         model = Profile
         exclude = ("avatar",)  # FileField — không xuất/nhập file qua Excel
-
-
-class LeaveBalanceResource(ExcelModelResource):
-    class Meta:
-        model = LeaveBalance
-
-
-class AttendanceRecordResource(ExcelModelResource):
-    class Meta:
-        model = AttendanceRecord
-
-
-class CompensationRecordResource(ExcelModelResource):
-    class Meta:
-        model = CompensationRecord
-
-
-class BonusPenaltyRecordResource(ExcelModelResource):
-    class Meta:
-        model = BonusPenaltyRecord
 
 
 class ProfileChangeLogResource(ExcelModelResource):
@@ -182,40 +158,6 @@ class ProfileAdmin(ImportExportModelAdmin):
         super().save_model(request, obj, form, change)
         if "groups" in form.cleaned_data:
             obj.user.groups.set(form.cleaned_data["groups"])
-
-
-@admin.register(LeaveBalance)
-class LeaveBalanceAdmin(ImportExportModelAdmin):
-    resource_classes = [LeaveBalanceResource]
-    list_display = ("user", "year", "annual_current", "annual_carried", "bonus_current", "bonus_carried", "bonus_pending")
-    list_filter = ("year",)
-
-
-@admin.register(AttendanceRecord)
-class AttendanceRecordAdmin(ImportExportModelAdmin):
-    resource_classes = [AttendanceRecordResource]
-    list_display = ("user", "date", "checked_in_at")
-    list_filter = ("date",)
-
-
-# Lương/Thưởng-phạt đăng ký riêng (không inline trong ProfileAdmin) — dữ liệu nhạy cảm, không nên
-# hiện sẵn mỗi lần mở hồ sơ 1 nhân viên bất kỳ trong trang quản trị.
-@admin.register(CompensationRecord)
-class CompensationRecordAdmin(ImportExportModelAdmin):
-    resource_classes = [CompensationRecordResource]
-    list_display = ("profile", "effective_date", "base_salary", "allowance", "payment_method")
-    list_filter = ("payment_method",)
-    autocomplete_fields = ["profile"]
-    readonly_fields = ("created_by", "created_at")
-
-
-@admin.register(BonusPenaltyRecord)
-class BonusPenaltyRecordAdmin(ImportExportModelAdmin):
-    resource_classes = [BonusPenaltyRecordResource]
-    list_display = ("profile", "record_type", "amount", "effective_date", "reason")
-    list_filter = ("record_type",)
-    autocomplete_fields = ["profile"]
-    readonly_fields = ("created_by", "created_at")
 
 
 # Nhật ký thay đổi — chỉ xem, không cho thêm/sửa/xoá tay trong admin vì đây là log tự động do

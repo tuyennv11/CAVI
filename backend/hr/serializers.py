@@ -1,13 +1,9 @@
 from rest_framework import serializers
 
 from .models import (
-    AttendanceRecord,
-    BonusPenaltyRecord,
-    CompensationRecord,
     Department,
     EmergencyContact,
     EmployeeDocument,
-    LeaveBalance,
     Position,
     Profile,
     TrainingRecord,
@@ -161,42 +157,5 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
         fields = ["id", "profile", "name", "relationship", "phone", "address", "note"]
 
 
-class CompensationRecordSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CompensationRecord
-        fields = [
-            "id", "profile", "effective_date", "base_salary", "allowance", "insurance_base",
-            "bank_name", "bank_account", "payment_method", "note", "created_by", "created_at",
-        ]
-        read_only_fields = ["created_by", "created_at"]
-
-
-class BonusPenaltyRecordSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BonusPenaltyRecord
-        fields = ["id", "profile", "record_type", "amount", "reason", "effective_date", "created_by", "created_at"]
-        read_only_fields = ["created_by", "created_at"]
-
-
-class LeaveBalanceSerializer(serializers.ModelSerializer):
-    total_available = serializers.DecimalField(max_digits=6, decimal_places=1, read_only=True)
-
-    class Meta:
-        model = LeaveBalance
-        fields = [
-            "id",
-            "year",
-            "annual_current",
-            "annual_carried",
-            "bonus_current",
-            "bonus_carried",
-            "bonus_pending",
-            "total_available",
-        ]
-
-
-class AttendanceRecordSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AttendanceRecord
-        fields = ["id", "date", "checked_in_at", "note"]
-        read_only_fields = ["date", "checked_in_at"]
+# Lương/Thưởng-phạt/Số ngày phép/Chấm công đã bị gỡ bỏ hẳn (anh yêu cầu xoá vì đang trống, sẽ sắp
+# xếp lại cấu trúc dữ liệu sau) — xem hr/migrations/0022_remove_compensation_bonus_leave_attendance.py.

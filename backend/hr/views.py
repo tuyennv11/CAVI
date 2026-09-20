@@ -13,26 +13,18 @@ from crm.models import KPITarget, Order
 from crm.workspace_views import _month_bounds, _pct, _sum_revenue
 
 from .models import (
-    AttendanceRecord,
-    BonusPenaltyRecord,
-    CompensationRecord,
     Department,
     EmergencyContact,
     EmployeeDocument,
-    LeaveBalance,
     Position,
     Profile,
     TrainingRecord,
 )
-from .permissions import IsAccountantOrManagerForWrite, IsManagerOrHRForWrite
+from .permissions import IsManagerOrHRForWrite
 from .serializers import (
-    AttendanceRecordSerializer,
-    BonusPenaltyRecordSerializer,
-    CompensationRecordSerializer,
     DepartmentSerializer,
     EmergencyContactSerializer,
     EmployeeDocumentSerializer,
-    LeaveBalanceSerializer,
     MyProfileSerializer,
     PositionSerializer,
     ProfileSerializer,
@@ -211,72 +203,5 @@ class EmergencyContactViewSet(viewsets.ModelViewSet):
         return qs.filter(profile__user=self.request.user)
 
 
-class CompensationRecordViewSet(viewsets.ModelViewSet):
-    """Lương — ai cũng xem được của chính mình, chỉ Kế toán/Quản lý xem được của người khác và
-    tạo/sửa/xoá được (Nhân sự KHÔNG có quyền này, khác với hồ sơ chung)."""
-
-    serializer_class = CompensationRecordSerializer
-    permission_classes = [IsAuthenticated, IsAccountantOrManagerForWrite]
-    filterset_fields = ["profile"]
-
-    def get_queryset(self):
-        qs = CompensationRecord.objects.select_related("profile__user")
-        if is_manager(self.request.user) or is_accountant(self.request.user):
-            return qs
-        return qs.filter(profile__user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
-
-class BonusPenaltyRecordViewSet(viewsets.ModelViewSet):
-    """Thưởng/phạt/hoa hồng — cùng quy tắc quyền với Lương."""
-
-    serializer_class = BonusPenaltyRecordSerializer
-    permission_classes = [IsAuthenticated, IsAccountantOrManagerForWrite]
-    filterset_fields = ["profile"]
-
-    def get_queryset(self):
-        qs = BonusPenaltyRecord.objects.select_related("profile__user")
-        if is_manager(self.request.user) or is_accountant(self.request.user):
-            return qs
-        return qs.filter(profile__user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
-
-class LeaveBalanceViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = LeaveBalanceSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        qs = LeaveBalance.objects.all()
-        user_id = self.request.query_params.get("user")
-        if is_manager(self.request.user) and user_id:
-            return qs.filter(user_id=user_id)
-        if is_manager(self.request.user) and not user_id:
-            return qs.filter(user=self.request.user)
-        return qs.filter(user=self.request.user)
-
-
-class AttendanceRecordViewSet(viewsets.ModelViewSet):
-    serializer_class = AttendanceRecordSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "options"]
-
-    def get_queryset(self):
-        qs = AttendanceRecord.objects.all()
-        user_id = self.request.query_params.get("user")
-        if is_manager(self.request.user) and user_id:
-            return qs.filter(user_id=user_id)
-        if is_manager(self.request.user) and not user_id:
-            return qs.filter(user=self.request.user)
-        return qs.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        today = timezone.localdate()
-        obj, created = AttendanceRecord.objects.get_or_create(
-            user=self.request.user, date=today, defaults={"note": serializer.validated_data.get("note", "")}
-        )
-        serializer.instance = obj
+# Lương/Thưởng-phạt/Số ngày phép/Chấm công đã bị gỡ bỏ hẳn (anh yêu cầu xoá vì đang trống, sẽ sắp
+# xếp lại cấu trúc dữ liệu sau) — xem hr/migrations/0022_remove_compensation_bonus_leave_attendance.py.

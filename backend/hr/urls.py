@@ -2,14 +2,10 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    AttendanceRecordViewSet,
-    BonusPenaltyRecordViewSet,
-    CompensationRecordViewSet,
     DepartmentViewSet,
     EmergencyContactViewSet,
     EmployeeDocumentViewSet,
     EmployeeViewSet,
-    LeaveBalanceViewSet,
     MyProfileView,
     PositionViewSet,
     TrainingRecordViewSet,
@@ -18,13 +14,9 @@ from .views import (
 router = DefaultRouter()
 router.register("departments", DepartmentViewSet, basename="department")
 router.register("positions", PositionViewSet, basename="position")
-router.register("leave-balances", LeaveBalanceViewSet, basename="leave-balance")
-router.register("attendance", AttendanceRecordViewSet, basename="attendance")
 router.register("employees", EmployeeViewSet, basename="employee")
 router.register("documents", EmployeeDocumentViewSet, basename="employee-document")
 router.register("emergency-contacts", EmergencyContactViewSet, basename="emergency-contact")
-router.register("compensation", CompensationRecordViewSet, basename="compensation")
-router.register("bonus-penalty", BonusPenaltyRecordViewSet, basename="bonus-penalty")
 router.register("trainings", TrainingRecordViewSet, basename="training")
 
 urlpatterns = [

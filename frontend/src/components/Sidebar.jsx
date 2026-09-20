@@ -69,12 +69,6 @@ const ICONS = {
       <rect x="7" y="11.5" width="6" height="4" rx="1" />
     </svg>
   ),
-  attendance: (
-    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="10" cy="10.5" r="7" />
-      <path d="M10 6.5v4l2.5 2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
   profile: (
     <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="10" cy="6.8" r="3" />
@@ -231,9 +225,6 @@ export default function Sidebar({ user, open, onClose }) {
         )}
 
         <div className="sidebar-section">Cá nhân</div>
-        <NavItem to="/attendance" icon={ICONS.attendance}>
-          Chấm công
-        </NavItem>
         <NavItem to="/profile" icon={ICONS.profile}>
           Hồ sơ cá nhân
         </NavItem>

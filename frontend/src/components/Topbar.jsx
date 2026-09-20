@@ -12,7 +12,6 @@ function titleFor(pathname) {
   if (pathname === "/approvals") return "Ký duyệt";
   if (pathname === "/shipments") return "Kiện hàng";
   if (pathname === "/shipment-batches") return "Quản lý vận hành";
-  if (pathname === "/attendance") return "Chấm công";
   if (pathname === "/profile") return "Cá nhân";
   return "";
 }
