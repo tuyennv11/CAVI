@@ -70,7 +70,15 @@ class KPITargetResource(ExcelModelResource):
 class PriceInquiryResource(ExcelModelResource):
     class Meta:
         model = PriceInquiry
-        exclude = ("image",)  # FileField — không xuất/nhập file qua Excel
+        # Bỏ Trạng thái/Giá vốn/Giá sàn/Giá trần/Tỷ lệ sàn/Tỷ lệ trần/Người chốt giá/Thời điểm chốt
+        # giá/Công ty khỏi sheet này — đây là các field do luồng chốt giá trong app tự set (xem
+        # PriceInquiryViewSet.confirm_quote), không phải nơi nhập tay qua Excel. Field KHÔNG bị xoá
+        # khỏi model — vẫn dùng bình thường trong app, chỉ ẩn khỏi riêng file Excel/trang danh sách
+        # của sheet Hỏi giá (list_display cũng bỏ y hệt, xem PriceInquiryAdmin).
+        exclude = (
+            "image", "company", "status", "cost_price", "floor_price", "ceiling_price",
+            "floor_pct", "ceiling_pct", "quoted_by", "quoted_at",
+        )
 
 
 class PriceInquiryQuoteLineResource(ExcelModelResource):
@@ -279,10 +287,8 @@ class PriceInquiryAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
     # Khớp đúng cột + thứ tự với PriceInquiryResource (xem quy tắc: trang Admin luôn là bản xem trực
     # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau).
     list_display = (
-        "code", "customer_link", "company", "item_name", "quantity", "unit", "country", "province",
-        "district", "ward", "street_address", "description", "status", "cost_price", "floor_price",
-        "ceiling_price", "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by",
-        "created_at", "updated_at",
+        "code", "customer_link", "item_name", "quantity", "unit", "country", "province",
+        "district", "ward", "street_address", "description", "created_by", "created_at", "updated_at",
     )
     list_filter = ("status",)
     search_fields = ("code", "customer__name", "item_name")
