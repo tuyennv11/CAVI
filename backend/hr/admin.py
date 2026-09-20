@@ -77,9 +77,13 @@ class ProfileAdmin(ImportExportModelAdmin):
         "manager", "work_status", "employment_type", "phone", "date_of_birth", "id_number",
         "province", "district", "ward", "street_address", "hired_at", "resigned_at",
         "contract_type", "contract_started_at", "contract_expires_at", "work_location",
-        "education_level", "major", "skills", "job_description", "companies_display",
+        "education_level", "major", "skills", "job_description",
     )
-    list_filter = ("department", "work_status", "employment_type", "level", "education_level", "companies")
+    # Bỏ "companies"/"Công ty" khỏi cột hiển thị + bộ lọc — chỉ còn đúng 1 công ty (LIVI) nên giá trị
+    # luôn giống nhau ở mọi dòng, không còn tác dụng lọc/phân biệt gì nữa (xem companies/admin.py).
+    # Field companies vẫn giữ trong form thêm/sửa (filter_horizontal) vì logic phân quyền theo công
+    # ty trong code vẫn dựa vào đó.
+    list_filter = ("department", "work_status", "employment_type", "level", "education_level")
     search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
     readonly_fields = ("employee_code",)
     filter_horizontal = ("companies",)
@@ -88,10 +92,6 @@ class ProfileAdmin(ImportExportModelAdmin):
     # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
     # người dùng có thể lớn dần.
     autocomplete_fields = ["country", "province", "district", "ward", "manager"]
-
-    @admin.display(description="Công ty")
-    def companies_display(self, obj):
-        return ", ".join(c.code for c in obj.companies.all()) or "—"
 
 
 @admin.register(LeaveBalance)

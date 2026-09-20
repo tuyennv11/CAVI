@@ -24,16 +24,18 @@ class StockMovementResource(ExcelModelResource):
 @admin.register(Warehouse)
 class WarehouseAdmin(ImportExportModelAdmin):
     resource_classes = [WarehouseResource]
-    list_display = ("name", "company", "address", "is_active")
-    list_filter = ("company", "is_active")
+    # Bỏ "company" khỏi cột hiển thị + bộ lọc — chỉ còn đúng 1 công ty (LIVI) nên giá trị luôn giống
+    # nhau ở mọi dòng, không còn tác dụng lọc/phân biệt gì nữa (xem companies/admin.py).
+    list_display = ("name", "address", "is_active")
+    list_filter = ("is_active",)
     search_fields = ("name", "address")
 
 
 @admin.register(Product)
 class ProductAdmin(ImportExportModelAdmin):
     resource_classes = [ProductResource]
-    list_display = ("sku", "name", "company", "unit", "cost_price", "sale_price", "is_active")
-    list_filter = ("company", "is_active")
+    list_display = ("sku", "name", "unit", "cost_price", "sale_price", "is_active")
+    list_filter = ("is_active",)
     search_fields = ("sku", "name")
 
 

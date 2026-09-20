@@ -178,7 +178,10 @@ class PartnerAdmin(ImportExportModelAdmin):
         "name", "is_customer", "is_supplier", "tier", "tier_override", "contact_person", "phone",
         "address", "note", "assigned_to", "created_at",
     )
-    list_filter = ("is_customer", "is_supplier", "companies", "assigned_to")
+    # Bỏ "companies" khỏi bộ lọc — chỉ còn đúng 1 công ty (LIVI) nên không còn tác dụng lọc/phân biệt
+    # gì nữa (xem companies/admin.py). Field companies vẫn giữ trong form thêm/sửa (filter_horizontal)
+    # vì logic phân quyền theo công ty trong code vẫn dựa vào đó.
+    list_filter = ("is_customer", "is_supplier", "assigned_to")
     search_fields = ("name", "contact_person", "phone")
     filter_horizontal = ("companies",)
     inlines = [PriceInquiryInline, OrderInline, ShipmentInline, TierUpgradeRequestInline, ActivityInline]
