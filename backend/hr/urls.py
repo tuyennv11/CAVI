@@ -11,11 +11,13 @@ from .views import (
     EmployeeViewSet,
     LeaveBalanceViewSet,
     MyProfileView,
+    PositionViewSet,
     TrainingRecordViewSet,
 )
 
 router = DefaultRouter()
 router.register("departments", DepartmentViewSet, basename="department")
+router.register("positions", PositionViewSet, basename="position")
 router.register("leave-balances", LeaveBalanceViewSet, basename="leave-balance")
 router.register("attendance", AttendanceRecordViewSet, basename="attendance")
 router.register("employees", EmployeeViewSet, basename="employee")

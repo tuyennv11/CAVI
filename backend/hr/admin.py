@@ -13,6 +13,7 @@ from .models import (
     EmergencyContact,
     EmployeeDocument,
     LeaveBalance,
+    Position,
     Profile,
     ProfileChangeLog,
     Room,
@@ -43,6 +44,21 @@ class DepartmentAdmin(ImportExportModelAdmin):
     list_display = ("code", "name", "system_code")
     search_fields = ("code", "name", "system_code")
     readonly_fields = ("code",)
+
+
+class PositionResource(ExcelModelResource):
+    class Meta:
+        model = Position
+
+
+@admin.register(Position)
+class PositionAdmin(ImportExportModelAdmin):
+    resource_classes = [PositionResource]
+    list_display = ("code", "name", "department", "level")
+    list_filter = ("department",)
+    search_fields = ("code", "name")
+    readonly_fields = ("code",)
+    autocomplete_fields = ["department"]
 
 
 class ProfileResource(ExcelModelResource):
@@ -123,8 +139,8 @@ class ProfileAdmin(ImportExportModelAdmin):
     # cột "Mật khẩu" vì lý do bảo mật (xem ProfileResource/ProfileAdminForm), không hiện dạng chữ ở
     # bất kỳ đâu.
     list_display = (
-        "employee_code", "username_display", "full_name_display", "preferred_name", "job_title",
-        "level", "department", "rooms_display", "groups_display", "job_description",
+        "employee_code", "username_display", "full_name_display", "preferred_name", "position",
+        "department", "rooms_display", "groups_display", "job_description",
         "date_of_birth", "id_number", "phone", "country", "district", "province",
         "street_address", "ward", "avatar", "personnel_document_number", "hired_at",
         "contract_started_at", "contract_expires_at", "employment_type", "gender", "manager",
@@ -134,15 +150,17 @@ class ProfileAdmin(ImportExportModelAdmin):
     # luôn giống nhau ở mọi dòng, không còn tác dụng lọc/phân biệt gì nữa (xem companies/admin.py).
     # Field companies vẫn giữ trong form thêm/sửa (filter_horizontal) vì logic phân quyền theo công
     # ty trong code vẫn dựa vào đó.
-    list_filter = ("department", "work_status", "employment_type", "level", "education_level")
+    list_filter = ("department", "work_status", "employment_type", "education_level")
     search_fields = ("employee_code", "user__username", "user__first_name", "user__last_name", "phone", "id_number")
-    readonly_fields = ("employee_code",)
+    # department chỉ hiện để xem (editable=False ở model, tự điền theo Chức vụ) — liệt kê ở đây để
+    # form hiện được giá trị hiện tại thay vì ẩn hẳn đi.
+    readonly_fields = ("employee_code", "department")
     filter_horizontal = ("companies", "rooms")
     inlines = [EmployeeDocumentInline, EmergencyContactInline, TrainingRecordInline]
     # Quận/Huyện, Phường/Xã có hàng trăm/hàng chục nghìn dòng — bắt buộc phải là ô tìm kiếm (autocomplete)
-    # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager` cũng autocomplete vì danh sách
-    # người dùng có thể lớn dần.
-    autocomplete_fields = ["country", "province", "district", "ward", "manager"]
+    # thay vì dropdown liệt kê hết, không thì không dùng nổi. `manager`/`position` cũng autocomplete
+    # vì danh sách có thể lớn dần.
+    autocomplete_fields = ["country", "province", "district", "ward", "manager", "position"]
 
     @admin.display(description="Tên đăng nhập")
     def username_display(self, obj):

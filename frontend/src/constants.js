@@ -246,15 +246,6 @@ export const BONUS_PENALTY_TYPE_LABEL = {
   commission: "Hoa hồng",
 };
 
-export const LEVEL_LABEL = {
-  ceo: "Tổng giám đốc",
-  director: "Giám đốc",
-  head_of_dept: "Trưởng phòng",
-  deputy_head: "Phó phòng",
-  staff: "Nhân viên",
-  intern: "Thực tập sinh",
-};
-
 export const MOVEMENT_TYPE_LABEL = {
   in: "Nhập kho",
   out: "Xuất kho",

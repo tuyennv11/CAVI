@@ -91,7 +91,7 @@ export default function Profile() {
         <div>
           <h1>{profile.preferred_name || profile.full_name}</h1>
           <div className="company">
-            {profile.employee_code} · {profile.job_title || "Chưa cập nhật chức vụ"}
+            {profile.employee_code} · {profile.position_name || "Chưa cập nhật chức vụ"}
           </div>
           <div className="profile-pills" style={{ marginTop: 10 }}>
             <span className="profile-pill">👤 {profile.username}</span>

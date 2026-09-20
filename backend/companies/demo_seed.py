@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from crm.models import KPITarget, Notice, Order, OrderItem, Partner, Task
 from finance.models import OrderCost, OrderFinance, OrderPayment
-from hr.models import Department
+from hr.models import Department, Position
 
 from .models import Company
 
@@ -31,6 +31,42 @@ DEPARTMENT_BASELINE = {
     "Bộ phận hành chính nhân sự": "Bo_phan_hanh_chinh_nhan_su",
     "Tổng giám đốc": "Bo_phan_tong_giam_doc",
     "Cổ đông": "Bo_phan_co_dong",
+}
+
+# Đúng 30 Chức vụ nạp sẵn từ migration hr.0020 — coi là "trống" giống Bộ phận/Company, không phải dữ
+# liệu nghiệp vụ thật. So theo (tên, id bộ phận, cấp bậc) — không so "code" (CV001...) vì đó chỉ là
+# số thứ tự tự sinh.
+POSITION_BASELINE = {
+    ("Nhân viên kinh doanh", "Bộ phận kinh doanh", 3),
+    ("Trưởng phòng kinh doanh", "Bộ phận kinh doanh", 2),
+    ("Giám đốc kinh doanh", "Bộ phận kinh doanh", 1),
+    ("Nhân viên cung ứng", "Bộ phận cung ứng", 3),
+    ("Trưởng phòng cung ứng", "Bộ phận cung ứng", 2),
+    ("Giám đốc cung ứng", "Bộ phận cung ứng", 1),
+    ("Nhân viên kho Việt Nam", "Bộ phận kho Việt Nam", 3),
+    ("Phó kho Việt Nam", "Bộ phận kho Việt Nam", 2),
+    ("Trưởng kho Việt Nam", "Bộ phận kho Việt Nam", 1),
+    ("Nhân viên kho Campuchia", "Bộ phận kho Campuchia", 3),
+    ("Phó kho Campuchia", "Bộ phận kho Campuchia", 2),
+    ("Trưởng kho Campuchia", "Bộ phận kho Campuchia", 1),
+    ("Nhân viên R&D", "Bộ phận R&D", 3),
+    ("Trưởng phòng R&D", "Bộ phận R&D", 2),
+    ("Giám đốc R&D", "Bộ phận R&D", 1),
+    ("Thủ quỹ viên", "Bộ phận thủ quỹ", 3),
+    ("Thủ quỹ phó", "Bộ phận thủ quỹ", 2),
+    ("Thủ quỹ trưởng", "Bộ phận thủ quỹ", 1),
+    ("Kế toán viên", "Bộ phận tài chính - kế toán", 3),
+    ("Kế toán phó", "Bộ phận tài chính - kế toán", 2),
+    ("Kế toán trưởng", "Bộ phận tài chính - kế toán", 1),
+    ("Nhân viên pháp chế", "Bộ phận pháp chế", 3),
+    ("Trưởng phòng pháp chế", "Bộ phận pháp chế", 2),
+    ("Giám đốc pháp chế", "Bộ phận pháp chế", 1),
+    ("Nhân viên HCNS", "Bộ phận hành chính nhân sự", 3),
+    ("Trưởng phòng HCNS", "Bộ phận hành chính nhân sự", 2),
+    ("Giám đốc HCNS", "Bộ phận hành chính nhân sự", 1),
+    ("Trợ lý Tổng Giám đốc", "Tổng giám đốc", 1),
+    ("Tổng Giám đốc", "Tổng giám đốc", 0),
+    ("Cổ đông", "Cổ đông", 0),
 }
 
 SEED_MARKER = "CAVI_SYNTHETIC_FIXTURES_V1"
@@ -62,6 +98,9 @@ def _check_empty_business_database():
             if model._meta.label == "hr.Department":
                 _check_department_baseline(model)
                 continue
+            if model._meta.label == "hr.Position":
+                _check_position_baseline(model)
+                continue
             if model.objects.exists():
                 raise CommandError(f"Database đã có dữ liệu trong {model._meta.label}. Không nhập mẫu, không xóa hay thay thế dữ liệu đó.")
     # Công ty CAVI/AVI đã bị gộp/xoá hẳn (companies.migrations.0004) — từ giờ chỉ còn đúng 1 công ty
@@ -79,6 +118,14 @@ def _check_department_baseline(model):
     actual = {d.name: d.system_code for d in model.objects.all()}
     if actual != DEPARTMENT_BASELINE:
         raise CommandError("Danh mục Bộ phận đã khác dữ liệu gốc của migration. Không nhập bộ mẫu vào database đang dùng.")
+
+
+def _check_position_baseline(model):
+    # Fresh schema đã có sẵn 30 Chức vụ từ migration hr.0020 (giống Bộ phận/Company) — so khớp đúng
+    # (tên, tên bộ phận, cấp bậc), không so "code" (CV001...) vì đó chỉ là số thứ tự tự sinh.
+    actual = {(p.name, p.department.name, p.level) for p in model.objects.select_related("department")}
+    if actual != POSITION_BASELINE:
+        raise CommandError("Danh mục Chức vụ đã khác dữ liệu gốc của migration. Không nhập bộ mẫu vào database đang dùng.")
 
 
 def seed_synthetic_data():
@@ -102,7 +149,7 @@ def _create_synthetic_data():
         settings.GROUP_MANAGER, settings.GROUP_SALES, settings.GROUP_HR, settings.GROUP_ACCOUNTING, settings.GROUP_SUPPLY,
     )}
 
-    def user(username, label, department_name, memberships, group, owner=False):
+    def user(username, label, position_name, memberships, group, owner=False):
         result = get_user_model().objects.create_user(
             username=username, password=None, first_name=f"{label} (TEST)", email="",
             is_staff=owner, is_superuser=owner,
@@ -110,21 +157,20 @@ def _create_synthetic_data():
         result.groups.add(groups[group])
         profile = result.profile
         profile.preferred_name = result.first_name
-        # department giờ là FK vào danh mục Bộ phận có sẵn (xem DEPARTMENT_BASELINE) — không còn
-        # nhận chữ tự do như trước.
-        profile.department = Department.objects.get(name=department_name)
-        profile.job_title = label
+        # position giờ là FK vào danh mục Chức vụ có sẵn (xem POSITION_BASELINE) — chọn Chức vụ tự
+        # điền luôn Bộ Phận (Profile.save()), không còn nhận chữ tự do/chọn Bộ Phận riêng như trước.
+        profile.position = Position.objects.get(name=position_name)
         profile.job_description = "Hồ sơ hoàn toàn giả để thử app; không phải nhân sự thật."
         profile.work_location = "Kho mô phỏng — không phải điểm nhận hàng thật"
         profile.save()
         profile.companies.add(*memberships)
         return result
 
-    owner = user(SEED_USERS[0], "Chủ doanh nghiệp", "Tổng giám đốc", [company, other], settings.GROUP_MANAGER, owner=True)
-    sales = user(SEED_USERS[1], "Kinh doanh A", "Bộ phận kinh doanh", [company], settings.GROUP_SALES)
-    colleague = user(SEED_USERS[2], "Kinh doanh B", "Bộ phận kinh doanh", [company], settings.GROUP_SALES)
-    accountant = user(SEED_USERS[3], "Kế toán", "Bộ phận tài chính - kế toán", [company], settings.GROUP_ACCOUNTING)
-    other_sales = user(SEED_USERS[4], "Kinh doanh công ty khác", "Bộ phận kinh doanh", [other], settings.GROUP_SALES)
+    owner = user(SEED_USERS[0], "Chủ doanh nghiệp", "Tổng Giám đốc", [company, other], settings.GROUP_MANAGER, owner=True)
+    sales = user(SEED_USERS[1], "Kinh doanh A", "Nhân viên kinh doanh", [company], settings.GROUP_SALES)
+    colleague = user(SEED_USERS[2], "Kinh doanh B", "Nhân viên kinh doanh", [company], settings.GROUP_SALES)
+    accountant = user(SEED_USERS[3], "Kế toán", "Kế toán viên", [company], settings.GROUP_ACCOUNTING)
+    other_sales = user(SEED_USERS[4], "Kinh doanh công ty khác", "Nhân viên kinh doanh", [other], settings.GROUP_SALES)
 
     def partner(label, assigned, target):
         result = Partner.objects.create(name=f"[TEST] {label}", assigned_to=assigned, note="Khách hàng giả. Không liên hệ, không giao hàng, không thu tiền.")

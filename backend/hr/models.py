@@ -49,6 +49,37 @@ class Department(models.Model):
         super().save(*args, **kwargs)
 
 
+class Position(models.Model):
+    """Chức vụ — quyết định luôn Bộ phận (Profile.department tự điền theo Position.department, xem
+    Profile.save()) và Cấp bậc (số, 0 = cao nhất) của người giữ chức vụ đó. Không cho chọn Bộ Phận
+    độc lập với Chức vụ nữa — tránh chọn lệch nhau giữa 2 ô."""
+
+    # Tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay, giống employee_code/Department.code.
+    code = models.CharField("Id chức vụ", max_length=20, unique=True, blank=True, editable=False)
+    name = models.CharField("Tên chức vụ", max_length=100)
+    department = models.ForeignKey(Department, verbose_name="Id bộ phận", on_delete=models.PROTECT, related_name="positions")
+    # Số, không phải chữ — 0 = cao nhất (vd Tổng giám đốc), số càng lớn càng thấp. Thay hẳn cho
+    # Profile.level (chữ) cũ.
+    level = models.PositiveSmallIntegerField("Cấp bậc")
+
+    class Meta:
+        verbose_name = "Chức vụ"
+        verbose_name_plural = "Chức vụ"
+        ordering = ["department", "level"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = Position.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            while Position.objects.filter(code=f"CV{next_number:03d}").exists():
+                next_number += 1
+            self.code = f"CV{next_number:03d}"
+        super().save(*args, **kwargs)
+
+
 class Profile(models.Model):
     # Tách riêng 2 khái niệm khác nhau (trước đây gộp nhầm vào 1 field employment_status):
     # WorkStatus = đang/tạm/thôi làm việc; EmploymentType = hình thức hợp đồng lao động.
@@ -78,14 +109,6 @@ class Profile(models.Model):
         HIGH_SCHOOL = "high_school", "THPT"
         OTHER = "other", "Khác"
 
-    class Level(models.TextChoices):
-        CEO = "ceo", "Tổng giám đốc"
-        DIRECTOR = "director", "Giám đốc"
-        HEAD_OF_DEPT = "head_of_dept", "Trưởng phòng"
-        DEPUTY_HEAD = "deputy_head", "Phó phòng"
-        STAFF = "staff", "Nhân viên"
-        INTERN = "intern", "Thực tập sinh"
-
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name="Người dùng", on_delete=models.CASCADE, related_name="profile"
     )
@@ -98,8 +121,11 @@ class Profile(models.Model):
     # LIVI) — thay cho company_code (text tự do, không có ràng buộc, không dùng ở logic nào).
     companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="staff", blank=True)
     rooms = models.ManyToManyField(Room, verbose_name="Phòng", related_name="staff", blank=True)
-    job_title = models.CharField("Chức vụ", max_length=100, blank=True)
-    level = models.CharField("Cấp bậc", max_length=20, choices=Level.choices, blank=True)
+    # Chức vụ quyết định luôn Bộ phận + Cấp bậc (xem save() và model Position) — không còn 2 field
+    # job_title (chữ tự do)/level (danh sách chọn) độc lập như trước.
+    position = models.ForeignKey(
+        Position, verbose_name="Chức vụ", on_delete=models.SET_NULL, null=True, blank=True, related_name="staff"
+    )
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người quản lý trực tiếp",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="direct_reports"
@@ -109,12 +135,13 @@ class Profile(models.Model):
     contract_type = models.CharField("Loại hợp đồng", max_length=100, blank=True)
     contract_started_at = models.DateField("Ngày bắt đầu hợp đồng", null=True, blank=True)
     contract_expires_at = models.DateField("Ngày hết hạn hợp đồng", null=True, blank=True)
-    # Trước đây là chữ tự do, giờ đổi sang danh mục Bộ phận riêng (mỗi người 1 bộ phận, xem model
-    # Department ở trên) — theo đúng danh mục Id bộ phận/Mã hệ thống anh đã lập. Chưa gắn với quyền
-    # hạn kỹ thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền riêng, xem accounts/roles.py và
+    # Tự điền theo Chức vụ đã chọn (xem Position.department + save() bên dưới) — không cho chọn tay
+    # nữa (editable=False), tránh chọn lệch với Chức vụ. Chưa gắn với quyền hạn kỹ thuật nào (Cung
+    # ứng/Vận hành hiện chưa có nhóm quyền riêng, xem accounts/roles.py và
     # project_supply_role_deferred), chỉ là dữ liệu phân loại nhân viên.
     department = models.ForeignKey(
-        Department, verbose_name="Bộ Phận", on_delete=models.SET_NULL, null=True, blank=True, related_name="staff"
+        Department, verbose_name="Bộ Phận", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="staff", editable=False,
     )
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
     date_of_birth = models.DateField("Ngày sinh", null=True, blank=True)
@@ -172,15 +199,20 @@ class Profile(models.Model):
             while Profile.objects.filter(employee_code=f"NS{next_number:06d}").exists():
                 next_number += 1
             self.employee_code = f"NS{next_number:06d}"
+        # Bộ Phận tự điền theo Chức vụ đã chọn — field department chỉ đọc (editable=False), nguồn
+        # thật sự nằm ở Position.department.
+        self.department_id = self.position.department_id if self.position_id else None
         super().save(*args, **kwargs)
 
 
 # Field thật sự đáng ghi nhật ký khi đổi — bỏ qua employee_code (không cho sửa), avatar (file, so
 # sánh text không có nghĩa), và các field kỹ thuật khác không phải quyết định nhân sự.
 PROFILE_TRACKED_FIELDS = [
-    "preferred_name", "gender", "job_title", "level", "manager", "work_location",
+    # "department" không nằm trong danh sách này — nó tự điền theo "position" (xem Profile.save()),
+    # ghi cả 2 sẽ trùng lặp không cần thiết mỗi lần đổi Chức vụ.
+    "preferred_name", "gender", "position", "manager", "work_location",
     "job_description", "contract_type", "contract_started_at", "contract_expires_at",
-    "department", "phone", "date_of_birth", "id_number", "country", "province",
+    "phone", "date_of_birth", "id_number", "country", "province",
     "district", "ward", "street_address", "hired_at", "resigned_at", "work_status",
     "employment_type", "education_level", "major", "skills",
 ]
@@ -258,7 +290,7 @@ class EmployeeDocument(models.Model):
 
 class TrainingRecord(models.Model):
     """Lịch sử đào tạo — 1 dòng cho mỗi khoá học đã tham gia (khác "Lịch sử nâng bậc", vốn đã có sẵn
-    qua ProfileChangeLog vì "Cấp bậc"/level nằm trong PROFILE_TRACKED_FIELDS)."""
+    qua ProfileChangeLog vì "Chức vụ"/position nằm trong PROFILE_TRACKED_FIELDS)."""
 
     profile = models.ForeignKey(Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="trainings")
     course_name = models.CharField("Khoá đào tạo", max_length=255)

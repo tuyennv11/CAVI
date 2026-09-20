@@ -12,7 +12,6 @@ import {
   EMPLOYMENT_TYPE_LABEL,
   formatMoney,
   GENDER_LABEL,
-  LEVEL_LABEL,
   PAYMENT_METHOD_LABEL,
   WORK_STATUS_LABEL,
 } from "../constants";
@@ -46,7 +45,7 @@ export default function EmployeeDetail() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState(null);
   const [companies, setCompanies] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [tab, setTab] = useState("overview");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -87,8 +86,7 @@ export default function EmployeeDetail() {
         district: p.district || "",
         ward: p.ward || "",
         street_address: p.street_address || "",
-        job_title: p.job_title || "",
-        level: p.level || "",
+        position: p.position || "",
         manager: p.manager || "",
         work_location: p.work_location || "",
         job_description: p.job_description || "",
@@ -169,7 +167,7 @@ export default function EmployeeDetail() {
     loadCompensation();
     loadChangeLog();
     apiFetch("/api/companies/").then(setCompanies).catch(() => {});
-    apiFetch("/api/hr/departments/").then(setDepartments).catch(() => {});
+    apiFetch("/api/hr/positions/").then(setPositions).catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -336,7 +334,7 @@ export default function EmployeeDetail() {
           <div>
             <h1 style={{ margin: 0 }}>{profile.preferred_name || profile.full_name}</h1>
             <div className="page-head-sub">
-              {profile.employee_code} · {profile.job_title || "Chưa có chức vụ"} ·{" "}
+              {profile.employee_code} · {profile.position_name || "Chưa có chức vụ"} ·{" "}
               {profile.department_name || "Chưa có phòng ban"}
               {(profile.companies_detail || []).length > 0 && (
                 <>
@@ -423,29 +421,19 @@ export default function EmployeeDetail() {
         <div className="panel field-grid">
           <label>
             Chức vụ
-            <input value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
-          </label>
-          <label>
-            Cấp bậc
-            <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })}>
+            <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })}>
               <option value="">—</option>
-              {Object.entries(LEVEL_LABEL).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
+              {positions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.department_name})
                 </option>
               ))}
             </select>
           </label>
           <label>
             Phòng ban
-            <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-              <option value="">—</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+            {/* Tự điền theo Chức vụ đã chọn — không chọn tay được nữa (xem Profile.department: editable=False) */}
+            <input value={profile.department_name || "—"} disabled readOnly />
           </label>
           <label>
             Địa điểm làm việc

@@ -8,6 +8,7 @@ from .models import (
     EmergencyContact,
     EmployeeDocument,
     LeaveBalance,
+    Position,
     Profile,
     TrainingRecord,
 )
@@ -18,11 +19,20 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = ["id", "code", "name", "system_code"]
 
+
+class PositionSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source="department.name", read_only=True)
+
+    class Meta:
+        model = Position
+        fields = ["id", "code", "name", "department", "department_name", "level"]
+
 # Field do Quản lý quyết định qua trang quản lý nhân sự — nhân viên không tự sửa được trên trang
-# "Hồ sơ cá nhân" của chính mình.
+# "Hồ sơ cá nhân" của chính mình. "department" không nằm trong danh sách này — nó luôn chỉ đọc cho
+# CẢ 2 phía (editable=False ở model, tự điền theo "position"), không phải thứ Quản lý gán tay được.
 MANAGER_ONLY_FIELDS = [
-    "employee_code", "job_title", "level", "manager", "work_location", "job_description",
-    "contract_type", "contract_started_at", "contract_expires_at", "department",
+    "employee_code", "position", "manager", "work_location", "job_description",
+    "contract_type", "contract_started_at", "contract_expires_at",
     "hired_at", "resigned_at", "work_status", "employment_type", "companies",
     "rooms", "personnel_document_number",
 ]
@@ -42,8 +52,8 @@ PROFILE_FIELDS = [
     "rooms",
     "rooms_detail",
     "personnel_document_number",
-    "job_title",
-    "level",
+    "position",
+    "position_name",
     "manager",
     "manager_name",
     "work_location",
@@ -85,6 +95,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
     department_name = serializers.CharField(source="department.name", read_only=True, default=None)
+    position_name = serializers.CharField(source="position.name", read_only=True, default=None)
     companies_detail = serializers.SerializerMethodField()
     rooms_detail = serializers.SerializerMethodField()
 
