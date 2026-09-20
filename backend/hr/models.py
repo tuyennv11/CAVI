@@ -257,11 +257,12 @@ class EmployeeDocument(models.Model):
     cùng loại (nhiều phụ lục hợp đồng, nhiều chứng chỉ...) và cần theo dõi ngày hết hạn + file đính kèm."""
 
     class DocType(models.TextChoices):
-        ID_CARD = "id_card", "CCCD/CMND"
-        WORK_CONTRACT = "work_contract", "Hợp đồng lao động"
-        CONTRACT_APPENDIX = "contract_appendix", "Phụ lục hợp đồng"
-        DEGREE = "degree", "Bằng cấp"
-        CERTIFICATE = "certificate", "Chứng chỉ"
+        PERSONAL = "personal", "Giấy tờ cá nhân"
+        CONTRACT = "contract", "Hợp đồng"
+        DECISION = "decision", "Quyết định"
+        DEGREE_CERTIFICATE = "degree_certificate", "Bằng cấp & Chứng chỉ"
+        LABOR_RESIDENCE = "labor_residence", "Lao động & Cư trú"
+        INSURANCE = "insurance", "Bảo hiểm"
         OTHER = "other", "Khác"
 
     profile = models.ForeignKey(Profile, verbose_name="Nhân viên", on_delete=models.CASCADE, related_name="documents")
@@ -280,8 +281,8 @@ class EmployeeDocument(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Giấy tờ nhân viên"
-        verbose_name_plural = "Giấy tờ nhân viên"
+        verbose_name = "Giấy tờ nhân sự"
+        verbose_name_plural = "Giấy tờ nhân sự"
 
     def __str__(self):
         return f"{self.title} — {self.profile.user.username}"

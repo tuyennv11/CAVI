@@ -24,7 +24,7 @@ const BASE_TABS = [
   { key: "history", label: "Lịch sử thay đổi" },
 ];
 
-const EMPTY_DOC = { doc_type: "id_card", title: "", number: "", issued_at: "", issued_place: "", expires_at: "", note: "" };
+const EMPTY_DOC = { doc_type: "personal", title: "", number: "", issued_at: "", issued_place: "", expires_at: "", note: "" };
 const EMPTY_TRAINING = { course_name: "", started_at: "", ended_at: "", trainer: "", result: "", note: "" };
 const EMPTY_CONTACT = { name: "", relationship: "", phone: "", address: "", note: "" };
 

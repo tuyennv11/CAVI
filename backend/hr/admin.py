@@ -68,6 +68,33 @@ class ProfileChangeLogResource(ExcelModelResource):
         model = ProfileChangeLog
 
 
+class EmployeeDocumentResource(ExcelModelResource):
+    class Meta:
+        model = EmployeeDocument
+        exclude = ("file",)  # FileField — không xuất/nhập file qua Excel
+
+
+@admin.register(EmployeeDocument)
+class EmployeeDocumentAdmin(ImportExportModelAdmin):
+    resource_classes = [EmployeeDocumentResource]
+    list_display = (
+        "id", "doc_type", "title", "number", "issued_at", "issued_place", "expires_at",
+        "file", "note", "created_at", "created_by", "profile_full_name", "profile_employee_code",
+    )
+    list_filter = ("doc_type",)
+    search_fields = ("title", "number", "profile__employee_code", "profile__user__username")
+    autocomplete_fields = ["profile"]
+    readonly_fields = ("created_by", "created_at")
+
+    @admin.display(description="Tên nhân sự")
+    def profile_full_name(self, obj):
+        return obj.profile.user.get_full_name() or obj.profile.user.username
+
+    @admin.display(description="Id nhân sự")
+    def profile_employee_code(self, obj):
+        return obj.profile.employee_code
+
+
 class EmployeeDocumentInline(admin.TabularInline):
     model = EmployeeDocument
     extra = 0

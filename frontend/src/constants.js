@@ -227,11 +227,12 @@ export const EMPLOYMENT_TYPE_LABEL = {
 };
 
 export const EMPLOYEE_DOC_TYPE_LABEL = {
-  id_card: "CCCD/CMND",
-  work_contract: "Hợp đồng lao động",
-  contract_appendix: "Phụ lục hợp đồng",
-  degree: "Bằng cấp",
-  certificate: "Chứng chỉ",
+  personal: "Giấy tờ cá nhân",
+  contract: "Hợp đồng",
+  decision: "Quyết định",
+  degree_certificate: "Bằng cấp & Chứng chỉ",
+  labor_residence: "Lao động & Cư trú",
+  insurance: "Bảo hiểm",
   other: "Khác",
 };
 
