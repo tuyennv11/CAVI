@@ -17,6 +17,7 @@ MANAGER_ONLY_FIELDS = [
     "employee_code", "job_title", "level", "manager", "work_location", "job_description",
     "contract_type", "contract_started_at", "contract_expires_at", "department",
     "hired_at", "resigned_at", "work_status", "employment_type", "companies",
+    "rooms", "personnel_document_number",
 ]
 
 PROFILE_FIELDS = [
@@ -31,6 +32,9 @@ PROFILE_FIELDS = [
     "avatar",
     "companies",
     "companies_detail",
+    "rooms",
+    "rooms_detail",
+    "personnel_document_number",
     "job_title",
     "level",
     "manager",
@@ -73,6 +77,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
     companies_detail = serializers.SerializerMethodField()
+    rooms_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -88,6 +93,9 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
     def get_companies_detail(self, obj):
         return [{"id": c.id, "code": c.code, "name": c.name} for c in obj.companies.all()]
+
+    def get_rooms_detail(self, obj):
+        return [{"id": r.id, "name": r.name} for r in obj.rooms.all()]
 
 
 class ProfileSerializer(BaseProfileSerializer):

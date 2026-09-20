@@ -6,15 +6,22 @@ from companies.models import Company
 from geo.models import Country, District, Province, Ward
 
 
-class Profile(models.Model):
-    class Department(models.TextChoices):
-        SALES = "sales", "Kinh doanh"
-        SUPPLY = "supply", "Cung ứng"
-        OPERATIONS = "operations", "Vận hành"
-        ACCOUNTING = "accounting", "Kế toán"
-        HR = "hr", "Nhân sự"
-        MANAGEMENT = "management", "Quản lý"
+class Room(models.Model):
+    """Phòng — 1 nhân sự có thể thuộc nhiều phòng cùng lúc. Chưa gắn logic gì (quyền hạn, lọc dữ
+    liệu...) — chỉ là danh mục phân loại, làm nền cho nhu cầu sau này."""
 
+    name = models.CharField("Tên phòng", max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = "Phòng"
+        verbose_name_plural = "Phòng"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Profile(models.Model):
     # Tách riêng 2 khái niệm khác nhau (trước đây gộp nhầm vào 1 field employment_status):
     # WorkStatus = đang/tạm/thôi làm việc; EmploymentType = hình thức hợp đồng lao động.
     class WorkStatus(models.TextChoices):
@@ -25,7 +32,10 @@ class Profile(models.Model):
     class EmploymentType(models.TextChoices):
         OFFICIAL = "official", "Chính thức"
         PROBATION = "probation", "Thử việc"
+        INTERN = "intern", "Thực tập sinh"
         COLLABORATOR = "collaborator", "Cộng tác viên"
+        SEASONAL = "seasonal", "Thời vụ"
+        OTHER = "other", "Khác"
 
     class Gender(models.TextChoices):
         MALE = "male", "Nam"
@@ -52,13 +62,14 @@ class Profile(models.Model):
         settings.AUTH_USER_MODEL, verbose_name="Người dùng", on_delete=models.CASCADE, related_name="profile"
     )
     # Mã nhân viên tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
-    employee_code = models.CharField("Mã nhân viên", max_length=20, unique=True, blank=True, editable=False)
+    employee_code = models.CharField("Id nhân sự", max_length=20, unique=True, blank=True, editable=False)
     preferred_name = models.CharField("Tên thường gọi", max_length=100, blank=True)
     gender = models.CharField("Giới tính", max_length=10, choices=Gender.choices, blank=True)
     avatar = models.FileField("Ảnh đại diện", upload_to="avatars/%Y/%m/", null=True, blank=True)
     # Nhân viên có thể thuộc NHIỀU công ty cùng lúc (vd Quản lý/Kế toán làm việc cho cả CAVI lẫn
     # LIVI) — thay cho company_code (text tự do, không có ràng buộc, không dùng ở logic nào).
     companies = models.ManyToManyField(Company, verbose_name="Công ty", related_name="staff", blank=True)
+    rooms = models.ManyToManyField(Room, verbose_name="Phòng", related_name="staff", blank=True)
     job_title = models.CharField("Chức vụ", max_length=100, blank=True)
     level = models.CharField("Cấp bậc", max_length=20, choices=Level.choices, blank=True)
     manager = models.ForeignKey(
@@ -70,10 +81,11 @@ class Profile(models.Model):
     contract_type = models.CharField("Loại hợp đồng", max_length=100, blank=True)
     contract_started_at = models.DateField("Ngày bắt đầu hợp đồng", null=True, blank=True)
     contract_expires_at = models.DateField("Ngày hết hạn hợp đồng", null=True, blank=True)
-    # Phòng ban — chưa gắn với quyền hạn kỹ thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền
-    # riêng, xem accounts/roles.py và project_supply_role_deferred), chỉ là dữ liệu phân loại nhân
-    # viên trước, làm nền cho khi cần tách quyền riêng theo phòng ban sau này.
-    department = models.CharField("Phòng ban", max_length=20, choices=Department.choices, blank=True)
+    # Phòng ban — chữ tự do (không còn ràng buộc danh sách chọn sẵn, theo đúng cách công ty đặt tên
+    # bộ phận thực tế, vd "Ban Giám đốc" không nằm trong 6 lựa chọn cũ). Chưa gắn với quyền hạn kỹ
+    # thuật nào (Cung ứng/Vận hành hiện chưa có nhóm quyền riêng, xem accounts/roles.py và
+    # project_supply_role_deferred), chỉ là dữ liệu phân loại nhân viên.
+    department = models.CharField("Phòng ban", max_length=100, blank=True)
     phone = models.CharField("Số điện thoại", max_length=32, blank=True)
     date_of_birth = models.DateField("Ngày sinh", null=True, blank=True)
     id_number = models.CharField("Số CCCD/CMND", max_length=20, blank=True)
@@ -107,11 +119,14 @@ class Profile(models.Model):
     # Danh sách kỹ năng, cách nhau bằng dấu phẩy — chưa cần tách bảng riêng/gắn tag vì hiện chưa có
     # nhu cầu lọc/tìm kiếm theo kỹ năng, chỉ cần hiển thị trong hồ sơ.
     skills = models.TextField("Kỹ năng", blank=True)
+    # Chỉ 1 ô nhập tự do (số/chữ) — chưa liên kết gì, sau này sẽ có bảng giấy tờ đầy đủ nối theo
+    # employee_code riêng.
+    personnel_document_number = models.CharField("Giấy tờ nhân sự", max_length=100, blank=True)
 
     class Meta:
         ordering = ["employee_code"]
-        verbose_name = "Hồ sơ nhân viên"
-        verbose_name_plural = "Hồ sơ nhân viên"
+        verbose_name = "Hồ sơ nhân sự"
+        verbose_name_plural = "Hồ sơ nhân sự"
 
     def __str__(self):
         return f"Hồ sơ {self.user.username}"

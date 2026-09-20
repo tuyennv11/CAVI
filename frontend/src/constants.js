@@ -205,15 +205,6 @@ export const BATCH_STATUS_LABEL = {
   shipped: "Đã gửi",
 };
 
-export const DEPARTMENT_LABEL = {
-  sales: "Kinh doanh",
-  supply: "Cung ứng",
-  operations: "Vận hành",
-  accounting: "Kế toán",
-  hr: "Nhân sự",
-  management: "Quản lý",
-};
-
 export const GENDER_LABEL = {
   male: "Nam",
   female: "Nữ",
@@ -229,7 +220,10 @@ export const WORK_STATUS_LABEL = {
 export const EMPLOYMENT_TYPE_LABEL = {
   official: "Chính thức",
   probation: "Thử việc",
+  intern: "Thực tập sinh",
   collaborator: "Cộng tác viên",
+  seasonal: "Thời vụ",
+  other: "Khác",
 };
 
 export const EMPLOYEE_DOC_TYPE_LABEL = {

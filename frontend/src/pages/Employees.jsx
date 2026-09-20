@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api";
 import Avatar from "../components/Avatar";
-import { DEPARTMENT_LABEL, WORK_STATUS_LABEL } from "../constants";
+import { WORK_STATUS_LABEL } from "../constants";
 
 export default function Employees() {
   const navigate = useNavigate();
@@ -87,7 +87,7 @@ export default function Employees() {
                     </div>
                   </td>
                   <td>{e.job_title || "—"}</td>
-                  <td>{DEPARTMENT_LABEL[e.department] || "—"}</td>
+                  <td>{e.department || "—"}</td>
                   <td>
                     <span className={`badge badge-${e.work_status === "active" ? "done" : e.work_status === "on_leave" ? "processing" : "cancelled"}`}>
                       {WORK_STATUS_LABEL[e.work_status]}

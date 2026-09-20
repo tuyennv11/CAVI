@@ -7,7 +7,6 @@ import CompanyCheckboxes from "../components/CompanyCheckboxes";
 import { useAuth } from "../AuthContext";
 import {
   BONUS_PENALTY_TYPE_LABEL,
-  DEPARTMENT_LABEL,
   EDUCATION_LEVEL_LABEL,
   EMPLOYEE_DOC_TYPE_LABEL,
   EMPLOYMENT_TYPE_LABEL,
@@ -336,7 +335,7 @@ export default function EmployeeDetail() {
             <h1 style={{ margin: 0 }}>{profile.preferred_name || profile.full_name}</h1>
             <div className="page-head-sub">
               {profile.employee_code} · {profile.job_title || "Chưa có chức vụ"} ·{" "}
-              {DEPARTMENT_LABEL[profile.department] || "Chưa có phòng ban"}
+              {profile.department || "Chưa có phòng ban"}
               {(profile.companies_detail || []).length > 0 && (
                 <>
                   {" · "}
@@ -437,14 +436,7 @@ export default function EmployeeDetail() {
           </label>
           <label>
             Phòng ban
-            <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-              <option value="">—</option>
-              {Object.entries(DEPARTMENT_LABEL).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
+            <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
           </label>
           <label>
             Địa điểm làm việc
