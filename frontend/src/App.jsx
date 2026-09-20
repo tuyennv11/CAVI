@@ -16,7 +16,6 @@ import Profile from "./pages/Profile";
 import ShipmentBatches from "./pages/ShipmentBatches";
 import Shipments from "./pages/Shipments";
 import SupplyBoard from "./pages/SupplyBoard";
-import TierRequests from "./pages/TierRequests";
 import Workspace from "./pages/Workspace";
 
 export default function App() {
@@ -31,7 +30,6 @@ export default function App() {
           <Route path="/partners" element={<PartnerList />} />
           <Route path="/partners/:id" element={<PartnerDetail />} />
           <Route path="/pipeline" element={<Pipeline />} />
-          <Route path="/tier-requests" element={<TierRequests />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/order-receiving" element={<OrderReceiving />} />
           <Route path="/shipments" element={<Shipments />} />

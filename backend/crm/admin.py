@@ -20,7 +20,6 @@ from .models import (
     Quotation,
     QuotationLine,
     Task,
-    TierUpgradeRequest,
 )
 
 
@@ -33,11 +32,6 @@ class OrderResource(ExcelModelResource):
     class Meta:
         model = Order
         exclude = ("image",)  # FileField — không xuất/nhập file qua Excel
-
-
-class TierUpgradeRequestResource(ExcelModelResource):
-    class Meta:
-        model = TierUpgradeRequest
 
 
 class NoticeResource(ExcelModelResource):
@@ -144,18 +138,6 @@ class OrderInline(admin.TabularInline):
         return False
 
 
-class TierUpgradeRequestInline(admin.TabularInline):
-    model = TierUpgradeRequest
-    extra = 0
-    fields = ("requested_tier", "status", "requested_by", "created_at")
-    readonly_fields = fields
-    show_change_link = True
-    can_delete = False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-
 class ShipmentInline(admin.TabularInline):
     model = OpsShipment
     fk_name = "partner"
@@ -173,13 +155,13 @@ class ShipmentInline(admin.TabularInline):
 class PartnerAdmin(ImportExportModelAdmin):
     resource_classes = [PartnerResource]
     # Mỗi Đối tác chỉ có 1 dòng — hiện hết field trên bảng danh sách (kéo ngang xem), chỉ Hoạt động/
-    # Yêu cầu nâng hạng/Đơn hàng/Hỏi giá (1 đối tác có NHIỀU dòng) mới tách bảng riêng theo mã đối tác.
+    # Đơn hàng/Hỏi giá (1 đối tác có NHIỀU dòng) mới tách bảng riêng theo mã đối tác.
     # Thứ tự cột khớp đúng file Excel mẫu anh gửi (Id đối tác, Là khách hàng, Là nhà cung cấp, Tên
     # đối tác, Người liên hệ, Số điện thoại, Id nhân sự phụ trách, Mô tả thêm, Xếp hạng, Địa chỉ,
     # Trạng thái, Người tạo, Ngày tạo, Ngày cập nhật).
     list_display = (
         "code", "is_customer", "is_supplier", "name", "contact_person", "phone", "assigned_to",
-        "note", "tier", "tier_override", "address", "status", "created_by", "created_at", "updated_at",
+        "note", "tier_override", "address", "status", "created_by", "created_at", "updated_at",
     )
     # Bỏ "companies" khỏi bộ lọc — chỉ còn đúng 1 công ty (LIVI) nên không còn tác dụng lọc/phân biệt
     # gì nữa (xem companies/admin.py). Field companies vẫn giữ trong form thêm/sửa (filter_horizontal)
@@ -190,7 +172,7 @@ class PartnerAdmin(ImportExportModelAdmin):
     filter_horizontal = ("companies",)
     # Hồ sơ nhân sự có thể ngày càng nhiều — dùng ô tìm kiếm (autocomplete) thay vì dropdown liệt kê hết.
     autocomplete_fields = ["assigned_to"]
-    inlines = [PriceInquiryInline, OrderInline, ShipmentInline, TierUpgradeRequestInline, ActivityInline]
+    inlines = [PriceInquiryInline, OrderInline, ShipmentInline, ActivityInline]
 
 
 @admin.register(Order)
@@ -214,20 +196,6 @@ class OrderAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
     @admin.display(description="Báo giá gốc")
     def source_quotation_link(self, obj):
         return linked_fk(obj.source_quotation)
-
-
-@admin.register(TierUpgradeRequest)
-class TierUpgradeRequestAdmin(ImportExportModelAdmin):
-    resource_classes = [TierUpgradeRequestResource]
-    list_display = (
-        "partner_link", "requested_tier", "reason", "status", "requested_by", "reviewed_by",
-        "reviewed_at", "created_at",
-    )
-    list_filter = ("status", "requested_tier")
-
-    @admin.display(description="Đối tác")
-    def partner_link(self, obj):
-        return linked_fk(obj.partner)
 
 
 @admin.register(Notice)

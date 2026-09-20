@@ -13,7 +13,6 @@ from .views import (
     PriceListItemViewSet,
     QuotationViewSet,
     TaskViewSet,
-    TierUpgradeRequestViewSet,
 )
 from .workspace_views import WorkspaceKPIView, WorkspaceRankingView, WorkspaceTodayView
 
@@ -27,7 +26,6 @@ router.register("quote-lines", PriceInquiryQuoteLineViewSet, basename="quote-lin
 router.register("quote-line-bids", PriceInquiryQuoteLineBidViewSet, basename="quote-line-bid")
 router.register("quotations", QuotationViewSet, basename="quotation")
 router.register("price-list-items", PriceListItemViewSet, basename="price-list-item")
-router.register("tier-requests", TierUpgradeRequestViewSet, basename="tier-request")
 router.register("notices", NoticeViewSet, basename="notice")
 
 urlpatterns = [

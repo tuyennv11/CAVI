@@ -6,7 +6,7 @@ import Avatar from "../components/Avatar";
 import CompanyCheckboxes from "../components/CompanyCheckboxes";
 import Modal from "../components/Modal";
 import PhoneInput from "../components/PhoneInput";
-import { formatMoney, TIER_LABEL } from "../constants";
+import { TIER_LABEL } from "../constants";
 
 const TABS = [
   { key: "customer", label: "Khách hàng" },
@@ -139,13 +139,11 @@ export default function PartnerList() {
                 <th>Đối tác</th>
                 <th>Công ty</th>
                 {tab === "customer" && <th>Hạng</th>}
-                {tab === "customer" && <th>Công nợ</th>}
                 <th>Phụ trách</th>
               </tr>
             </thead>
             <tbody>
               {visible.map((p) => {
-                const overLimit = Number(p.debt) > Number(p.credit_limit);
                 return (
                   <tr key={p.id} className="clickable" onClick={() => navigate(`/partners/${p.id}`)}>
                     <td>
@@ -177,11 +175,12 @@ export default function PartnerList() {
                     </td>
                     {tab === "customer" && (
                       <td>
-                        <span className={`badge badge-tier-${p.tier}`}>{TIER_LABEL[p.tier]}</span>
+                        {p.tier_override ? (
+                          <span className={`badge badge-tier-${p.tier_override}`}>{TIER_LABEL[p.tier_override]}</span>
+                        ) : (
+                          "—"
+                        )}
                       </td>
-                    )}
-                    {tab === "customer" && (
-                      <td className={overLimit ? "error" : ""}>{formatMoney(p.debt)}</td>
                     )}
                     <td>{p.assigned_to_detail?.username ?? "—"}</td>
                   </tr>

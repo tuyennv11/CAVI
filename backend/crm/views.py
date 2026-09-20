@@ -42,7 +42,6 @@ from .models import (
     Quotation,
     QuotationLine,
     Task,
-    TierUpgradeRequest,
 )
 from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales, IsManagerOrSupply
 from .serializers import (
@@ -57,7 +56,6 @@ from .serializers import (
     PriceListItemSerializer,
     QuotationSerializer,
     TaskSerializer,
-    TierUpgradeRequestSerializer,
 )
 
 MONEY_FIELD = DecimalField(max_digits=16, decimal_places=2)
@@ -602,47 +600,6 @@ class PriceListItemViewSet(CompanyScopedMixin, viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return self.scope_by_company(PriceListItem.objects.filter(is_active=True))
 
-
-class TierUpgradeRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
-    serializer_class = TierUpgradeRequestSerializer
-    permission_classes = [IsAuthenticated, IsManagerOrAssignedSales]
-    filterset_fields = ["status", "partner"]
-
-    def get_queryset(self):
-        company = self.get_active_company()
-        qs = TierUpgradeRequest.objects.select_related("partner", "requested_by", "reviewed_by").filter(
-            Q(company__isnull=True) | Q(company=company)
-        )
-        if is_manager(self.request.user):
-            return qs
-        return qs.filter(partner__assigned_to=self.request.user.profile)
-
-    def perform_create(self, serializer):
-        serializer.save(requested_by=self.request.user, company=self.get_active_company())
-
-    @action(detail=True, methods=["post"])
-    def approve(self, request, pk=None):
-        if not is_manager(request.user):
-            raise PermissionDenied("Chỉ Quản lý mới duyệt được yêu cầu nâng hạng.")
-        tier_request = self.get_object()
-        tier_request.status = TierUpgradeRequest.Status.APPROVED
-        tier_request.reviewed_by = request.user
-        tier_request.reviewed_at = timezone.now()
-        tier_request.save()
-        tier_request.partner.tier_override = tier_request.requested_tier
-        tier_request.partner.save(update_fields=["tier_override"])
-        return Response(TierUpgradeRequestSerializer(tier_request).data)
-
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
-        if not is_manager(request.user):
-            raise PermissionDenied("Chỉ Quản lý mới từ chối được yêu cầu nâng hạng.")
-        tier_request = self.get_object()
-        tier_request.status = TierUpgradeRequest.Status.REJECTED
-        tier_request.reviewed_by = request.user
-        tier_request.reviewed_at = timezone.now()
-        tier_request.save()
-        return Response(TierUpgradeRequestSerializer(tier_request).data)
 
 
 class OrderViewSet(CompanyScopedMixin, viewsets.ModelViewSet):

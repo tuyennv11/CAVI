@@ -23,7 +23,6 @@ from .models import (
     Quotation,
     QuotationLine,
     Task,
-    TierUpgradeRequest,
 )
 
 User = get_user_model()
@@ -399,45 +398,21 @@ class PriceInquirySerializer(serializers.ModelSerializer):
 
 class PartnerSerializer(serializers.ModelSerializer):
     """Đối tác dùng 1 hồ sơ chung cho mọi công ty, nhưng chỉ hiển thị/giao dịch được ở đúng những
-    công ty đã tick (field `companies`) — 1 đối tác có thể thuộc 1 hoặc nhiều công ty cùng lúc.
-    Hạng/công nợ/doanh thu vẫn PHẢI tính riêng theo từng công ty đang xem (không phải theo companies
-    đã tick), không thì 1 đối tác giao dịch cả CAVI lẫn LIVI sẽ bị trộn lẫn số liệu sai. View truyền
-    company đang hoạt động vào context (key "company") — xem PartnerViewSet.get_serializer_context."""
+    công ty đã tick (field `companies`) — 1 đối tác có thể thuộc 1 hoặc nhiều công ty cùng lúc."""
 
     assigned_to_detail = AssignedProfileSerializer(source="assigned_to", read_only=True)
     companies_detail = serializers.SerializerMethodField()
     activity_count = serializers.SerializerMethodField()
     order_count = serializers.SerializerMethodField()
-    credit_limit = serializers.SerializerMethodField()
-    debt = serializers.SerializerMethodField()
-    total_revenue = serializers.SerializerMethodField()
-    tenure_months = serializers.IntegerField(read_only=True)
-    tier = serializers.SerializerMethodField()
-    tier_source = serializers.ChoiceField(choices=["auto", "approved"], read_only=True)
-
-    def _active_company(self):
-        return self.context.get("company")
 
     def get_companies_detail(self, obj):
         return [{"id": c.id, "code": c.code, "name": c.name} for c in obj.companies.all()]
 
     def get_activity_count(self, obj):
-        return obj.activities.filter(company=self._active_company()).count()
+        return obj.activities.filter(company=self.context.get("company")).count()
 
     def get_order_count(self, obj):
-        return obj.orders.filter(company=self._active_company()).count()
-
-    def get_credit_limit(self, obj):
-        return obj.credit_limit(self._active_company())
-
-    def get_debt(self, obj):
-        return obj.debt(self._active_company())
-
-    def get_total_revenue(self, obj):
-        return obj.total_revenue(self._active_company())
-
-    def get_tier(self, obj):
-        return obj.tier(self._active_company())
+        return obj.orders.filter(company=self.context.get("company")).count()
 
     class Meta:
         model = Partner
@@ -452,12 +427,7 @@ class PartnerSerializer(serializers.ModelSerializer):
             "is_supplier",
             "companies",
             "companies_detail",
-            "tier",
-            "tier_source",
-            "tenure_months",
-            "total_revenue",
-            "credit_limit",
-            "debt",
+            "tier_override",
             "assigned_to",
             "assigned_to_detail",
             "activity_count",
@@ -482,30 +452,6 @@ class PartnerSerializer(serializers.ModelSerializer):
         if self.instance is None and not attrs.get("companies"):
             raise serializers.ValidationError("Phải tick ít nhất 1 công ty.")
         return attrs
-
-
-class TierUpgradeRequestSerializer(serializers.ModelSerializer):
-    requested_by_name = serializers.CharField(source="requested_by.username", read_only=True)
-    reviewed_by_name = serializers.CharField(source="reviewed_by.username", read_only=True)
-    partner_name = serializers.CharField(source="partner.name", read_only=True)
-
-    class Meta:
-        model = TierUpgradeRequest
-        fields = [
-            "id",
-            "partner",
-            "partner_name",
-            "requested_tier",
-            "reason",
-            "requested_by",
-            "requested_by_name",
-            "status",
-            "reviewed_by",
-            "reviewed_by_name",
-            "reviewed_at",
-            "created_at",
-        ]
-        read_only_fields = ["requested_by", "status", "reviewed_by", "reviewed_at", "created_at"]
 
 
 class NoticeSerializer(serializers.ModelSerializer):

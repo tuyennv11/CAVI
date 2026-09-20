@@ -35,7 +35,6 @@ MODEL_ORDER = {
         "PriceInquiryQuoteLineBid",  # Sàn báo giá cạnh tranh — nhiều Cung ứng chào giá cho 1 dòng
         "Quotation",  # Kinh doanh chốt báo giá gửi khách
         "Order",  # Khách chốt -> thành Phiếu nhận hàng/Đơn hàng chính thức
-        "TierUpgradeRequest",  # Phát sinh từ quan hệ với Đối tác — phụ, không phải luồng chính
         "Task",  # Công việc nội bộ hỗ trợ
         "KPITarget",  # Quản lý nội bộ
         "Notice",  # Thông báo chung — ít ưu tiên nhất

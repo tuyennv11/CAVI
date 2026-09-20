@@ -170,22 +170,9 @@ GROUP_SUPPLY = "Cung ứng"
 # --- Thông tin công ty in trên PDF báo giá — chưa có hotline chính thức, để trống, điền qua env sau ---
 COMPANY_HOTLINE = os.environ.get("COMPANY_HOTLINE", "")
 
-# --- Hạn mức công nợ theo hạng đối tác (đơn vị: VNĐ) — sửa số ở đây nếu công ty đổi chính sách ---
-TIER_CREDIT_LIMITS = {
-    "standard": 50_000_000,
-    "vip": 200_000_000,
-    "super_vip": 500_000_000,
-}
-
-# --- Điều kiện tự động lên hạng: phải đạt CẢ HAI (đủ thời gian gắn bó VÀ đủ doanh thu tích luỹ) ---
-TIER_TENURE_MONTHS = {
-    "vip": 6,
-    "super_vip": 12,
-}
-TIER_REVENUE_THRESHOLDS = {
-    "vip": 500_000_000,
-    "super_vip": 2_000_000_000,
-}
+# Hạng tự động (Hạn mức công nợ theo hạng/điều kiện thâm niên+doanh thu) và luồng "Yêu cầu nâng hạng"
+# đã bỏ hẳn — Đối tác giờ chỉ còn "Xếp hạng" gán tay (Partner.tier_override), sẽ thiết kế lại hệ
+# thống hạng tự động sau (xem crm/models.py).
 
 # --- Xuất/nhập Excel ở trang admin (django-import-export) — xem config/admin_import_export.py ---
 from import_export.formats.base_formats import XLSX  # noqa: E402

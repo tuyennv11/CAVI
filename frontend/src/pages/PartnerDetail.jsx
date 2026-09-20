@@ -53,7 +53,6 @@ function nowTimeStr() {
 }
 
 const EMPTY_ITEM = { description: "", quantity: 1, unit_price: 0, unit_cost: 0 };
-const TIER_ORDER = ["standard", "vip", "super_vip"];
 
 const EMPTY_FILTERS = {
   search: "",
@@ -143,7 +142,6 @@ export default function PartnerDetail() {
   const [partner, setPartner] = useState(null);
   const [orders, setOrders] = useState([]);
   const [orderLabelForms, setOrderLabelForms] = useState({});
-  const [tierRequests, setTierRequests] = useState([]);
   const [error, setError] = useState("");
   // Lỗi riêng cho thao tác dòng báo giá — không dùng chung `error` vì trang này
   // return sớm cả trang khi `error` có giá trị, làm mất hết dữ liệu đang xem.
@@ -167,9 +165,6 @@ export default function PartnerDetail() {
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
   const [paid, setPaid] = useState(false);
   const [onPlatform, setOnPlatform] = useState(false);
-  const [showTierRequest, setShowTierRequest] = useState(false);
-  const [requestedTier, setRequestedTier] = useState("vip");
-  const [requestReason, setRequestReason] = useState("");
 
   const [activities, setActivities] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -197,14 +192,12 @@ export default function PartnerDetail() {
 
   async function loadAll() {
     try {
-      const [p, orderList, requestList] = await Promise.all([
+      const [p, orderList] = await Promise.all([
         apiFetch(`/api/partners/${id}/`),
         apiFetch(`/api/orders/?customer=${id}`),
-        apiFetch(`/api/tier-requests/?partner=${id}`),
       ]);
       setPartner(p);
       setOrders(orderList.results ?? orderList);
-      setTierRequests(requestList.results ?? requestList);
       setAddressForm((prev) => prev || { address: p.address || "" });
     } catch (err) {
       setError(err.message);
@@ -701,27 +694,8 @@ export default function PartnerDetail() {
     }
   }
 
-  async function handleRequestTier(e) {
-    e.preventDefault();
-    try {
-      await apiFetch("/api/tier-requests/", {
-        method: "POST",
-        body: JSON.stringify({ partner: Number(id), requested_tier: requestedTier, reason: requestReason }),
-      });
-      setShowTierRequest(false);
-      setRequestReason("");
-      loadAll();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
   if (error) return <p className="error">{error}</p>;
   if (!partner) return <p className="muted">Đang tải...</p>;
-
-  const overLimit = Number(partner.debt) > Number(partner.credit_limit);
-  const pendingRequest = tierRequests.find((r) => r.status === "pending");
-  const higherTiers = TIER_ORDER.slice(TIER_ORDER.indexOf(partner.tier) + 1);
 
   return (
     <div>
@@ -734,45 +708,17 @@ export default function PartnerDetail() {
             </Link>
             <h1>{partner.name}</h1>
             <span className="badge badge-neutral">{partnerTypeLabel(partner)}</span>
-            <span className={`badge badge-tier-${partner.tier}`}>
-              {TIER_LABEL[partner.tier]}
-              {partner.tier_source === "approved" ? " · đã duyệt" : " · tự động"}
-            </span>
+            {partner.tier_override && (
+              <span className={`badge badge-tier-${partner.tier_override}`}>{TIER_LABEL[partner.tier_override]}</span>
+            )}
             {partner.contact_person && <span className="profile-pill">👤 {partner.contact_person}</span>}
             {partner.phone && <span className="profile-pill">📞 {partner.phone}</span>}
             {partner.assigned_to_detail && (
               <span className="profile-pill">Phụ trách: {partner.assigned_to_detail.username}</span>
             )}
-            {higherTiers.length > 0 && (
-              <span className="profile-title-spacer">
-                {pendingRequest ? (
-                  <span className="muted" style={{ fontSize: 12.5 }}>
-                    Đang chờ duyệt lên <b>{TIER_LABEL[pendingRequest.requested_tier]}</b>
-                  </span>
-                ) : (
-                  <button
-                    className="secondary"
-                    onClick={() => {
-                      setRequestedTier(higherTiers[0]);
-                      setShowTierRequest(true);
-                    }}
-                  >
-                    Xin nâng hạng
-                  </button>
-                )}
-              </span>
-            )}
           </div>
           <div className="profile-meta-row">
-            <span>
-              Gắn bó {partner.tenure_months} tháng · Doanh thu tích luỹ {formatMoney(partner.total_revenue)}
-            </span>
-            {partner.is_customer && (
-              <span className={overLimit ? "error" : ""}>
-                · Công nợ: <b>{formatMoney(partner.debt)}</b> / {formatMoney(partner.credit_limit)}
-              </span>
-            )}
-            {partner.note && <span>· {partner.note}</span>}
+            {partner.note && <span>{partner.note}</span>}
           </div>
           <div className="profile-meta-row">
             {showAddressEdit ? (
@@ -1743,39 +1689,6 @@ export default function PartnerDetail() {
         </div>
       )}
 
-      {showTierRequest && (
-        <Modal title="Xin nâng hạng" onClose={() => setShowTierRequest(false)}>
-          <form className="field-grid" onSubmit={handleRequestTier}>
-            <label>
-              Xin lên hạng
-              <select value={requestedTier} onChange={(e) => setRequestedTier(e.target.value)}>
-                {higherTiers.map((t) => (
-                  <option key={t} value={t}>
-                    {TIER_LABEL[t]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Lý do *
-              <textarea
-                rows={3}
-                required
-                placeholder="Vì sao đối tác này nên được nâng hạng sớm..."
-                value={requestReason}
-                onChange={(e) => setRequestReason(e.target.value)}
-              />
-            </label>
-            {error && <p className="error">{error}</p>}
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={() => setShowTierRequest(false)}>
-                Huỷ
-              </button>
-              <button type="submit">Gửi yêu cầu</button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </div>
   );
 }

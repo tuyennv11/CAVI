@@ -46,7 +46,9 @@ class Partner(models.Model):
         related_name="partners",
     )
     note = models.TextField("Mô tả thêm", blank=True)
-    # Hạng do hệ thống tự tính (xem computed_tier) — chỉ bị ghi đè khi có yêu cầu nâng hạng được duyệt.
+    # Xếp hạng gán tay — trước đây có thêm 1 lớp "Hạng tự động" tính theo thâm niên + doanh thu, kèm
+    # luồng "Yêu cầu nâng hạng" (TierUpgradeRequest) để Quản lý duyệt; đã bỏ hẳn (anh yêu cầu, vì đã
+    # có "Xếp hạng" gán tay này rồi, sẽ thiết kế lại hệ thống hạng tự động sau).
     tier_override = models.CharField(
         "Xếp hạng", max_length=20, choices=Tier.choices, null=True, blank=True
     )
@@ -81,81 +83,6 @@ class Partner(models.Model):
                 next_number += 1
             self.code = f"DT{next_number:010d}"
         super().save(*args, **kwargs)
-
-    @property
-    def tenure_months(self):
-        delta = timezone.now() - self.created_at
-        return delta.days // 30
-
-    # 5 hàm dưới đây nhận `company=None` (tính gộp mọi công ty — dùng khi chưa có ngữ cảnh công ty
-    # nào, vd script/shell) — mọi nơi hiển thị cho người dùng PHẢI truyền company đang chọn, không
-    # thì hạng/công nợ của 1 đối tác giao dịch nhiều công ty sẽ bị TRỘN LẪN sai giữa các công ty.
-    def total_revenue(self, company=None):
-        orders = self.orders.exclude(status="cancelled").prefetch_related("items")
-        if company is not None:
-            orders = orders.filter(company=company)
-        return sum((o.total for o in orders), start=0)
-
-    def computed_tier(self, company=None):
-        months = self.tenure_months
-        revenue = self.total_revenue(company)
-        if months >= settings.TIER_TENURE_MONTHS["super_vip"] and revenue >= settings.TIER_REVENUE_THRESHOLDS["super_vip"]:
-            return self.Tier.SUPER_VIP
-        if months >= settings.TIER_TENURE_MONTHS["vip"] and revenue >= settings.TIER_REVENUE_THRESHOLDS["vip"]:
-            return self.Tier.VIP
-        return self.Tier.STANDARD
-
-    def tier(self, company=None):
-        return self.tier_override or self.computed_tier(company)
-
-    @property
-    def tier_source(self):
-        # Không phụ thuộc doanh thu/công ty — chỉ hỏi "có bị ghi đè tay hay không" — giữ @property.
-        return "approved" if self.tier_override else "auto"
-
-    def credit_limit(self, company=None):
-        return settings.TIER_CREDIT_LIMITS.get(self.tier(company), 0)
-
-    def debt(self, company=None):
-        if not self.is_customer:
-            return 0
-        unpaid = self.orders.filter(paid=False).prefetch_related("items")
-        if company is not None:
-            unpaid = unpaid.filter(company=company)
-        return sum((o.total for o in unpaid), start=0)
-
-
-class TierUpgradeRequest(models.Model):
-    class Status(models.TextChoices):
-        PENDING = "pending", "Đang chờ"
-        APPROVED = "approved", "Đã duyệt"
-        REJECTED = "rejected", "Từ chối"
-
-    partner = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="tier_requests")
-    # Chỉ mang tính thông tin (yêu cầu phát sinh từ công ty nào) — Partner.tier_override mà yêu cầu
-    # này chỉnh vẫn là field toàn cục trên Partner, nên KHÔNG ép buộc (NOT NULL) ở đây kẻo ngộ nhận
-    # đã tách hạng theo từng công ty.
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="tier_requests")
-    requested_tier = models.CharField("Hạng xin lên", max_length=20, choices=Partner.Tier.choices)
-    reason = models.TextField("Lý do")
-    requested_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Người yêu cầu", on_delete=models.CASCADE, related_name="+"
-    )
-    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.PENDING)
-    reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Người duyệt",
-        on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-    reviewed_at = models.DateTimeField("Thời điểm duyệt", null=True, blank=True)
-    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-        verbose_name = "Yêu cầu nâng hạng"
-        verbose_name_plural = "Yêu cầu nâng hạng"
-
-    def __str__(self):
-        return f"{self.partner} → {self.get_requested_tier_display()} ({self.status})"
 
 
 class Order(models.Model):
