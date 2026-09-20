@@ -1,5 +1,7 @@
 from django.contrib import admin
+from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
+from config.admin_import_export import ExcelModelResource
 from config.admin_utils import linked_fk
 from ops.models import Shipment as OpsShipment
 
@@ -20,6 +22,70 @@ from .models import (
     Task,
     TierUpgradeRequest,
 )
+
+
+class PartnerResource(ExcelModelResource):
+    class Meta:
+        model = Partner
+
+
+class OrderResource(ExcelModelResource):
+    class Meta:
+        model = Order
+        exclude = ("image",)  # FileField — không xuất/nhập file qua Excel
+
+
+class TierUpgradeRequestResource(ExcelModelResource):
+    class Meta:
+        model = TierUpgradeRequest
+
+
+class NoticeResource(ExcelModelResource):
+    class Meta:
+        model = Notice
+
+
+class ActivityResource(ExcelModelResource):
+    class Meta:
+        model = Activity
+        exclude = ("attachment",)  # FileField — không xuất/nhập file qua Excel
+
+
+class TaskResource(ExcelModelResource):
+    class Meta:
+        model = Task
+        exclude = ("attachment",)  # FileField — không xuất/nhập file qua Excel
+
+
+class KPITargetResource(ExcelModelResource):
+    class Meta:
+        model = KPITarget
+
+
+class PriceInquiryResource(ExcelModelResource):
+    class Meta:
+        model = PriceInquiry
+        exclude = ("image",)  # FileField — không xuất/nhập file qua Excel
+
+
+class PriceInquiryQuoteLineResource(ExcelModelResource):
+    class Meta:
+        model = PriceInquiryQuoteLine
+
+
+class PriceInquiryQuoteLineBidResource(ExcelModelResource):
+    class Meta:
+        model = PriceInquiryQuoteLineBid
+
+
+class QuotationResource(ExcelModelResource):
+    class Meta:
+        model = Quotation
+
+
+class PriceListItemResource(ExcelModelResource):
+    class Meta:
+        model = PriceListItem
 
 
 class CustomerFieldMixin:
@@ -104,7 +170,8 @@ class ShipmentInline(admin.TabularInline):
 
 
 @admin.register(Partner)
-class PartnerAdmin(admin.ModelAdmin):
+class PartnerAdmin(ImportExportModelAdmin):
+    resource_classes = [PartnerResource]
     # Mỗi Đối tác chỉ có 1 dòng — hiện hết field trên bảng danh sách (kéo ngang xem), chỉ Hoạt động/
     # Yêu cầu nâng hạng/Đơn hàng/Hỏi giá (1 đối tác có NHIỀU dòng) mới tách bảng riêng theo mã đối tác.
     list_display = (
@@ -118,7 +185,8 @@ class PartnerAdmin(admin.ModelAdmin):
 
 
 @admin.register(Order)
-class OrderAdmin(CustomerFieldMixin, admin.ModelAdmin):
+class OrderAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
+    resource_classes = [OrderResource]
     list_display = (
         "id", "customer_link", "status", "created_by", "source_quotation_link", "received_by", "received_at",
         "confirmed_by", "confirmed_at", "description", "note", "paid", "on_platform",
@@ -140,7 +208,8 @@ class OrderAdmin(CustomerFieldMixin, admin.ModelAdmin):
 
 
 @admin.register(TierUpgradeRequest)
-class TierUpgradeRequestAdmin(admin.ModelAdmin):
+class TierUpgradeRequestAdmin(ImportExportModelAdmin):
+    resource_classes = [TierUpgradeRequestResource]
     list_display = (
         "partner_link", "requested_tier", "reason", "status", "requested_by", "reviewed_by",
         "reviewed_at", "created_at",
@@ -153,12 +222,14 @@ class TierUpgradeRequestAdmin(admin.ModelAdmin):
 
 
 @admin.register(Notice)
-class NoticeAdmin(admin.ModelAdmin):
+class NoticeAdmin(ImportExportModelAdmin):
+    resource_classes = [NoticeResource]
     list_display = ("code", "title", "body", "created_by", "created_at")
 
 
 @admin.register(Activity)
-class ActivityAdmin(CustomerFieldMixin, admin.ModelAdmin):
+class ActivityAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
+    resource_classes = [ActivityResource]
     # Bỏ cột "Tiêu đề" — trùng lặp với "Nội dung" (ActivitySerializer.create() tự suy tiêu đề từ
     # content khi bỏ trống, xem crm/serializers.py), giữ 1 cột đại diện đủ dùng, đỡ rối.
     list_display = (
@@ -176,7 +247,8 @@ class ActivityAdmin(CustomerFieldMixin, admin.ModelAdmin):
 
 
 @admin.register(Task)
-class TaskAdmin(admin.ModelAdmin):
+class TaskAdmin(ImportExportModelAdmin):
+    resource_classes = [TaskResource]
     list_display = (
         "title", "content", "assigned_to", "created_by", "partner_link", "related_activity",
         "priority", "status", "due_at", "created_at", "updated_at",
@@ -190,7 +262,8 @@ class TaskAdmin(admin.ModelAdmin):
 
 
 @admin.register(KPITarget)
-class KPITargetAdmin(admin.ModelAdmin):
+class KPITargetAdmin(ImportExportModelAdmin):
+    resource_classes = [KPITargetResource]
     list_display = ("user", "year", "month", "revenue_target", "new_customer_target", "quote_target", "order_target", "task_target")
     list_filter = ("year", "month")
 
@@ -208,7 +281,8 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
 
 
 @admin.register(PriceInquiry)
-class PriceInquiryAdmin(CustomerFieldMixin, admin.ModelAdmin):
+class PriceInquiryAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
+    resource_classes = [PriceInquiryResource]
     list_display = (
         "id", "customer_link", "status", "description", "cost_price", "floor_price", "ceiling_price",
         "floor_pct", "ceiling_pct", "quoted_by", "quoted_at", "created_by", "created_at", "updated_at",
@@ -225,7 +299,8 @@ class PriceInquiryAdmin(CustomerFieldMixin, admin.ModelAdmin):
 # Đăng ký riêng (không chỉ để inline trong Hỏi giá) để Báo giá cạnh tranh bên dưới autocomplete được
 # tới đúng dòng, và để bấm xem "Báo giá thắng" (winning_bid) round-trip qua lại được.
 @admin.register(PriceInquiryQuoteLine)
-class PriceInquiryQuoteLineAdmin(admin.ModelAdmin):
+class PriceInquiryQuoteLineAdmin(ImportExportModelAdmin):
+    resource_classes = [PriceInquiryQuoteLineResource]
     list_display = (
         "id", "inquiry_link", "item_name", "quantity", "unit", "unit_cost", "winning_bid",
         "note", "created_by", "created_at",
@@ -239,7 +314,8 @@ class PriceInquiryQuoteLineAdmin(admin.ModelAdmin):
 
 
 @admin.register(PriceInquiryQuoteLineBid)
-class PriceInquiryQuoteLineBidAdmin(admin.ModelAdmin):
+class PriceInquiryQuoteLineBidAdmin(ImportExportModelAdmin):
+    resource_classes = [PriceInquiryQuoteLineBidResource]
     list_display = ("id", "quote_line_link", "bidder", "unit_cost", "note", "created_at")
     search_fields = ("quote_line__item_name",)
     autocomplete_fields = ["quote_line"]
@@ -255,7 +331,8 @@ class QuotationLineInline(admin.TabularInline):
 
 
 @admin.register(Quotation)
-class QuotationAdmin(admin.ModelAdmin):
+class QuotationAdmin(ImportExportModelAdmin):
+    resource_classes = [QuotationResource]
     list_display = (
         "id", "inquiry_link", "note", "pending_approval", "saved_at", "created_by",
         "created_at", "updated_at",
@@ -268,7 +345,8 @@ class QuotationAdmin(admin.ModelAdmin):
 
 
 @admin.register(PriceListItem)
-class PriceListItemAdmin(admin.ModelAdmin):
+class PriceListItemAdmin(ImportExportModelAdmin):
+    resource_classes = [PriceListItemResource]
     list_display = ("item_code", "category", "group_code", "group_name", "name", "unit", "floor_pct", "ceiling_pct", "is_active")
     list_filter = ("category", "group_code", "is_active")
     search_fields = ("item_code", "name", "group_name")

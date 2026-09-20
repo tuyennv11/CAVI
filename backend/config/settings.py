@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
+    "import_export",
     "accounts",
     "companies",
     "geo",
@@ -171,3 +172,31 @@ TIER_REVENUE_THRESHOLDS = {
     "vip": 500_000_000,
     "super_vip": 2_000_000_000,
 }
+
+# --- Xuất/nhập Excel ở trang admin (django-import-export) — xem config/admin_import_export.py ---
+from import_export.formats.base_formats import XLSX  # noqa: E402
+
+
+class SafeXLSX(XLSX):
+    """Thay cho XLSX gốc — TablibFormat._escape_formulae() (chạy khi
+    IMPORT_EXPORT_ESCAPE_FORMULAE_ON_EXPORT=True) làm str(cell) cho MỌI ô vô điều kiện, biến None/
+    False/Decimal/datetime thành chữ ("None", "False", "10.00"...) rồi lúc Nhập lại không đọc được
+    (phát hiện qua test round-trip thực tế: NOT NULL/decimal.ConversionSyntax ở mọi ô trống hoặc số).
+    Ghi đè lại: chỉ xử lý ô nào ĐÃ LÀ chuỗi và bắt đầu bằng "=", giữ nguyên kiểu dữ liệu gốc các ô khác
+    — vẫn chặn được công thức độc hại trong ô văn bản, không phá hỏng số/ngày/boolean/ô trống.
+    """
+
+    def _escape_formulae(self, dataset):
+        for _ in dataset:
+            row = dataset.lpop()
+            row = [
+                cell.replace("=", "", 1) if isinstance(cell, str) and cell.startswith("=") else cell
+                for cell in row
+            ]
+            dataset.append(row)
+
+
+IMPORT_EXPORT_FORMATS = [SafeXLSX]              # chỉ Excel, không hiện thêm lựa chọn CSV/JSON
+IMPORT_EXPORT_USE_TRANSACTIONS = True           # lỗi 1 dòng thì rollback cả file, không nhập dở dang
+IMPORT_EXPORT_SKIP_ADMIN_LOG = False            # vẫn ghi "Hoạt động gần đây" khi nhập qua Excel
+IMPORT_EXPORT_ESCAPE_FORMULAE_ON_EXPORT = True  # chặn công thức lạ kiểu =CMD(...) lẫn trong dữ liệu

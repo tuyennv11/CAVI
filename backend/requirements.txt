@@ -9,3 +9,4 @@ gunicorn==23.0.0
 weasyprint==63.1
 qrcode==8.0
 reportlab==4.4.9
+django-import-export[xlsx]==4.4.1

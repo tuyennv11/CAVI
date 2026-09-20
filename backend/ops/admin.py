@@ -1,12 +1,25 @@
 from django.contrib import admin
+from import_export.admin import ImportExportModelAdmin
 
+from config.admin_import_export import ExcelModelResource
 from config.admin_utils import linked_fk
 
 from .models import Shipment, ShipmentBatch
 
 
+class ShipmentResource(ExcelModelResource):
+    class Meta:
+        model = Shipment
+
+
+class ShipmentBatchResource(ExcelModelResource):
+    class Meta:
+        model = ShipmentBatch
+
+
 @admin.register(Shipment)
-class ShipmentAdmin(admin.ModelAdmin):
+class ShipmentAdmin(ImportExportModelAdmin):
+    resource_classes = [ShipmentResource]
     list_display = (
         "id",
         "partner_link",
@@ -33,6 +46,7 @@ class ShipmentAdmin(admin.ModelAdmin):
 
 
 @admin.register(ShipmentBatch)
-class ShipmentBatchAdmin(admin.ModelAdmin):
+class ShipmentBatchAdmin(ImportExportModelAdmin):
+    resource_classes = [ShipmentBatchResource]
     list_display = ("route", "status", "operator", "created_at")
     list_filter = ("status",)
