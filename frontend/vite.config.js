@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Đăng ký service worker thủ công trong main.jsx (thay vì để plugin tự inject) để có thể
+      // chủ động gọi registration.update() định kỳ — nếu không, tab mở lâu sẽ không bao giờ tự
+      // phát hiện bản deploy mới cho tới khi người dùng đóng hẳn tab/unregister SW thủ công.
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'LIVI — Hệ thống quản lý',
