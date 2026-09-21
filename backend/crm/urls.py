@@ -12,7 +12,9 @@ from .views import (
     PriceRequestItemViewSet,
     PriceRequestViewSet,
     PriceListItemViewSet,
+    PurchaseRequestItemViewSet,
     QuotationViewSet,
+    SupplierQuoteViewSet,
     TaskViewSet,
 )
 from .workspace_views import WorkspaceKPIView, WorkspaceRankingView, WorkspaceTodayView
@@ -24,6 +26,8 @@ router.register("activities", ActivityViewSet, basename="activity")
 router.register("tasks", TaskViewSet, basename="task")
 router.register("price-inquiries", PriceRequestViewSet, basename="price-inquiry")
 router.register("price-inquiry-items", PriceRequestItemViewSet, basename="price-inquiry-item")
+router.register("purchase-request-items", PurchaseRequestItemViewSet, basename="purchase-request-item")
+router.register("supplier-quotes", SupplierQuoteViewSet, basename="supplier-quote")
 router.register("quote-lines", PriceInquiryQuoteLineViewSet, basename="quote-line")
 router.register("quote-line-bids", PriceInquiryQuoteLineBidViewSet, basename="quote-line-bid")
 router.register("quotations", QuotationViewSet, basename="quotation")

@@ -40,7 +40,11 @@ from .models import (
     PriceInquiryQuoteLine,
     PriceInquiryQuoteLineBid,
     PriceListItem,
+    PurchaseRequest,
+    PurchaseRequestAllocation,
+    PurchaseRequestItem,
     Quotation,
+    SupplierQuote,
     Task,
 )
 from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales, IsManagerOrSupply
@@ -55,7 +59,9 @@ from .serializers import (
     PriceRequestItemSerializer,
     PriceRequestSerializer,
     PriceListItemSerializer,
+    PurchaseRequestItemSerializer,
     QuotationSerializer,
+    SupplierQuoteSerializer,
     TaskSerializer,
 )
 
@@ -324,9 +330,113 @@ class PriceRequestItemViewSet(
 
     def get_queryset(self):
         qs = self.scope_by_company(PriceRequestItem.objects.select_related("price_request", "product"))
-        if is_manager(self.request.user):
+        # Cung ứng cần thấy mọi dòng (không chỉ khách mình phụ trách) để tạo Đề nghị mua từ bất kỳ
+        # Yêu cầu giá nào đang chờ — giống quyền "thấy hết" đã cho Cung ứng ở Sàn báo giá cạnh tranh cũ.
+        if is_manager(self.request.user) or is_supply(self.request.user):
             return qs
         return qs.filter(price_request__customer__assigned_to=self.request.user.profile)
+
+    @action(detail=True, methods=["post"], url_path="create-purchase-request")
+    def create_purchase_request(self, request, pk=None):
+        """Cung ứng bấm 1 nút để đưa dòng sản phẩm này lên Sàn báo giá NCC — tạo luôn Đề nghị mua +
+        dòng đề nghị mua + phân bổ về đúng dòng Yêu cầu giá này (số lượng = cả dòng, không tách nhỏ
+        ở bước này — muốn gộp/tách nhiều Yêu cầu giá vào 1 Đề nghị mua thì làm tay qua Admin)."""
+        if not (is_manager(request.user) or is_supply(request.user)):
+            raise PermissionDenied("Chỉ Cung ứng/Quản lý mới tạo được Đề nghị mua.")
+        item = self.get_object()
+        if item.purchase_allocations.exists():
+            raise ValidationError("Dòng này đã có Đề nghị mua rồi.")
+        with transaction.atomic():
+            purchase_request = PurchaseRequest.objects.create(
+                purchase_type=PurchaseRequest.PurchaseType.THEO_DON_KHACH, created_by=request.user,
+            )
+            purchase_item = PurchaseRequestItem.objects.create(
+                purchase_request=purchase_request, product=item.product, item_name=item.item_name,
+                quantity=item.quantity, unit=item.unit,
+            )
+            PurchaseRequestAllocation.objects.create(
+                purchase_request_item=purchase_item, price_request_item=item, quantity_allocated=item.quantity,
+            )
+        return Response(PurchaseRequestItemSerializer(purchase_item).data, status=201)
+
+
+class PurchaseRequestItemViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """Sàn báo giá NCC — liệt kê các dòng Đề nghị mua để Cung ứng nhập báo giá, Kinh doanh phụ trách
+    Yêu cầu giá liên quan vào chọn giá. Quản lý/Cung ứng thấy hết (đúng nghĩa sàn chung, giống Sàn
+    báo giá cạnh tranh cũ); người khác chỉ thấy dòng gắn với Yêu cầu giá mình phụ trách — để họ vào
+    chọn giá được dù không phải Cung ứng."""
+
+    serializer_class = PurchaseRequestItemSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["id", "purchase_request"]
+
+    def get_queryset(self):
+        qs = PurchaseRequestItem.objects.select_related("purchase_request", "product").prefetch_related(
+            "supplier_quotes__supplier", "supplier_quotes__created_by",
+            "allocations__price_request_item__price_request__customer",
+            "allocations__price_request_item__price_request__assigned_to__user",
+        )
+        if is_manager(self.request.user) or is_supply(self.request.user):
+            return qs
+        return qs.filter(
+            allocations__price_request_item__price_request__assigned_to=self.request.user.profile
+        ).distinct()
+
+
+class SupplierQuoteViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Báo giá NCC trên Sàn — Cung ứng/Quản lý nhập; chọn giá thắng (action `select`) là việc của
+    Kinh doanh phụ trách Yêu cầu giá liên quan, KHÔNG phải Cung ứng/Quản lý (khác hẳn Sàn báo giá
+    cạnh tranh cũ, nơi Quản lý là người chọn — nghiệp vụ lần này đổi người quyết định)."""
+
+    serializer_class = SupplierQuoteSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["purchase_request_item"]
+
+    def get_queryset(self):
+        qs = SupplierQuote.objects.select_related("supplier", "created_by", "purchase_request_item")
+        if is_manager(self.request.user) or is_supply(self.request.user):
+            return qs
+        return qs.filter(
+            purchase_request_item__allocations__price_request_item__price_request__assigned_to=self.request.user.profile
+        ).distinct()
+
+    def perform_create(self, serializer):
+        if not (is_manager(self.request.user) or is_supply(self.request.user)):
+            raise PermissionDenied("Chỉ Cung ứng/Quản lý mới nhập được báo giá NCC.")
+        serializer.save(created_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.is_selected:
+            raise ValidationError("Không thể xoá báo giá đã được chọn — hãy chọn giá khác trước.")
+        if not is_manager(self.request.user) and instance.created_by_id != self.request.user.id:
+            raise PermissionDenied("Chỉ xoá được báo giá của chính mình.")
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def select(self, request, pk=None):
+        """Kinh doanh phụ trách Yêu cầu giá liên quan chọn 1 báo giá làm nguồn mua chính. Chọn giá
+        không phải rẻ nhất (theo landed_unit_cost) bắt buộc phải nhập selection_note giải thích."""
+        quote = self.get_object()
+        item = quote.purchase_request_item
+        assigned_ids = set(
+            item.allocations.exclude(price_request_item__isnull=True)
+            .values_list("price_request_item__price_request__assigned_to_id", flat=True)
+        )
+        if not is_manager(request.user) and request.user.profile.id not in assigned_ids:
+            raise PermissionDenied("Chỉ Kinh doanh phụ trách Yêu cầu giá này mới chọn được báo giá.")
+        siblings = list(SupplierQuote.objects.filter(purchase_request_item=item))
+        cheapest = min(siblings, key=lambda q: q.landed_unit_cost)
+        note = (request.data.get("selection_note") or "").strip()
+        if quote.id != cheapest.id and not note:
+            raise ValidationError({"selection_note": "Chọn giá cao hơn giá thấp nhất phải nhập lý do."})
+        SupplierQuote.objects.filter(purchase_request_item=item).update(is_selected=False, selection_note="")
+        quote.is_selected = True
+        quote.selection_note = note
+        quote.save(update_fields=["is_selected", "selection_note"])
+        return Response(SupplierQuoteSerializer(quote).data)
 
 
 class QuotationViewSet(

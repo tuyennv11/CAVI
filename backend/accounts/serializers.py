@@ -19,6 +19,7 @@ class MeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     username = serializers.CharField()
     full_name = serializers.SerializerMethodField()
+    profile_id = serializers.SerializerMethodField()
     is_manager = serializers.SerializerMethodField()
     is_hr = serializers.SerializerMethodField()
     is_accountant = serializers.SerializerMethodField()
@@ -37,6 +38,12 @@ class MeSerializer(serializers.Serializer):
 
     def get_full_name(self, user):
         return user.get_full_name() or user.username
+
+    def get_profile_id(self, user):
+        # Không phải User nào cũng có hr.Profile liên kết (vd superuser kỹ thuật) — trả None thay vì
+        # để lỗi 500, để frontend biết "không phải Kinh doanh nào" mà ẩn nút liên quan.
+        profile = getattr(user, "profile", None)
+        return profile.id if profile else None
 
     def get_is_manager(self, user):
         return is_manager(user)

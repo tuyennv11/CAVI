@@ -21,8 +21,10 @@ from .models import (
     PriceInquiryQuoteLine,
     PriceInquiryQuoteLineBid,
     PriceListItem,
+    PurchaseRequestItem,
     Quotation,
     QuotationLine,
+    SupplierQuote,
     Task,
 )
 from .services.price_request import refresh_source_status
@@ -352,13 +354,75 @@ class QuotationSerializer(serializers.ModelSerializer):
 
 class PriceRequestItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True, default=None)
+    purchase_request_item_id = serializers.SerializerMethodField()
 
     class Meta:
         model = PriceRequestItem
         fields = [
             "id", "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
+            "purchase_request_item_id",
         ]
         read_only_fields = ["source_status"]
+
+    def get_purchase_request_item_id(self, obj):
+        # Đã tạo Đề nghị mua từ dòng này chưa — frontend dựa vào đây để hiện nút "Tạo đề nghị mua"
+        # hay link "Xem trên Sàn báo giá NCC" (xem PriceRequestItemViewSet.create_purchase_request).
+        allocation = obj.purchase_allocations.first()
+        return allocation.purchase_request_item_id if allocation else None
+
+
+class SupplierQuoteSerializer(serializers.ModelSerializer):
+    supplier_name = serializers.CharField(source="supplier.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True, default=None)
+    landed_unit_cost = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = SupplierQuote
+        fields = [
+            "id", "purchase_request_item", "supplier", "supplier_name", "unit_price", "quantity", "unit",
+            "pickup_point", "total_packages", "package_dimensions", "total_cbm", "total_weight_kg",
+            "available_at", "payment_terms", "delivery_terms", "shipping_cost", "landed_unit_cost",
+            "note", "is_selected", "selection_note", "created_by", "created_by_name", "created_at",
+        ]
+        read_only_fields = ["is_selected", "selection_note", "created_by", "created_at"]
+
+
+class PurchaseRequestItemSerializer(serializers.ModelSerializer):
+    """Dòng Đề nghị mua hiển thị trên Sàn báo giá NCC — kèm các Yêu cầu giá đang chờ dòng này (để
+    biết ai được phép chọn báo giá thắng, xem SupplierQuoteViewSet.select) và mọi báo giá đã có."""
+
+    purchase_request_code = serializers.CharField(source="purchase_request.code", read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True, default=None)
+    price_requests = serializers.SerializerMethodField()
+    supplier_quotes = SupplierQuoteSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PurchaseRequestItem
+        fields = [
+            "id", "purchase_request", "purchase_request_code", "product", "product_name", "item_name",
+            "quantity", "unit", "price_requests", "supplier_quotes",
+        ]
+
+    def get_price_requests(self, obj):
+        seen = {}
+        for allocation in obj.allocations.select_related(
+            "price_request_item__price_request__customer", "price_request_item__price_request__assigned_to"
+        ):
+            pri = allocation.price_request_item
+            if pri is None:
+                continue
+            pr = pri.price_request
+            if pr.id in seen:
+                continue
+            seen[pr.id] = {
+                "id": pr.id,
+                "code": pr.code,
+                "customer_name": pr.customer.name,
+                "assigned_to_id": pr.assigned_to_id,
+                "assigned_to_name": AssignedProfileSerializer(pr.assigned_to).data["full_name"]
+                if pr.assigned_to else None,
+            }
+        return list(seen.values())
 
 
 class PriceRequestSerializer(serializers.ModelSerializer):

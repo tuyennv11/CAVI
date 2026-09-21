@@ -519,11 +519,17 @@ class SupplierQuote(models.Model):
     available_at = models.DateField("Thời gian có hàng", null=True, blank=True)
     payment_terms = models.CharField("Điều kiện thanh toán", max_length=255, blank=True)
     delivery_terms = models.CharField("Điều kiện giao nhận", max_length=255, blank=True)
+    # Giá vận chuyển từ điểm nhận hàng NCC sang điểm nhận bên kia (VN<->Cam) — Cung ứng tự tra bên
+    # ngoài rồi nhập tay, hệ thống không tự tính (không có bảng giá cước theo tuyến).
+    shipping_cost = models.DecimalField("Giá vận chuyển", max_digits=14, decimal_places=2, null=True, blank=True)
     note = models.TextField("Ghi chú", blank=True)
     # NCC được chọn làm nguồn mua chính cho dòng đề nghị mua này — không tự động đổi is_selected của
     # các báo giá khác, Cung ứng tự chọn tay đúng 1 cái (nghiệp vụ chỉ 1 NCC chính tại 1 thời điểm,
     # nhưng không ép ràng buộc unique ở DB để không chặn việc đổi ý giữa chừng).
     is_selected = models.BooleanField("Là nguồn mua chính", default=False)
+    # Bắt buộc có nội dung khi Kinh doanh chọn 1 báo giá KHÔNG PHẢI rẻ nhất (validate ở action
+    # select, xem SupplierQuoteViewSet) — để lại vết vì sao không chọn giá rẻ nhất.
+    selection_note = models.TextField("Lý do chọn", blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -536,6 +542,13 @@ class SupplierQuote(models.Model):
 
     def __str__(self):
         return f"{self.supplier}: {self.unit_price}/{self.unit}"
+
+    @property
+    def landed_unit_cost(self):
+        """Giá quy đổi trên 1 đơn vị, đã cộng giá vận chuyển — dùng để so sánh báo giá nào rẻ nhất
+        khi các báo giá có giá vận chuyển khác nhau."""
+        extra = (self.shipping_cost / self.quantity) if (self.shipping_cost and self.quantity) else 0
+        return self.unit_price + extra
 
 
 class PriceInquiryMessage(models.Model):

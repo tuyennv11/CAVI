@@ -16,6 +16,7 @@ import PriceRequestBoard from "./pages/PriceRequestBoard";
 import Profile from "./pages/Profile";
 import ShipmentBatches from "./pages/ShipmentBatches";
 import Shipments from "./pages/Shipments";
+import SupplierQuoteBoard from "./pages/SupplierQuoteBoard";
 import SupplyBoard from "./pages/SupplyBoard";
 import Workspace from "./pages/Workspace";
 
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/partners" element={<PartnerList />} />
           <Route path="/partners/:id" element={<PartnerDetail />} />
           <Route path="/price-requests" element={<PriceRequestBoard />} />
+          <Route path="/supplier-quotes" element={<SupplierQuoteBoard />} />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/order-receiving" element={<OrderReceiving />} />

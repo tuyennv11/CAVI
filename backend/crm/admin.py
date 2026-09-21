@@ -417,7 +417,8 @@ class SupplierQuoteAdmin(SupplierFieldMixin, ImportExportModelAdmin):
     list_display = (
         "purchase_request_item", "supplier", "unit_price", "quantity", "unit", "pickup_point",
         "total_packages", "package_dimensions", "total_cbm", "total_weight_kg", "available_at",
-        "payment_terms", "delivery_terms", "note", "is_selected", "created_by", "created_at",
+        "payment_terms", "delivery_terms", "shipping_cost", "note", "is_selected", "selection_note",
+        "created_by", "created_at",
     )
     list_filter = ("is_selected",)
     search_fields = ("supplier__name", "purchase_request_item__item_name")

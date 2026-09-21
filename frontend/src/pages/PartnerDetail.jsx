@@ -381,6 +381,16 @@ export default function PartnerDetail() {
     }
   }
 
+  async function handleCreatePurchaseRequest(itemId) {
+    setInquiryError("");
+    try {
+      await apiFetch(`/api/price-inquiry-items/${itemId}/create-purchase-request/`, { method: "POST" });
+      loadInquiries();
+    } catch (err) {
+      setInquiryError(err.message);
+    }
+  }
+
   async function handleSaveAddress() {
     setAddressSaving(true);
     try {
@@ -910,6 +920,28 @@ export default function PartnerDetail() {
                                         }}
                                       />
                                     </label>
+                                    {(it.source_status === "mua_moi" || it.source_status === "ton_kho_va_mua_bo_sung") && (
+                                      it.purchase_request_item_id ? (
+                                        <Link
+                                          className="link-btn"
+                                          to={`/supplier-quotes?purchase_request_item=${it.purchase_request_item_id}`}
+                                          style={{ fontSize: 11.5 }}
+                                        >
+                                          Xem trên Sàn báo giá NCC →
+                                        </Link>
+                                      ) : (
+                                        (currentUser?.is_manager || currentUser?.is_supply) && (
+                                          <button
+                                            type="button"
+                                            className="link-btn"
+                                            style={{ fontSize: 11.5 }}
+                                            onClick={() => handleCreatePurchaseRequest(it.id)}
+                                          >
+                                            Tạo đề nghị mua
+                                          </button>
+                                        )
+                                      )
+                                    )}
                                   </span>
                                 ))}
                               </div>
