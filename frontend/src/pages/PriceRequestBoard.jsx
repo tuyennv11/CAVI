@@ -80,9 +80,10 @@ export default function PriceRequestBoard() {
             <thead>
               <tr>
                 <th>Trạng thái</th>
-                <th>Mã</th>
                 <th>Khách hàng</th>
                 <th>Sản phẩm</th>
+                <th>SL / ĐVT</th>
+                <th>Giao tới</th>
                 <th>Phụ trách</th>
                 <th>Ngày tạo</th>
               </tr>
@@ -90,6 +91,9 @@ export default function PriceRequestBoard() {
             <tbody>
               {requests.map((r) => {
                 const itemsSummary = r.items.map((it) => it.product_name || it.item_name).filter(Boolean).join(", ");
+                const qtySummary = r.items.map((it) => [it.quantity, it.unit].filter(Boolean).join(" ")).filter(Boolean).join(", ");
+                const addressDetail = [r.street_address, r.ward_name, r.district_name, r.province_name].filter(Boolean).join(", ");
+                const address = [r.country_name, addressDetail].filter(Boolean).join(" · ");
                 const isExpanded = expandedId === r.id;
                 return (
                   <Fragment key={r.id}>
@@ -97,19 +101,27 @@ export default function PriceRequestBoard() {
                       <td>
                         <StatusBadge status={r.status} />
                       </td>
-                      <td>{r.code}</td>
                       <td className="ellipsis-cell" title={r.customer_name}>
                         {r.customer_name}
                       </td>
                       <td className="ellipsis-cell" title={itemsSummary}>
                         {itemsSummary || "—"}
                       </td>
+                      <td className="ellipsis-cell" title={qtySummary}>
+                        {qtySummary || "—"}
+                      </td>
+                      <td className="ellipsis-cell" title={address}>
+                        {address || "—"}
+                      </td>
                       <td>{r.assigned_to_detail?.full_name ?? r.created_by_name}</td>
                       <td>{formatDateTime(r.created_at)}</td>
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={6} style={{ background: "var(--surface-muted)" }}>
+                        <td colSpan={7} style={{ background: "var(--surface-muted)" }}>
+                          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                            Mã: {r.code}
+                          </div>
                           {r.description && <div className="inquiry-description">{r.description}</div>}
 
                           <div className="table-wrap" style={{ marginBottom: 8 }}>
