@@ -5,6 +5,7 @@ import { useAuth } from "../AuthContext";
 import AddressFields from "../components/AddressFields";
 import Avatar from "../components/Avatar";
 import CompanyCheckboxes from "../components/CompanyCheckboxes";
+import ImageThumb from "../components/ImageThumb";
 import StatusBadge from "../components/StatusBadge";
 import {
   ACTIVITY_TYPE_CATEGORY,
@@ -892,19 +893,11 @@ export default function PartnerDetail() {
                                 {inq.description && <span>{inq.description}</span>}
                                 {inq.items.map((it) => (
                                   <span key={it.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <b>{it.product_name || it.item_name}</b>
+                                    {inq.items.length > 1 && <b>{it.product_name || it.item_name}</b>}
                                     <span className={`badge badge-source-${it.source_status}`}>
                                       {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                     </span>
-                                    {it.image && (
-                                      <a href={it.image} target="_blank" rel="noreferrer">
-                                        <img
-                                          src={it.image}
-                                          alt=""
-                                          style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
-                                        />
-                                      </a>
-                                    )}
+                                    <ImageThumb src={it.image} size={22} />
                                     <label className="link-btn" style={{ cursor: "pointer", fontSize: 11.5 }}>
                                       {it.image ? "Đổi ảnh" : "+ Ảnh"}
                                       <input

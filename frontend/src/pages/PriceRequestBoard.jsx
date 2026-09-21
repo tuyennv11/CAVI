@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api";
+import ImageThumb from "../components/ImageThumb";
 import StatusBadge from "../components/StatusBadge";
 import { SOURCE_STATUS_LABEL } from "../constants";
 
@@ -124,19 +125,11 @@ export default function PriceRequestBoard() {
                             {r.description && <span>{r.description}</span>}
                             {r.items.map((it) => (
                               <span key={it.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <b>{it.product_name || it.item_name}</b>
+                                {r.items.length > 1 && <b>{it.product_name || it.item_name}</b>}
                                 <span className={`badge badge-source-${it.source_status}`}>
                                   {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                 </span>
-                                {it.image && (
-                                  <a href={it.image} target="_blank" rel="noreferrer">
-                                    <img
-                                      src={it.image}
-                                      alt=""
-                                      style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
-                                    />
-                                  </a>
-                                )}
+                                <ImageThumb src={it.image} size={22} />
                               </span>
                             ))}
                             <Link
