@@ -176,7 +176,7 @@ export default function Sidebar({ user, open, onClose }) {
           <>
             <div className="sidebar-section">Nhân sự</div>
             <NavItem to="/employees" icon={ICONS.employees}>
-              Nhân viên
+              Nhân sự
             </NavItem>
           </>
         )}
