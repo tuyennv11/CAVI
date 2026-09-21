@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api";
+import { useAuth } from "../AuthContext";
 import ImageThumb from "../components/ImageThumb";
 import StatusBadge from "../components/StatusBadge";
 import { formatMoney, SOURCE_STATUS_LABEL } from "../constants";
@@ -25,11 +26,13 @@ function formatDateTime(iso) {
 }
 
 export default function PriceRequestBoard() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
+  const [estimatedCostDrafts, setEstimatedCostDrafts] = useState({});
 
   async function load(statusValue) {
     setLoading(true);
@@ -48,6 +51,29 @@ export default function PriceRequestBoard() {
     load(status);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  async function handleCreatePurchaseRequest(itemId) {
+    setError("");
+    try {
+      await apiFetch(`/api/price-inquiry-items/${itemId}/create-purchase-request/`, { method: "POST" });
+      load(status);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleSaveEstimatedCost(itemId, value) {
+    setError("");
+    try {
+      await apiFetch(`/api/price-inquiry-items/${itemId}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ estimated_cost_price: value === "" ? null : value }),
+      });
+      load(status);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   return (
     <div>
@@ -129,12 +155,62 @@ export default function PriceRequestBoard() {
                                 <span className={`badge badge-source-${it.source_status}`}>
                                   {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                 </span>
-                                {it.estimated_cost_price && (
-                                  <span className="muted" style={{ fontSize: 11.5 }}>
-                                    Giá vốn tạm tính: {formatMoney(it.estimated_cost_price)}
+                                {(user?.is_manager || user?.is_supply) ? (
+                                  <span
+                                    style={{ display: "flex", alignItems: "center", gap: 4 }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="muted" style={{ fontSize: 11.5 }}>Giá vốn tạm tính:</span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="—"
+                                      style={{ width: 100, fontSize: 12, padding: "3px 6px" }}
+                                      value={estimatedCostDrafts[it.id] ?? it.estimated_cost_price ?? ""}
+                                      onChange={(e) =>
+                                        setEstimatedCostDrafts((prev) => ({ ...prev, [it.id]: e.target.value }))
+                                      }
+                                      onBlur={(e) => {
+                                        if (e.target.value !== (it.estimated_cost_price ?? "").toString()) {
+                                          handleSaveEstimatedCost(it.id, e.target.value);
+                                        }
+                                      }}
+                                    />
                                   </span>
+                                ) : (
+                                  it.estimated_cost_price && (
+                                    <span className="muted" style={{ fontSize: 11.5 }}>
+                                      Giá vốn tạm tính: {formatMoney(it.estimated_cost_price)}
+                                    </span>
+                                  )
                                 )}
                                 <ImageThumb src={it.image} size={22} />
+                                {(it.source_status === "mua_moi" || it.source_status === "ton_kho_va_mua_bo_sung") && (
+                                  it.purchase_request_item_id ? (
+                                    <Link
+                                      className="link-btn"
+                                      to={`/supplier-quotes?purchase_request_item=${it.purchase_request_item_id}`}
+                                      style={{ fontSize: 11.5 }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      Xem trên Sàn báo giá NCC →
+                                    </Link>
+                                  ) : (
+                                    (user?.is_manager || user?.is_supply) && (
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        style={{ fontSize: 11.5 }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCreatePurchaseRequest(it.id);
+                                        }}
+                                      >
+                                        Tạo đề nghị mua
+                                      </button>
+                                    )
+                                  )
+                                )}
                               </span>
                             ))}
                             <Link
