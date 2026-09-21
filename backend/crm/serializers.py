@@ -360,7 +360,7 @@ class PriceRequestItemSerializer(serializers.ModelSerializer):
         model = PriceRequestItem
         fields = [
             "id", "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
-            "purchase_request_item_id",
+            "estimated_cost_price", "purchase_request_item_id",
         ]
         read_only_fields = ["source_status"]
 

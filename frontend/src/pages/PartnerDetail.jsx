@@ -139,6 +139,7 @@ export default function PartnerDetail() {
   const [inquiryDescription, setInquiryDescription] = useState("");
   const [inquiryError, setInquiryError] = useState("");
   const [messageDrafts, setMessageDrafts] = useState({});
+  const [estimatedCostDrafts, setEstimatedCostDrafts] = useState({});
   const [products, setProducts] = useState([]);
 
   // Cảnh báo trước khi rời trang (đóng tab/F5) nếu form Yêu cầu giá đang mở và đã có nội dung —
@@ -385,6 +386,19 @@ export default function PartnerDetail() {
     setInquiryError("");
     try {
       await apiFetch(`/api/price-inquiry-items/${itemId}/create-purchase-request/`, { method: "POST" });
+      loadInquiries();
+    } catch (err) {
+      setInquiryError(err.message);
+    }
+  }
+
+  async function handleSaveEstimatedCost(itemId, value) {
+    setInquiryError("");
+    try {
+      await apiFetch(`/api/price-inquiry-items/${itemId}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ estimated_cost_price: value === "" ? null : value }),
+      });
       loadInquiries();
     } catch (err) {
       setInquiryError(err.message);
@@ -907,6 +921,32 @@ export default function PartnerDetail() {
                                     <span className={`badge badge-source-${it.source_status}`}>
                                       {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                     </span>
+                                    {(currentUser?.is_manager || currentUser?.is_supply) ? (
+                                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                        <span className="muted" style={{ fontSize: 11.5 }}>Giá vốn tạm tính:</span>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          placeholder="—"
+                                          style={{ width: 100, fontSize: 12, padding: "3px 6px" }}
+                                          value={estimatedCostDrafts[it.id] ?? it.estimated_cost_price ?? ""}
+                                          onChange={(e) =>
+                                            setEstimatedCostDrafts((prev) => ({ ...prev, [it.id]: e.target.value }))
+                                          }
+                                          onBlur={(e) => {
+                                            if (e.target.value !== (it.estimated_cost_price ?? "").toString()) {
+                                              handleSaveEstimatedCost(it.id, e.target.value);
+                                            }
+                                          }}
+                                        />
+                                      </span>
+                                    ) : (
+                                      it.estimated_cost_price && (
+                                        <span className="muted" style={{ fontSize: 11.5 }}>
+                                          Giá vốn tạm tính: {formatMoney(it.estimated_cost_price)}
+                                        </span>
+                                      )
+                                    )}
                                     <ImageThumb src={it.image} size={22} />
                                     <label className="link-btn" style={{ cursor: "pointer", fontSize: 11.5 }}>
                                       {it.image ? "Đổi ảnh" : "+ Ảnh"}

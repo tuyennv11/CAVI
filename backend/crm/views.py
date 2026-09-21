@@ -336,6 +336,15 @@ class PriceRequestItemViewSet(
             return qs
         return qs.filter(price_request__customer__assigned_to=self.request.user.profile)
 
+    def perform_update(self, serializer):
+        # "Giá vốn tạm tính" là Cung ứng ước lượng cho Kinh doanh thấy sơ bộ trong lúc chờ báo giá
+        # NCC thật — không phải Kinh doanh tự nhập cho chính mình.
+        if "estimated_cost_price" in serializer.validated_data and not (
+            is_manager(self.request.user) or is_supply(self.request.user)
+        ):
+            raise PermissionDenied("Chỉ Cung ứng/Quản lý mới nhập được Giá vốn tạm tính.")
+        serializer.save()
+
     @action(detail=True, methods=["post"], url_path="create-purchase-request")
     def create_purchase_request(self, request, pk=None):
         """Cung ứng bấm 1 nút để đưa dòng sản phẩm này lên Sàn báo giá NCC — tạo luôn Đề nghị mua +

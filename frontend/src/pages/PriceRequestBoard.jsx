@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { apiFetch } from "../api";
 import ImageThumb from "../components/ImageThumb";
 import StatusBadge from "../components/StatusBadge";
-import { SOURCE_STATUS_LABEL } from "../constants";
+import { formatMoney, SOURCE_STATUS_LABEL } from "../constants";
 
 const STATUS_FILTERS = [
   ["", "Tất cả trạng thái"],
@@ -129,6 +129,11 @@ export default function PriceRequestBoard() {
                                 <span className={`badge badge-source-${it.source_status}`}>
                                   {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                 </span>
+                                {it.estimated_cost_price && (
+                                  <span className="muted" style={{ fontSize: 11.5 }}>
+                                    Giá vốn tạm tính: {formatMoney(it.estimated_cost_price)}
+                                  </span>
+                                )}
                                 <ImageThumb src={it.image} size={22} />
                               </span>
                             ))}

@@ -402,6 +402,12 @@ class PriceRequestItem(models.Model):
         "Nguồn hàng", max_length=30, choices=SourceStatus.choices,
         default=SourceStatus.CHUA_XAC_DINH, editable=False,
     )
+    # Cung ứng ước lượng nhanh trước khi có báo giá NCC thật (trên Sàn báo giá NCC) — để Kinh doanh
+    # thấy sơ bộ giá trong lúc chờ, KHÔNG phải giá vốn chính thức (giá thật lấy từ SupplierQuote đã
+    # chọn hoặc PriceCalculation sau này). Chỉ Cung ứng/Quản lý được sửa (xem PriceRequestItemViewSet).
+    estimated_cost_price = models.DecimalField(
+        "Giá vốn tạm tính", max_digits=14, decimal_places=2, null=True, blank=True,
+    )
 
     class Meta:
         ordering = ["id"]

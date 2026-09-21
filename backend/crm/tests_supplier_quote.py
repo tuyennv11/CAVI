@@ -59,6 +59,7 @@ class SupplierQuoteBoardApiTests(TestCase):
         # không phải Quản lý nên get_active_company() bắt phải thuộc đúng 1 công ty.
         self.company = Company.objects.create(code="SQ-TEST", name="Synthetic supplier-quote co", business_type="trading")
         self.supply.profile.companies.add(self.company)
+        self.sales.profile.companies.add(self.company)
 
         self.customer = Partner.objects.create(name="Khach hang test", is_customer=True, assigned_to=self.sales.profile)
         self.supplier = Partner.objects.create(name="NCC test", is_supplier=True)
@@ -142,3 +143,24 @@ class SupplierQuoteBoardApiTests(TestCase):
         self.client.force_authenticate(self.sales)
         response = self.client.post(f"/api/price-inquiry-items/{item.id}/create-purchase-request/")
         self.assertEqual(response.status_code, 403)
+
+    def test_only_supply_or_manager_can_set_estimated_cost_price(self):
+        self.client.force_authenticate(self.sales)
+        blocked = self.client.patch(
+            f"/api/price-inquiry-items/{self.price_item.id}/", {"estimated_cost_price": "50000"}, format="json"
+        )
+        self.assertEqual(blocked.status_code, 403)
+
+        self.client.force_authenticate(self.supply)
+        allowed = self.client.patch(
+            f"/api/price-inquiry-items/{self.price_item.id}/", {"estimated_cost_price": "50000"}, format="json"
+        )
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.data["estimated_cost_price"], "50000.00")
+
+        # Sales van sua duoc field khac (vd anh) ma khong dung toi estimated_cost_price.
+        self.client.force_authenticate(self.sales)
+        other_field_ok = self.client.patch(
+            f"/api/price-inquiry-items/{self.price_item.id}/", {"item_name": "Ruou saam moi"}, format="json"
+        )
+        self.assertEqual(other_field_ok.status_code, 200)

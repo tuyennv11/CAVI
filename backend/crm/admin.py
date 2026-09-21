@@ -300,7 +300,7 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
 class PriceRequestItemInline(admin.TabularInline):
     model = PriceRequestItem
     extra = 1
-    fields = ("product", "item_name", "image", "quantity", "unit", "source_status")
+    fields = ("product", "item_name", "image", "quantity", "unit", "source_status", "estimated_cost_price")
     readonly_fields = ("source_status",)
 
 
@@ -333,7 +333,9 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
 @admin.register(PriceRequestItem)
 class PriceRequestItemAdmin(ImportExportModelAdmin):
     resource_classes = [PriceRequestItemResource]
-    list_display = ("price_request", "product", "item_name", "quantity", "unit", "source_status")
+    list_display = (
+        "price_request", "product", "item_name", "quantity", "unit", "source_status", "estimated_cost_price",
+    )
     list_filter = ("source_status",)
     search_fields = ("item_name", "price_request__code")
     readonly_fields = ("source_status",)
