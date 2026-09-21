@@ -960,7 +960,7 @@ export default function PartnerDetail() {
                                         }}
                                       />
                                     </label>
-                                    {(it.source_status === "mua_moi" || it.source_status === "ton_kho_va_mua_bo_sung") && (
+                                    {it.source_status !== "ton_kho" && (
                                       it.purchase_request_item_id ? (
                                         <Link
                                           className="link-btn"
