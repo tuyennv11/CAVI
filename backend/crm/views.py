@@ -274,7 +274,12 @@ class PriceRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         return qs.filter(customer__assigned_to=self.request.user.profile)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, company=self.get_active_company())
+        # Nhân sự phụ trách mặc định là chính người tạo — giống hệt PartnerViewSet.perform_create,
+        # không bắt chọn tay dropdown "Nhân sự phụ trách" trong form tạo Yêu cầu giá.
+        serializer.save(
+            created_by=self.request.user, company=self.get_active_company(),
+            assigned_to=self.request.user.profile,
+        )
 
     @action(detail=True, methods=["get", "post"], url_path="messages")
     def messages(self, request, pk=None):
