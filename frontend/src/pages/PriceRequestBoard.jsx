@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api";
 import StatusBadge from "../components/StatusBadge";
@@ -28,6 +28,7 @@ export default function PriceRequestBoard() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
 
   async function load(statusValue) {
     setLoading(true);
@@ -53,7 +54,7 @@ export default function PriceRequestBoard() {
         <div>
           <h1>Yêu cầu giá</h1>
           <div className="page-head-sub">
-            Toàn bộ yêu cầu giá của mọi đối tác — bấm vào 1 yêu cầu để xem chi tiết, xem Nguồn hàng và trao đổi.
+            Toàn bộ yêu cầu giá của mọi đối tác — bấm vào 1 dòng để xem chi tiết, xem Nguồn hàng.
           </div>
         </div>
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -74,64 +75,99 @@ export default function PriceRequestBoard() {
           <p className="muted">Chưa có yêu cầu giá nào.</p>
         </div>
       ) : (
-        <div className="inquiry-list">
-          {requests.map((r) => (
-            <div className="inquiry-card" key={r.id}>
-              <div className="inquiry-head">
-                <StatusBadge status={r.status} />
-                <span className="muted" style={{ fontSize: 12 }}>
-                  {r.code} · <Link to={`/partners/${r.customer}`}>{r.customer_name}</Link> ·{" "}
-                  {r.assigned_to_detail?.full_name ?? r.created_by_name} · {formatDateTime(r.created_at)}
-                </span>
-              </div>
-              {r.description && <div className="inquiry-description">{r.description}</div>}
-
-              <div className="table-wrap" style={{ marginBottom: 8 }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Sản phẩm</th>
-                      <th>SL</th>
-                      <th>ĐVT</th>
-                      <th>Nguồn hàng</th>
-                      <th>Hình ảnh</th>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Trạng thái</th>
+                <th>Mã</th>
+                <th>Khách hàng</th>
+                <th>Sản phẩm</th>
+                <th>Phụ trách</th>
+                <th>Ngày tạo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((r) => {
+                const itemsSummary = r.items.map((it) => it.product_name || it.item_name).filter(Boolean).join(", ");
+                const isExpanded = expandedId === r.id;
+                return (
+                  <Fragment key={r.id}>
+                    <tr className="clickable" onClick={() => setExpandedId(isExpanded ? null : r.id)}>
+                      <td>
+                        <StatusBadge status={r.status} />
+                      </td>
+                      <td>{r.code}</td>
+                      <td className="ellipsis-cell" title={r.customer_name}>
+                        {r.customer_name}
+                      </td>
+                      <td className="ellipsis-cell" title={itemsSummary}>
+                        {itemsSummary || "—"}
+                      </td>
+                      <td>{r.assigned_to_detail?.full_name ?? r.created_by_name}</td>
+                      <td>{formatDateTime(r.created_at)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {r.items.map((it) => (
-                      <tr key={it.id}>
-                        <td>{it.product_name || it.item_name}</td>
-                        <td>{it.quantity}</td>
-                        <td>{it.unit}</td>
-                        <td>
-                          <span className={`badge badge-source-${it.source_status}`}>
-                            {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
-                          </span>
-                        </td>
-                        <td>
-                          {it.image ? (
-                            <a href={it.image} target="_blank" rel="noreferrer">
-                              <img
-                                src={it.image}
-                                alt=""
-                                style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
-                              />
-                            </a>
-                          ) : (
-                            "—"
-                          )}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={6} style={{ background: "var(--surface-muted)" }}>
+                          {r.description && <div className="inquiry-description">{r.description}</div>}
+
+                          <div className="table-wrap" style={{ marginBottom: 8 }}>
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  <th>Sản phẩm</th>
+                                  <th>SL</th>
+                                  <th>ĐVT</th>
+                                  <th>Nguồn hàng</th>
+                                  <th>Hình ảnh</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {r.items.map((it) => (
+                                  <tr key={it.id}>
+                                    <td>{it.product_name || it.item_name}</td>
+                                    <td>{it.quantity}</td>
+                                    <td>{it.unit}</td>
+                                    <td>
+                                      <span className={`badge badge-source-${it.source_status}`}>
+                                        {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {it.image ? (
+                                        <a href={it.image} target="_blank" rel="noreferrer">
+                                          <img
+                                            src={it.image}
+                                            alt=""
+                                            style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+                                          />
+                                        </a>
+                                      ) : (
+                                        "—"
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <Link
+                            className="link-btn"
+                            to={`/partners/${r.customer}?tab=inquiries&inquiry=${r.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Xem chi tiết trong hồ sơ đối tác →
+                          </Link>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <Link className="link-btn" to={`/partners/${r.customer}?tab=inquiries&inquiry=${r.id}`}>
-                Xem chi tiết trong hồ sơ đối tác →
-              </Link>
-            </div>
-          ))}
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
