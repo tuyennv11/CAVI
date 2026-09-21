@@ -92,9 +92,20 @@ export default function PartnerDetail() {
   // Lỗi riêng cho thao tác dòng báo giá — không dùng chung `error` vì trang này
   // return sớm cả trang khi `error` có giá trị, làm mất hết dữ liệu đang xem.
   const [lineError, setLineError] = useState("");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(() => searchParams.get("tab") || "activity");
   const highlightInquiryId = searchParams.get("inquiry");
+
+  // Đổi tab phải đồng bộ lên URL (?tab=...) — trước đây chỉ đổi state, nên lỡ F5 giữa chừng là mất
+  // tab đang xem, quay về tab mặc định "Tương tác" (đã có người phản ánh mất luôn form đang điền).
+  function selectTab(t) {
+    setTab(t);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", t);
+      return next;
+    });
+  }
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [showAddressEdit, setShowAddressEdit] = useState(false);
   const [addressForm, setAddressForm] = useState(null);
@@ -127,6 +138,24 @@ export default function PartnerDetail() {
   const [inquiryError, setInquiryError] = useState("");
   const [messageDrafts, setMessageDrafts] = useState({});
   const [products, setProducts] = useState([]);
+
+  // Cảnh báo trước khi rời trang (đóng tab/F5) nếu form Yêu cầu giá đang mở và đã có nội dung —
+  // reload sẽ xoá sạch state React (kể cả ảnh đã chọn, trình duyệt không giữ được qua lần tải lại),
+  // nên nhắc trước để không mất dữ liệu do bấm nhầm.
+  useEffect(() => {
+    const hasDraft =
+      showNewInquiry &&
+      (inquiryDescription ||
+        inquiryAddress.country ||
+        inquiryItems.some((it) => it.item_name || it.product || it.image));
+    if (!hasDraft) return;
+    function handleBeforeUnload(e) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [showNewInquiry, inquiryDescription, inquiryAddress, inquiryItems]);
 
   async function loadAll() {
     try {
@@ -448,7 +477,7 @@ export default function PartnerDetail() {
       setPaid(false);
       setOnPlatform(false);
       setShowNewOrder(false);
-      setTab("orders");
+      selectTab("orders");
       loadAll();
     } catch (err) {
       // Không dùng `error` dùng chung toàn trang — sẽ xoá mất cả trang khi có lỗi (xem lineError).
@@ -536,13 +565,13 @@ export default function PartnerDetail() {
       </div>
 
       <div className="tabs">
-        <button className={`tab-btn${tab === "activity" ? " active" : ""}`} onClick={() => setTab("activity")}>
+        <button className={`tab-btn${tab === "activity" ? " active" : ""}`} onClick={() => selectTab("activity")}>
           Tương tác
         </button>
-        <button className={`tab-btn${tab === "inquiries" ? " active" : ""}`} onClick={() => setTab("inquiries")}>
+        <button className={`tab-btn${tab === "inquiries" ? " active" : ""}`} onClick={() => selectTab("inquiries")}>
           Yêu cầu giá ({inquiries.length})
         </button>
-        <button className={`tab-btn${tab === "orders" ? " active" : ""}`} onClick={() => setTab("orders")}>
+        <button className={`tab-btn${tab === "orders" ? " active" : ""}`} onClick={() => selectTab("orders")}>
           Phiếu nhận hàng ({orders.length})
         </button>
       </div>
@@ -666,7 +695,7 @@ export default function PartnerDetail() {
                             </button>
                           )}
                           {a.related_order_label && (
-                            <button type="button" className="link-btn timeline-link" onClick={() => setTab("orders")}>
+                            <button type="button" className="link-btn timeline-link" onClick={() => selectTab("orders")}>
                               {a.related_order_label}
                             </button>
                           )}
