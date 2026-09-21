@@ -15,8 +15,9 @@ class Country(models.Model):
 
 
 class Province(models.Model):
-    """Tỉnh/Thành phố — hiện chỉ có dữ liệu đầy đủ cho Việt Nam (63 tỉnh/thành, nguồn
-    provinces.open-api.vn). Campuchia/Lào chưa có dữ liệu chuẩn nên chưa nhập cấp này."""
+    """Tỉnh/Thành phố — Việt Nam (63 tỉnh/thành, nguồn provinces.open-api.vn), Campuchia (25
+    tỉnh/thành, nguồn NCDD gazetteer) và Lào (18 tỉnh/thành, nguồn open-admin-data) đều đã có
+    đủ dữ liệu 3 cấp (xem geo/management/commands/import_kh_la_divisions.py)."""
 
     country = models.ForeignKey(Country, verbose_name="Quốc gia", on_delete=models.CASCADE, related_name="provinces")
     name = models.CharField("Tên", max_length=100)
