@@ -423,6 +423,10 @@ a:hover { text-decoration: underline; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr.clickable { cursor: pointer; transition: background 0.1s ease; }
 .data-table tbody tr.clickable:hover { background: var(--surface-muted); }
+.data-table tbody tr.highlighted td { background: var(--gold-soft); }
+.ellipsis-cell {
+  max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .row-name { display: flex; align-items: center; gap: 11px; font-weight: 600; color: var(--ink); }
 
 .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }

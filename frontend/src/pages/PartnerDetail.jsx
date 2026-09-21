@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiDownload, apiFetch, apiUpload, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
@@ -131,6 +131,7 @@ export default function PartnerDetail() {
   const activityContentRef = useRef(null);
 
   const [inquiries, setInquiries] = useState([]);
+  const [expandedInquiryId, setExpandedInquiryId] = useState(null);
   const [showNewInquiry, setShowNewInquiry] = useState(false);
   const [inquiryAddress, setInquiryAddress] = useState(emptyAddress());
   const [inquiryItems, setInquiryItems] = useState([{ ...EMPTY_PRICE_REQUEST_ITEM }]);
@@ -252,9 +253,11 @@ export default function PartnerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, filters]);
 
-  // Đến từ link duyệt đề xuất (?tab=inquiries&inquiry=<id>) — cuộn tới đúng Hỏi giá liên quan.
+  // Đến từ link duyệt đề xuất (?tab=inquiries&inquiry=<id>) — cuộn tới đúng Yêu cầu giá liên quan
+  // và mở sẵn chi tiết (giờ danh sách thu gọn theo mặc định, không mở sẵn thì chỉ thấy dòng trống).
   useEffect(() => {
     if (!highlightInquiryId || inquiries.length === 0) return;
+    setExpandedInquiryId(Number(highlightInquiryId));
     const el = document.getElementById(`inquiry-${highlightInquiryId}`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -843,112 +846,139 @@ export default function PartnerDetail() {
           {inquiries.length === 0 ? (
             <p className="muted">Chưa có yêu cầu giá nào.</p>
           ) : (
-            <div className="inquiry-list">
-              {inquiries.map((inq) => (
-                <div
-                  className={`inquiry-card${String(inq.id) === highlightInquiryId ? " highlighted" : ""}`}
-                  id={`inquiry-${inq.id}`}
-                  key={inq.id}
-                >
-                  <div className="inquiry-head">
-                    <StatusBadge status={inq.status} />
-                    <span className="muted" style={{ fontSize: 12 }}>
-                      {inq.code} · {inq.assigned_to_detail?.full_name ?? inq.created_by_name} ·{" "}
-                      {formatDateTime(inq.created_at)}
-                    </span>
-                  </div>
-                  {(inq.province_name || inq.street_address) && (
-                    <div className="muted" style={{ fontSize: 12.5 }}>
-                      Giao tới: {[inq.street_address, inq.ward_name, inq.district_name, inq.province_name, inq.country_name]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </div>
-                  )}
-                  {inq.description && <div className="inquiry-description">{inq.description}</div>}
-
-                  <div className="table-wrap" style={{ marginBottom: 8 }}>
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Sản phẩm</th>
-                          <th>SL</th>
-                          <th>ĐVT</th>
-                          <th>Nguồn hàng</th>
-                          <th>Hình ảnh</th>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Trạng thái</th>
+                    <th>Mã</th>
+                    <th>Sản phẩm</th>
+                    <th>Giao tới</th>
+                    <th>Phụ trách</th>
+                    <th>Ngày tạo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inquiries.map((inq) => {
+                    const address = [inq.street_address, inq.ward_name, inq.district_name, inq.province_name, inq.country_name]
+                      .filter(Boolean)
+                      .join(", ");
+                    const itemsSummary = inq.items.map((it) => it.product_name || it.item_name).filter(Boolean).join(", ");
+                    const isExpanded = expandedInquiryId === inq.id;
+                    return (
+                      <Fragment key={inq.id}>
+                        <tr
+                          className={`clickable${String(inq.id) === highlightInquiryId ? " highlighted" : ""}`}
+                          id={`inquiry-${inq.id}`}
+                          onClick={() => setExpandedInquiryId(isExpanded ? null : inq.id)}
+                        >
+                          <td>
+                            <StatusBadge status={inq.status} />
+                          </td>
+                          <td>{inq.code}</td>
+                          <td className="ellipsis-cell" title={itemsSummary}>
+                            {itemsSummary || "—"}
+                          </td>
+                          <td className="ellipsis-cell" title={address}>
+                            {address || "—"}
+                          </td>
+                          <td>{inq.assigned_to_detail?.full_name ?? inq.created_by_name}</td>
+                          <td>{formatDateTime(inq.created_at)}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {inq.items.map((it) => (
-                          <tr key={it.id}>
-                            <td>{it.product_name || it.item_name}</td>
-                            <td>{it.quantity}</td>
-                            <td>{it.unit}</td>
-                            <td>
-                              <span className={`badge badge-source-${it.source_status}`}>
-                                {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
-                              </span>
-                            </td>
-                            <td>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                {it.image && (
-                                  <a href={it.image} target="_blank" rel="noreferrer">
-                                    <img
-                                      src={it.image}
-                                      alt=""
-                                      style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
-                                    />
-                                  </a>
-                                )}
-                                <label className="link-btn" style={{ cursor: "pointer", fontSize: 12 }}>
-                                  {it.image ? "Đổi ảnh" : "+ Thêm ảnh"}
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    hidden
-                                    onChange={(e) => {
-                                      handleUploadItemImage(it.id, e.target.files[0]);
-                                      e.target.value = "";
-                                    }}
-                                  />
-                                </label>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={6} style={{ background: "var(--surface-muted)" }}>
+                              {inq.description && <div className="inquiry-description">{inq.description}</div>}
+
+                              <div className="table-wrap" style={{ marginBottom: 8 }}>
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Sản phẩm</th>
+                                      <th>SL</th>
+                                      <th>ĐVT</th>
+                                      <th>Nguồn hàng</th>
+                                      <th>Hình ảnh</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {inq.items.map((it) => (
+                                      <tr key={it.id}>
+                                        <td>{it.product_name || it.item_name}</td>
+                                        <td>{it.quantity}</td>
+                                        <td>{it.unit}</td>
+                                        <td>
+                                          <span className={`badge badge-source-${it.source_status}`}>
+                                            {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
+                                          </span>
+                                        </td>
+                                        <td>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                            {it.image && (
+                                              <a href={it.image} target="_blank" rel="noreferrer">
+                                                <img
+                                                  src={it.image}
+                                                  alt=""
+                                                  style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+                                                />
+                                              </a>
+                                            )}
+                                            <label className="link-btn" style={{ cursor: "pointer", fontSize: 12 }}>
+                                              {it.image ? "Đổi ảnh" : "+ Thêm ảnh"}
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                hidden
+                                                onChange={(e) => {
+                                                  handleUploadItemImage(it.id, e.target.files[0]);
+                                                  e.target.value = "";
+                                                }}
+                                              />
+                                            </label>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {inq.messages.length > 0 && (
+                                <div className="inquiry-thread">
+                                  {inq.messages.map((m) => (
+                                    <div className={`inquiry-message${m.is_quote ? " quote" : ""}`} key={m.id}>
+                                      <b>{m.author_name}</b>
+                                      <span className="muted"> · {formatDateTime(m.created_at)}</span>
+                                      <div>{m.content}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="inquiry-reply-row" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  placeholder="Trao đổi..."
+                                  value={messageDrafts[inq.id] || ""}
+                                  onChange={(e) => setMessageDrafts((prev) => ({ ...prev, [inq.id]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleSendMessage(inq.id);
+                                    }
+                                  }}
+                                />
+                                <button type="button" onClick={() => handleSendMessage(inq.id)}>
+                                  Gửi
+                                </button>
                               </div>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {inq.messages.length > 0 && (
-                    <div className="inquiry-thread">
-                      {inq.messages.map((m) => (
-                        <div className={`inquiry-message${m.is_quote ? " quote" : ""}`} key={m.id}>
-                          <b>{m.author_name}</b>
-                          <span className="muted"> · {formatDateTime(m.created_at)}</span>
-                          <div>{m.content}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="inquiry-reply-row">
-                    <input
-                      placeholder="Trao đổi..."
-                      value={messageDrafts[inq.id] || ""}
-                      onChange={(e) => setMessageDrafts((prev) => ({ ...prev, [inq.id]: e.target.value }))}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSendMessage(inq.id);
-                        }
-                      }}
-                    />
-                    <button type="button" onClick={() => handleSendMessage(inq.id)}>
-                      Gửi
-                    </button>
-                  </div>
-                </div>
-              ))}
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
