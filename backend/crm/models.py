@@ -312,10 +312,6 @@ class PriceRequest(models.Model):
     — 1 Yêu cầu giá có thể dùng chung 1 Đề nghị mua (crm.PurchaseRequest) với yêu cầu khác, xem
     crm.PurchaseRequestAllocation."""
 
-    class Direction(models.TextChoices):
-        VN_TO_KH = "vn_to_kh", "Việt Nam → Campuchia"
-        KH_TO_VN = "kh_to_vn", "Campuchia → Việt Nam"
-
     class Status(models.TextChoices):
         CHO_CUNG_UNG = "cho_cung_ung", "Chờ Cung ứng"
         DA_KIEM_TRA_NGUON_HANG = "da_kiem_tra_nguon_hang", "Đã kiểm tra nguồn hàng"
@@ -339,7 +335,6 @@ class PriceRequest(models.Model):
         "hr.Profile", verbose_name="Nhân sự phụ trách", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="price_requests"
     )
-    direction = models.CharField("Chiều mua bán", max_length=20, choices=Direction.choices, blank=True)
     # Điểm giao hàng — cùng cấu trúc Quốc gia/Tỉnh/Quận/Phường/Số nhà với hr.Profile (chuẩn hoá được
     # tới cấp Phường/Xã cho Việt Nam; Phường/Xã chưa có dữ liệu chuẩn cho nước khác thì để trống, ghi
     # chi tiết vào street_address). Không có "Điểm lấy hàng" — hỏi giá chỉ cần biết giao đến đâu, lấy

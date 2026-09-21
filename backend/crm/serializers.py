@@ -383,7 +383,6 @@ class PriceRequestSerializer(serializers.ModelSerializer):
             "customer_name",
             "assigned_to",
             "assigned_to_detail",
-            "direction",
             "items",
             "country",
             "country_name",

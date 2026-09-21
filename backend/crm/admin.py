@@ -142,7 +142,7 @@ class PriceRequestInline(admin.TabularInline):
     model = PriceRequest
     fk_name = "customer"
     extra = 0
-    fields = ("id", "status", "direction", "assigned_to", "created_at")
+    fields = ("id", "status", "assigned_to", "created_at")
     readonly_fields = fields
     show_change_link = True
     can_delete = False
@@ -311,11 +311,11 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
     # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau). Sản phẩm/số lượng giờ nằm ở inline
     # PriceRequestItem (1 Yêu cầu giá có nhiều sản phẩm), không còn là cột trực tiếp ở đây.
     list_display = (
-        "code", "customer_link", "assigned_to", "direction", "country", "province",
+        "code", "customer_link", "assigned_to", "country", "province",
         "district", "ward", "street_address", "description", "status", "created_by",
         "created_at", "updated_at",
     )
-    list_filter = ("status", "direction")
+    list_filter = ("status",)
     search_fields = ("code", "customer__name")
     readonly_fields = ("code",)
     autocomplete_fields = ["country", "province", "district", "ward", "assigned_to"]

@@ -12,11 +12,6 @@ export const TIER_LABEL = {
   super_vip: "Siêu VIP",
 };
 
-export const DIRECTION_LABEL = {
-  vn_to_kh: "Việt Nam → Campuchia",
-  kh_to_vn: "Campuchia → Việt Nam",
-};
-
 export const SOURCE_STATUS_LABEL = {
   chua_xac_dinh: "Chưa xác định",
   ton_kho: "Tồn kho",

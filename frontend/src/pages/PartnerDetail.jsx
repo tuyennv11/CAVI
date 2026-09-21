@@ -8,7 +8,6 @@ import CompanyCheckboxes from "../components/CompanyCheckboxes";
 import StatusBadge from "../components/StatusBadge";
 import {
   ACTIVITY_TYPE_CATEGORY,
-  DIRECTION_LABEL,
   formatMoney,
   partnerTypeLabel,
   PRICE_INQUIRY_TEMPLATE,
@@ -122,7 +121,6 @@ export default function PartnerDetail() {
 
   const [inquiries, setInquiries] = useState([]);
   const [showNewInquiry, setShowNewInquiry] = useState(false);
-  const [inquiryDirection, setInquiryDirection] = useState("vn_to_kh");
   const [inquiryAddress, setInquiryAddress] = useState(emptyAddress());
   const [inquiryItems, setInquiryItems] = useState([{ ...EMPTY_PRICE_REQUEST_ITEM }]);
   const [inquiryDescription, setInquiryDescription] = useState("");
@@ -297,13 +295,11 @@ export default function PartnerDetail() {
         method: "POST",
         body: JSON.stringify({
           customer: Number(id),
-          direction: inquiryDirection,
           ...inquiryAddress,
           description: inquiryDescription,
           items,
         }),
       });
-      setInquiryDirection("vn_to_kh");
       setInquiryAddress(emptyAddress());
       setInquiryItems([{ ...EMPTY_PRICE_REQUEST_ITEM }]);
       setInquiryDescription("");
@@ -695,14 +691,6 @@ export default function PartnerDetail() {
 
           {showNewInquiry && (
             <form className="field-grid" onSubmit={handleCreateInquiry} style={{ marginBottom: 14 }}>
-              <label>
-                Chiều mua bán
-                <select value={inquiryDirection} onChange={(e) => setInquiryDirection(e.target.value)}>
-                  <option value="vn_to_kh">Việt Nam → Campuchia</option>
-                  <option value="kh_to_vn">Campuchia → Việt Nam</option>
-                </select>
-              </label>
-
               <label>Điểm giao hàng</label>
               <AddressFields value={inquiryAddress} onChange={setInquiryAddress} />
 
@@ -796,8 +784,8 @@ export default function PartnerDetail() {
                   <div className="inquiry-head">
                     <StatusBadge status={inq.status} />
                     <span className="muted" style={{ fontSize: 12 }}>
-                      {inq.code} · {DIRECTION_LABEL[inq.direction] ?? inq.direction} ·{" "}
-                      {inq.assigned_to_detail?.full_name ?? inq.created_by_name} · {formatDateTime(inq.created_at)}
+                      {inq.code} · {inq.assigned_to_detail?.full_name ?? inq.created_by_name} ·{" "}
+                      {formatDateTime(inq.created_at)}
                     </span>
                   </div>
                   {(inq.province_name || inq.street_address) && (

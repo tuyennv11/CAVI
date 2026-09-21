@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api";
 import StatusBadge from "../components/StatusBadge";
-import { DIRECTION_LABEL, SOURCE_STATUS_LABEL } from "../constants";
+import { SOURCE_STATUS_LABEL } from "../constants";
 
 const STATUS_FILTERS = [
   ["", "Tất cả trạng thái"],
@@ -80,8 +80,7 @@ export default function PriceRequestBoard() {
               <div className="inquiry-head">
                 <StatusBadge status={r.status} />
                 <span className="muted" style={{ fontSize: 12 }}>
-                  {r.code} · {DIRECTION_LABEL[r.direction] ?? r.direction} ·{" "}
-                  <Link to={`/partners/${r.customer}`}>{r.customer_name}</Link> ·{" "}
+                  {r.code} · <Link to={`/partners/${r.customer}`}>{r.customer_name}</Link> ·{" "}
                   {r.assigned_to_detail?.full_name ?? r.created_by_name} · {formatDateTime(r.created_at)}
                 </span>
               </div>
