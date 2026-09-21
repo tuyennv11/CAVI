@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'LIVI — Hệ thống quản lý',
         short_name: 'LIVI',
         description: 'Đối tác, đơn hàng, tồn kho, ký duyệt — quản lý xuyên suốt cho LIVI.',
-        theme_color: '#d81e3e',
+        theme_color: '#d80118',
         background_color: '#f8f5f5',
         display: 'standalone',
         start_url: '/',

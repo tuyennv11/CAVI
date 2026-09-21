@@ -8,11 +8,11 @@
   --surface: #ffffff;
   --surface-muted: #f4eced;
 
-  --primary: #d81e3e;
+  --primary: #d80118;
   --primary-ink: #ffffff;
-  --primary-soft: #fce7ea;
-  --primary-dark: #a3172f;
-  --primary-darker: #6e0f20;
+  --primary-soft: #fbe6e8;
+  --primary-dark: #a40112;
+  --primary-darker: #6e000c;
 
   --gold: #9a6b12;
   --gold-soft: #fbf1dc;
@@ -21,7 +21,7 @@
   --sidebar-bg-raised: #1e1112;
   --sidebar-ink: #b8a3a5;
   --sidebar-ink-active: #ffffff;
-  --sidebar-active-bg: rgba(216, 30, 62, 0.18);
+  --sidebar-active-bg: rgba(216, 1, 24, 0.18);
   --sidebar-line: rgba(255, 255, 255, 0.07);
 
   --danger: #c0431f;
@@ -445,6 +445,24 @@ a:hover { text-decoration: underline; }
 .badge-quoted { background: var(--success-soft); color: var(--success); }
 .badge-pending_receipt { background: var(--warning-soft); color: var(--warning); }
 .badge-pending_confirmation { background: var(--gold-soft); color: var(--gold); }
+
+/* Trạng thái quy trình của Yêu cầu giá (crm.PriceRequest.Status). */
+.badge-cho_cung_ung { background: var(--warning-soft); color: var(--warning); }
+.badge-da_kiem_tra_nguon_hang { background: var(--surface-muted); color: var(--muted); }
+.badge-cho_tinh_gia { background: var(--warning-soft); color: var(--warning); }
+.badge-cho_duyet { background: var(--warning-soft); color: var(--warning); }
+.badge-da_duyet { background: var(--success-soft); color: var(--success); }
+.badge-da_gui_khach { background: var(--primary-soft); color: var(--primary-dark); }
+.badge-khach_dong_y { background: var(--success-soft); color: var(--success); }
+.badge-khach_tu_choi { background: var(--danger-soft); color: var(--danger); }
+.badge-dang_thuong_luong { background: var(--gold-soft); color: var(--gold); }
+.badge-huy { background: var(--danger-soft); color: var(--danger); }
+
+/* Nguồn hàng tự tính của từng dòng sản phẩm (inventory.PriceRequestItem.SourceStatus). */
+.badge-source-chua_xac_dinh { background: var(--surface-muted); color: var(--muted); }
+.badge-source-ton_kho { background: var(--success-soft); color: var(--success); }
+.badge-source-mua_moi { background: var(--warning-soft); color: var(--warning); }
+.badge-source-ton_kho_va_mua_bo_sung { background: var(--gold-soft); color: var(--gold); }
 
 /* ---------- Workspace (Làm việc) ---------- */
 .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
