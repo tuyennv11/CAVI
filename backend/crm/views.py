@@ -35,12 +35,11 @@ from .models import (
     Order,
     OrderItem,
     Partner,
-    PriceInquiry,
+    PriceRequest,
     PriceInquiryQuoteLine,
     PriceInquiryQuoteLineBid,
     PriceListItem,
     Quotation,
-    QuotationLine,
     Task,
 )
 from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales, IsManagerOrSupply
@@ -52,7 +51,7 @@ from .serializers import (
     PriceInquiryMessageSerializer,
     PriceInquiryQuoteLineBidSerializer,
     PriceInquiryQuoteLineSerializer,
-    PriceInquirySerializer,
+    PriceRequestSerializer,
     PriceListItemSerializer,
     QuotationSerializer,
     TaskSerializer,
@@ -259,15 +258,15 @@ class TaskViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         notify_change("task", obj, self.request.user, before)
 
 
-class PriceInquiryViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
-    serializer_class = PriceInquirySerializer
+class PriceRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
+    serializer_class = PriceRequestSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ["customer", "status"]
 
     def get_queryset(self):
         qs = self.scope_by_company(
-            PriceInquiry.objects.select_related("customer", "created_by", "quoted_by").prefetch_related(
-                "messages__author"
+            PriceRequest.objects.select_related("customer", "created_by", "assigned_to").prefetch_related(
+                "messages__author", "items"
             )
         )
         if is_manager(self.request.user):
@@ -297,72 +296,12 @@ class PriceInquiryViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
         serializer.save(inquiry=inquiry, created_by=request.user)
         return Response(serializer.data, status=201)
 
-    @action(detail=True, methods=["post"], url_path="confirm-quote")
-    def confirm_quote(self, request, pk=None):
-        inquiry = self.get_object()
-        lines = list(inquiry.quote_lines.all())
-        if not lines:
-            raise ValidationError("Cần thêm ít nhất 1 dòng báo giá trước khi xác nhận.")
-        cents = Decimal("0.01")
-        total_cost = sum((line.line_cost for line in lines), Decimal("0")).quantize(cents)
-        # Quy định: khi báo giá gộp nhiều dịch vụ, tỷ lệ sàn/trần CHUNG của cả báo giá là tỷ lệ sàn
-        # CAO NHẤT / tỷ lệ trần THẤP NHẤT trong các dịch vụ thành phần — áp 1 lần lên tổng giá vốn,
-        # không cộng dồn từng dòng riêng lẻ (line_floor/line_ceiling vẫn giữ để hiển thị theo dòng).
-        combined_floor_pct = max(line.floor_pct for line in lines)
-        combined_ceiling_pct = min(line.ceiling_pct for line in lines)
-        total_floor = (total_cost * (1 + combined_floor_pct / 100)).quantize(cents)
-        total_ceiling = (total_cost * (1 + combined_ceiling_pct / 100)).quantize(cents)
-        inquiry.cost_price = total_cost
-        inquiry.floor_price = total_floor
-        inquiry.ceiling_price = total_ceiling
-        inquiry.floor_pct = combined_floor_pct
-        inquiry.ceiling_pct = combined_ceiling_pct
-        inquiry.status = PriceInquiry.Status.QUOTED
-        inquiry.quoted_by = request.user
-        inquiry.quoted_at = timezone.now()
-        inquiry.save()
-        inquiry.messages.create(
-            author=request.user,
-            is_quote=True,
-            content=(
-                f"📌 Đã chốt giá — Giá vốn: {total_cost} · Giá sàn: {total_floor} ({combined_floor_pct}%) · "
-                f"Giá trần: {total_ceiling} ({combined_ceiling_pct}%)"
-            ),
-        )
-        return Response(PriceInquirySerializer(inquiry).data)
-
-    @action(detail=True, methods=["post"], url_path="create-quotation")
-    def create_quotation(self, request, pk=None):
-        inquiry = self.get_object()
-        if inquiry.status != PriceInquiry.Status.QUOTED:
-            raise ValidationError("Chỉ có thể tạo báo giá sau khi đã chốt giá.")
-        # 1 Hỏi giá cho phép nhiều báo giá đã lưu song song — nhưng chỉ 1 bản nháp (chưa lưu) tại 1
-        # thời điểm, để tránh tích luỹ nháp bỏ dở không ai dọn. Đã có nháp thì trả lại đúng nháp đó.
-        draft = inquiry.quotations.filter(saved_at__isnull=True).first()
-        if draft is not None:
-            return Response(QuotationSerializer(draft).data, status=200)
-        quotation = Quotation.objects.create(inquiry=inquiry, note=inquiry.description, created_by=request.user)
-        QuotationLine.objects.bulk_create(
-            QuotationLine(
-                quotation=quotation,
-                product=line.product,
-                # Đúng ô "Mô tả" (note) của dòng dịch vụ cấu thành, không lấy tên dịch vụ (item_name)
-                # — 2 khái niệm khác nhau, không dùng cái này thay cho cái kia.
-                item_name=line.note,
-                unit=line.unit,
-                quantity=line.quantity,
-                # QuotationLine.price là đơn giá (line_total = quantity × price), còn line_floor là
-                # TỔNG giá sàn của cả dòng (đã nhân số lượng) — phải chia lại cho số lượng mới ra đúng
-                # đơn giá, nếu không tổng dòng báo giá sẽ bị nhân trùng số lượng 1 lần nữa. Kết quả cuối
-                # (line_total) khớp đúng số đã hiển thị ở cột "Giá sàn" của bảng dịch vụ cấu thành ở trên.
-                # Tổng các dòng có thể thấp hơn giá sàn CHUNG của cả Hỏi giá (tỷ lệ sàn cao nhất áp 1 lần
-                # lên tổng) khi các dịch vụ có tỷ lệ sàn khác nhau — lúc đó phải Gửi đề xuất duyệt, đúng
-                # theo quy định.
-                price=line.line_floor / line.quantity,
-            )
-            for line in inquiry.quote_lines.all()
-        )
-        return Response(QuotationSerializer(quotation).data, status=201)
+    # "confirm-quote"/"create-quotation" (chốt giá từ Dòng dịch vụ cấu thành -> tạo Báo giá) đã bị bỏ
+    # cùng với việc thay thế luồng Hỏi giá cũ bằng Yêu cầu giá + Tính giá theo version (xem
+    # crm.PriceCalculation) — 2 action này ghi vào field (cost_price/floor_price/.../quoted_by) đã
+    # xoá khỏi PriceRequest. Quotation/PriceInquiryQuoteLine vẫn giữ nguyên model (không xoá dữ liệu
+    # cũ), chỉ không còn đường tạo MỚI qua API này nữa. Giao diện gọi qua action này (tab Hỏi giá cũ
+    # trên PartnerDetail.jsx) sẽ lỗi tạm thời cho tới khi Giai đoạn 3 viết lại giao diện.
 
 
 class QuotationViewSet(
@@ -404,8 +343,12 @@ class QuotationViewSet(
             Decimal("0"),
         )
         inquiry = quotation.inquiry
-        floor = inquiry.floor_price if inquiry.floor_price is not None else Decimal("0")
-        ceiling = inquiry.ceiling_price
+        # PriceRequest (đổi tên từ PriceInquiry) không còn field floor_price/ceiling_price — đã
+        # chuyển sang PriceCalculation ở luồng Yêu cầu giá mới. Quotation/action này thuộc luồng cũ
+        # đang được thay thế (xem PriceRequestViewSet — confirm-quote/create-quotation đã bỏ); giữ
+        # getattr an toàn để không crash trên các Báo giá cũ đã có, coi như không giới hạn sàn/trần.
+        floor = getattr(inquiry, "floor_price", None) or Decimal("0")
+        ceiling = getattr(inquiry, "ceiling_price", None)
         if total >= floor and (ceiling is None or total <= ceiling):
             raise ValidationError("Giá tổng đã nằm trong khoảng giá sàn - giá trần, không cần gửi đề xuất.")
         approval = ApprovalRequest.objects.create(
@@ -498,13 +441,14 @@ class QuotationViewSet(
             # Nội dung mô tả lô hàng cho Vận hành phải giống hệt Hỏi giá gốc — copy thẳng từ đó,
             # không tự nhập lại (Kinh doanh đã mô tả đầy đủ ngay từ lúc hỏi giá rồi).
             description=inquiry.description,
-            image=inquiry.image if inquiry.image else None,
-            # Xác định sẵn giá sàn/trần của đơn ngay lúc tạo, lấy từ Hỏi giá gốc — đã chốt theo đúng
-            # quy tắc tỷ lệ sàn cao nhất/trần thấp nhất trong các dịch vụ thành phần.
-            floor_pct=inquiry.floor_pct,
-            ceiling_pct=inquiry.ceiling_pct,
-            floor_price=inquiry.floor_price,
-            ceiling_price=inquiry.ceiling_price,
+            # PriceRequest không còn field image/floor_pct/ceiling_pct/floor_price/ceiling_price
+            # (chuyển sang PriceRequestItem/PriceCalculation ở luồng mới) — getattr an toàn cho các
+            # Báo giá cũ, xem ghi chú ở submit_for_approval phía trên.
+            image=getattr(inquiry, "image", None) or None,
+            floor_pct=getattr(inquiry, "floor_pct", None),
+            ceiling_pct=getattr(inquiry, "ceiling_pct", None),
+            floor_price=getattr(inquiry, "floor_price", None),
+            ceiling_price=getattr(inquiry, "ceiling_price", None),
         )
         OrderItem.objects.bulk_create(
             OrderItem(
@@ -539,7 +483,7 @@ class PriceInquiryQuoteLineViewSet(
         # của mình. Vẫn phải lọc theo công ty đang thao tác (scope_by_company ở trên) — nếu không,
         # Cung ứng của công ty này sẽ thấy luôn cả dữ liệu đấu giá của công ty khác.
         if is_supply(self.request.user):
-            return qs.filter(inquiry__status=PriceInquiry.Status.OPEN)
+            return qs.filter(inquiry__status=PriceRequest.Status.CHO_CUNG_UNG)
         return qs.filter(inquiry__customer__assigned_to=self.request.user.profile)
 
     @action(detail=True, methods=["post"])
@@ -547,7 +491,7 @@ class PriceInquiryQuoteLineViewSet(
         if not is_manager(request.user):
             raise PermissionDenied("Chỉ Quản lý mới chọn được giá thắng.")
         line = self.get_object()
-        if line.inquiry.status != PriceInquiry.Status.OPEN:
+        if line.inquiry.status != PriceRequest.Status.CHO_CUNG_UNG:
             raise ValidationError("Hỏi giá này đã đóng, không thể đổi giá thắng nữa.")
         bid = get_object_or_404(PriceInquiryQuoteLineBid, pk=request.data.get("bid"), quote_line=line)
         line.winning_bid = bid

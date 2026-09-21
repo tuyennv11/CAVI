@@ -74,10 +74,9 @@ class StockMovementSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Hàng hoá không thuộc công ty đang thao tác.")
 
         if quantity is not None:
-            # quantity dương/âm tự do CHỈ với Điều chỉnh (dấu +/- thể hiện tìm thấy dư/thiếu khi kiểm
-            # kê) — Nhập/Xuất phải luôn là số dương, chiều +/- đã cố định sẵn theo loại.
-            if movement_type in (StockMovement.MovementType.IN, StockMovement.MovementType.OUT) and quantity <= 0:
+            # quantity LUÔN dương ở mọi loại — chiều tăng/giảm suy hoàn toàn từ movement_type (xem
+            # StockMovement.MovementType.decreasing_types()), kể cả Điều chỉnh tăng/giảm (trước đây
+            # 1 loại "Điều chỉnh" duy nhất cho phép quantity âm, giờ đã tách 2 loại riêng).
+            if quantity <= 0:
                 raise serializers.ValidationError("Số lượng phải lớn hơn 0.")
-            if movement_type == StockMovement.MovementType.ADJUSTMENT and quantity == 0:
-                raise serializers.ValidationError("Số lượng điều chỉnh không được bằng 0.")
         return attrs

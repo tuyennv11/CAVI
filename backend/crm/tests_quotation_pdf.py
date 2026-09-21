@@ -14,7 +14,7 @@ from rest_framework.test import APIClient
 
 from approvals.models import ApprovalRequest
 from companies.models import Company
-from crm.models import Partner, PriceInquiry, Quotation, QuotationLine
+from crm.models import Partner, PriceRequest, Quotation, QuotationLine
 from crm.quotation_pdf import (
     QuoteDocument, QuoteLine, QuotationPDFError, _text,
     bundled_cavi_logo, display_number, document_from_quotation, quotation_logo, render_quotation_pdf,
@@ -122,7 +122,7 @@ class QuotationPDFAPITests(TestCase):
         self.peer.profile.companies.add(self.a)
         self.partner = Partner.objects.create(name="Synthetic client", assigned_to=self.owner.profile, note="PRIVATE CRM NOTE")
         self.partner.companies.add(self.a)
-        self.inquiry = PriceInquiry.objects.create(customer=self.partner, company=self.a, cost_price=333, floor_price=444)
+        self.inquiry = PriceRequest.objects.create(customer=self.partner, company=self.a)
         self.quote = Quotation.objects.create(inquiry=self.inquiry, note="Customer-facing note", saved_at=timezone.now())
         QuotationLine.objects.create(quotation=self.quote, item_name="Synthetic freight", quantity=Decimal("1.25"), price=Decimal("123.45"))
         self.client = APIClient()

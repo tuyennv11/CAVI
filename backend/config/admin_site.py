@@ -24,16 +24,25 @@ MODEL_ORDER = {
     # Hồ sơ nhân sự trước, Chức vụ/Bộ phận là danh mục tra cứu ngay sau, rồi Giấy tờ nhân sự/Liên hệ
     # khẩn cấp, Nhật ký thay đổi cuối cùng (ít khi cần mở trực tiếp, chỉ để tra cứu khi cần).
     "hr": ["Profile", "Position", "Department", "EmployeeDocument", "EmergencyContact", "ProfileChangeLog"],
-    # Kho trước, Hàng hoá sau (hàng hoá cần chọn kho lúc nhập), Nhật ký nhập-xuất cuối (tra cứu).
-    "inventory": ["Warehouse", "Product", "StockMovement"],
+    # Kho trước, Hàng hoá sau (hàng hoá cần chọn kho lúc nhập), Lô hàng/Giữ hàng theo sau (phát sinh
+    # từ Đề nghị mua ở crm), Nhật ký nhập-xuất cuối (tra cứu).
+    "inventory": ["Warehouse", "Product", "Lot", "InventoryReservation", "StockMovement"],
     "crm": [
         "Partner",  # Đối tác — điểm chạm đầu tiên với bên ngoài
         "Activity",  # Tương tác với Đối tác (khách hàng lẫn nhà cung cấp) — lưu lại mọi lần liên hệ
-        "PriceInquiry",  # Khách hỏi giá — Kinh doanh + Cung ứng phối hợp báo giá vốn
-        "PriceListItem",  # Bảng giá dịch vụ — dữ liệu dùng để cấu thành giá trong Hỏi giá/Báo giá
-        "PriceInquiryQuoteLine",  # Dòng dịch vụ cấu thành của 1 Hỏi giá
-        "PriceInquiryQuoteLineBid",  # Sàn báo giá cạnh tranh — nhiều Cung ứng chào giá cho 1 dòng
-        "Quotation",  # Kinh doanh chốt báo giá gửi khách
+        # Luồng Yêu cầu giá mới — Kinh doanh tạo yêu cầu -> Cung ứng lập Đề nghị mua/Báo giá NCC ->
+        # Price tính giá theo version. Thay thế luồng Hỏi giá/Báo giá/PriceInquiryQuoteLine* cũ bên
+        # dưới (2 model cũ GIỮ NGUYÊN để tra cứu lịch sử, không còn tạo bản ghi mới).
+        "PriceRequest",
+        "PriceRequestItem",
+        "PurchaseRequest",
+        "PurchaseRequestItem",
+        "SupplierQuote",
+        "PriceCalculation",
+        "PriceListItem",  # Bảng giá dịch vụ — dữ liệu dùng để cấu thành giá trong Hỏi giá/Báo giá (luồng cũ)
+        "PriceInquiryQuoteLine",  # Dòng dịch vụ cấu thành của 1 Hỏi giá (luồng cũ — giữ để tra cứu)
+        "PriceInquiryQuoteLineBid",  # Sàn báo giá cạnh tranh (luồng cũ — giữ để tra cứu)
+        "Quotation",  # Kinh doanh chốt báo giá gửi khách (luồng cũ — giữ để tra cứu)
         "Order",  # Khách chốt -> thành Phiếu nhận hàng/Đơn hàng chính thức
         "Task",  # Công việc nội bộ hỗ trợ
         "KPITarget",  # Quản lý nội bộ

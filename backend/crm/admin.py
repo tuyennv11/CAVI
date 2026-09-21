@@ -12,13 +12,20 @@ from .models import (
     Order,
     OrderItem,
     Partner,
-    PriceInquiry,
+    PriceRequest,
+    PriceRequestItem,
+    PriceCalculation,
+    PriceCalculationItem,
     PriceInquiryMessage,
     PriceInquiryQuoteLine,
     PriceInquiryQuoteLineBid,
     PriceListItem,
+    PurchaseRequest,
+    PurchaseRequestItem,
+    PurchaseRequestAllocation,
     Quotation,
     QuotationLine,
+    SupplierQuote,
     Task,
 )
 
@@ -67,18 +74,17 @@ class KPITargetResource(ExcelModelResource):
         model = KPITarget
 
 
-class PriceInquiryResource(ExcelModelResource):
+class PriceRequestResource(ExcelModelResource):
     class Meta:
-        model = PriceInquiry
-        # Bỏ Trạng thái/Giá vốn/Giá sàn/Giá trần/Tỷ lệ sàn/Tỷ lệ trần/Người chốt giá/Thời điểm chốt
-        # giá/Công ty khỏi sheet này — đây là các field do luồng chốt giá trong app tự set (xem
-        # PriceInquiryViewSet.confirm_quote), không phải nơi nhập tay qua Excel. Field KHÔNG bị xoá
-        # khỏi model — vẫn dùng bình thường trong app, chỉ ẩn khỏi riêng file Excel/trang danh sách
-        # của sheet Hỏi giá (list_display cũng bỏ y hệt, xem PriceInquiryAdmin).
-        exclude = (
-            "image", "company", "status", "cost_price", "floor_price", "ceiling_price",
-            "floor_pct", "ceiling_pct", "quoted_by", "quoted_at",
-        )
+        model = PriceRequest
+        # Bỏ "Công ty" khỏi sheet — chỉ còn đúng 1 công ty (LIVI), không còn tác dụng lọc/phân biệt.
+        exclude = ("company",)
+
+
+class PriceRequestItemResource(ExcelModelResource):
+    class Meta:
+        model = PriceRequestItem
+        exclude = ("image",)  # FileField — không xuất/nhập file qua Excel
 
 
 class PriceInquiryQuoteLineResource(ExcelModelResource):
@@ -102,7 +108,7 @@ class PriceListItemResource(ExcelModelResource):
 
 
 class CustomerFieldMixin:
-    """Field "customer" (Khách hàng) trên Order/PriceInquiry chỉ nên cho chọn Đối tác có
+    """Field "customer" (Khách hàng) trên Order/PriceRequest chỉ nên cho chọn Đối tác có
     is_customer=True — không thì 1 Đối tác chỉ đăng ký "Nhà cung cấp" (vd Chị Lụa) vẫn hiện ra khi
     tạo Đơn hàng/Hỏi giá mới, dù field này ghi rõ là "Khách hàng". KHÔNG áp dụng cho Activity (xem
     ActivityAdmin) — Hoạt động đối tác ghi nhận tương tác với cả khách hàng lẫn nhà cung cấp."""
@@ -132,11 +138,11 @@ class OrderItemInline(admin.TabularInline):
 # mối liên kết nếu không biết trước). "show_change_link" cho bấm thẳng vào 1 dòng để mở trang đầy
 # đủ của Hỏi giá/Đơn hàng đó (sửa chi tiết, xem tin nhắn trao đổi... vẫn làm ở trang riêng, đủ chỗ
 # hơn — trang Đối tác chỉ để xem tổng quan).
-class PriceInquiryInline(admin.TabularInline):
-    model = PriceInquiry
+class PriceRequestInline(admin.TabularInline):
+    model = PriceRequest
     fk_name = "customer"
     extra = 0
-    fields = ("id", "status", "cost_price", "floor_price", "ceiling_price", "created_at")
+    fields = ("id", "status", "direction", "assigned_to", "created_at")
     readonly_fields = fields
     show_change_link = True
     can_delete = False
@@ -192,7 +198,7 @@ class PartnerAdmin(ImportExportModelAdmin):
     filter_horizontal = ("companies",)
     # Hồ sơ nhân sự có thể ngày càng nhiều — dùng ô tìm kiếm (autocomplete) thay vì dropdown liệt kê hết.
     autocomplete_fields = ["assigned_to"]
-    inlines = [PriceInquiryInline, OrderInline, ShipmentInline, ActivityInline]
+    inlines = [PriceRequestInline, OrderInline, ShipmentInline, ActivityInline]
 
 
 @admin.register(Order)
@@ -227,7 +233,7 @@ class NoticeAdmin(ImportExportModelAdmin):
 @admin.register(Activity)
 class ActivityAdmin(ImportExportMixin, admin.ModelAdmin):
     resource_classes = [ActivityResource]
-    # KHÔNG dùng CustomerFieldMixin (khác Order/PriceInquiry — 2 cái đó chỉ áp dụng cho khách hàng
+    # KHÔNG dùng CustomerFieldMixin (khác Order/PriceRequest — 2 cái đó chỉ áp dụng cho khách hàng
     # thật sự) — Hoạt động đối tác ghi nhận tương tác với CẢ khách hàng lẫn nhà cung cấp (vd gọi điện
     # thương lượng với nhà cung cấp), nên dropdown "Đối tác" phải cho chọn mọi Đối tác, không chỉ
     # is_customer=True.
@@ -281,24 +287,159 @@ class PriceInquiryQuoteLineInline(admin.TabularInline):
     readonly_fields = ("created_by", "created_at")
 
 
-@admin.register(PriceInquiry)
-class PriceInquiryAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
-    resource_classes = [PriceInquiryResource]
-    # Khớp đúng cột + thứ tự với PriceInquiryResource (xem quy tắc: trang Admin luôn là bản xem trực
-    # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau).
+class PriceRequestItemInline(admin.TabularInline):
+    model = PriceRequestItem
+    extra = 1
+    fields = ("product", "item_name", "image", "quantity", "unit", "source_status")
+    readonly_fields = ("source_status",)
+
+
+@admin.register(PriceRequest)
+class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
+    resource_classes = [PriceRequestResource]
+    # Khớp đúng cột + thứ tự với PriceRequestResource (xem quy tắc: trang Admin luôn là bản xem trực
+    # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau). Sản phẩm/số lượng giờ nằm ở inline
+    # PriceRequestItem (1 Yêu cầu giá có nhiều sản phẩm), không còn là cột trực tiếp ở đây.
     list_display = (
-        "code", "customer_link", "item_name", "quantity", "unit", "country", "province",
-        "district", "ward", "street_address", "description", "created_by", "created_at", "updated_at",
+        "code", "customer_link", "assigned_to", "direction", "country", "province",
+        "district", "ward", "street_address", "description", "status", "created_by",
+        "created_at", "updated_at",
     )
-    list_filter = ("status",)
-    search_fields = ("code", "customer__name", "item_name")
+    list_filter = ("status", "direction")
+    search_fields = ("code", "customer__name")
     readonly_fields = ("code",)
-    autocomplete_fields = ["country", "province", "district", "ward"]
-    inlines = [PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
+    autocomplete_fields = ["country", "province", "district", "ward", "assigned_to"]
+    inlines = [PriceRequestItemInline, PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
 
     @admin.display(description="Khách hàng")
     def customer_link(self, obj):
         return linked_fk(obj.customer)
+
+
+# Đăng ký riêng (không chỉ để inline trong Yêu cầu giá) để PurchaseRequestAllocation/
+# InventoryReservation bên dưới (kể cả ở app inventory) autocomplete được tới đúng dòng.
+@admin.register(PriceRequestItem)
+class PriceRequestItemAdmin(ImportExportModelAdmin):
+    resource_classes = [PriceRequestItemResource]
+    list_display = ("price_request", "product", "item_name", "quantity", "unit", "source_status")
+    list_filter = ("source_status",)
+    search_fields = ("item_name", "price_request__code")
+    readonly_fields = ("source_status",)
+    autocomplete_fields = ["price_request", "product"]
+
+
+class PurchaseRequestResource(ExcelModelResource):
+    class Meta:
+        model = PurchaseRequest
+
+
+class PurchaseRequestItemResource(ExcelModelResource):
+    class Meta:
+        model = PurchaseRequestItem
+
+
+class PurchaseRequestAllocationResource(ExcelModelResource):
+    class Meta:
+        model = PurchaseRequestAllocation
+
+
+class SupplierQuoteResource(ExcelModelResource):
+    class Meta:
+        model = SupplierQuote
+
+
+class SupplierFieldMixin:
+    """Field "supplier" trên SupplierQuote/StockMovement... chỉ nên cho chọn Đối tác có
+    is_supplier=True — đối xứng với CustomerFieldMixin ở trên (áp dụng ngược lại)."""
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "supplier":
+            kwargs["queryset"] = Partner.objects.filter(is_supplier=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class PurchaseRequestAllocationInline(admin.TabularInline):
+    model = PurchaseRequestAllocation
+    extra = 1
+    autocomplete_fields = ["price_request_item"]
+
+
+class SupplierQuoteInline(SupplierFieldMixin, admin.TabularInline):
+    model = SupplierQuote
+    extra = 0
+    readonly_fields = ("created_by", "created_at")
+    autocomplete_fields = ["supplier"]
+
+
+class PurchaseRequestItemInline(admin.TabularInline):
+    model = PurchaseRequestItem
+    extra = 1
+    autocomplete_fields = ["product"]
+
+
+@admin.register(PurchaseRequest)
+class PurchaseRequestAdmin(ImportExportModelAdmin):
+    resource_classes = [PurchaseRequestResource]
+    list_display = ("code", "purchase_type", "warehouse", "note", "created_by", "created_at", "updated_at")
+    list_filter = ("purchase_type", "warehouse")
+    search_fields = ("code",)
+    readonly_fields = ("code",)
+    autocomplete_fields = ["warehouse"]
+    inlines = [PurchaseRequestItemInline]
+
+
+# Đăng ký riêng để SupplierQuote/PurchaseRequestAllocation/Lot (kể cả ở app inventory) autocomplete
+# được tới đúng dòng đề nghị mua.
+@admin.register(PurchaseRequestItem)
+class PurchaseRequestItemAdmin(ImportExportModelAdmin):
+    resource_classes = [PurchaseRequestItemResource]
+    list_display = ("purchase_request", "product", "item_name", "quantity", "unit")
+    search_fields = ("item_name", "purchase_request__code")
+    autocomplete_fields = ["purchase_request", "product"]
+    inlines = [SupplierQuoteInline, PurchaseRequestAllocationInline]
+
+
+@admin.register(SupplierQuote)
+class SupplierQuoteAdmin(SupplierFieldMixin, ImportExportModelAdmin):
+    resource_classes = [SupplierQuoteResource]
+    list_display = (
+        "purchase_request_item", "supplier", "unit_price", "quantity", "unit", "pickup_point",
+        "total_packages", "package_dimensions", "total_cbm", "total_weight_kg", "available_at",
+        "payment_terms", "delivery_terms", "note", "is_selected", "created_by", "created_at",
+    )
+    list_filter = ("is_selected",)
+    search_fields = ("supplier__name", "purchase_request_item__item_name")
+    autocomplete_fields = ["purchase_request_item", "supplier"]
+
+
+class PriceCalculationResource(ExcelModelResource):
+    class Meta:
+        model = PriceCalculation
+
+
+class PriceCalculationItemResource(ExcelModelResource):
+    class Meta:
+        model = PriceCalculationItem
+
+
+class PriceCalculationItemInline(admin.TabularInline):
+    model = PriceCalculationItem
+    extra = 1
+    autocomplete_fields = ["price_request_item"]
+
+
+@admin.register(PriceCalculation)
+class PriceCalculationAdmin(ImportExportModelAdmin):
+    resource_classes = [PriceCalculationResource]
+    list_display = (
+        "price_request", "version", "profit_pct", "approval_status", "approved_by", "approved_at",
+        "created_by", "created_at",
+    )
+    list_filter = ("approval_status",)
+    search_fields = ("price_request__code",)
+    readonly_fields = ("version",)
+    autocomplete_fields = ["price_request"]
+    inlines = [PriceCalculationItemInline]
 
 
 # Đăng ký riêng (không chỉ để inline trong Hỏi giá) để Báo giá cạnh tranh bên dưới autocomplete được

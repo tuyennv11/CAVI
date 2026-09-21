@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from companies.models import Company
 from geo.models import Country, District, Province, Ward
-from inventory.models import Product
+from inventory.models import Product, Warehouse
 
 
 class Partner(models.Model):
@@ -109,6 +109,20 @@ class Order(models.Model):
     source_quotation = models.ForeignKey(
         "Quotation", verbose_name="Báo giá gốc",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
+    )
+    # 3 field dưới đây phục vụ luồng Yêu cầu giá mới (crm.PriceRequest/PriceCalculation) — đều
+    # nullable, KHÔNG đụng gì tới đơn hàng cũ/luồng vận chuyển hiện có (source_quotation ở trên vẫn
+    # là đường nối cho luồng cũ, độc lập với 2 field mới này).
+    source_price_request = models.ForeignKey(
+        "PriceRequest", verbose_name="Yêu cầu giá gốc",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
+    )
+    source_price_calculation = models.ForeignKey(
+        "PriceCalculation", verbose_name="Phiên bản tính giá gốc",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_created"
+    )
+    warehouse = models.ForeignKey(
+        Warehouse, verbose_name="Kho xuất", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.PENDING_RECEIPT)
     received_by = models.ForeignKey(
@@ -291,25 +305,40 @@ class Activity(models.Model):
         return f"{self.get_activity_type_display()}: {self.title}"
 
 
-class PriceInquiry(models.Model):
-    """Hỏi giá — Kinh doanh mô tả lô hàng, Cung ứng trao đổi rồi chốt giá theo form riêng."""
+class PriceRequest(models.Model):
+    """Yêu cầu giá — Kinh doanh tạo khi khách có nhu cầu, Cung ứng kiểm tra nguồn hàng/mua hàng rồi
+    Price tính giá theo quy trình riêng (xem crm.PriceCalculation). KHÔNG gắn cứng với 1 lần mua hàng
+    — 1 Yêu cầu giá có thể dùng chung 1 Đề nghị mua (crm.PurchaseRequest) với yêu cầu khác, xem
+    crm.PurchaseRequestAllocation."""
+
+    class Direction(models.TextChoices):
+        VN_TO_KH = "vn_to_kh", "Việt Nam → Campuchia"
+        KH_TO_VN = "kh_to_vn", "Campuchia → Việt Nam"
 
     class Status(models.TextChoices):
-        OPEN = "open", "Đang hỏi giá"
-        QUOTED = "quoted", "Đã chốt giá"
-        CANCELLED = "cancelled", "Huỷ"
+        CHO_CUNG_UNG = "cho_cung_ung", "Chờ Cung ứng"
+        DA_KIEM_TRA_NGUON_HANG = "da_kiem_tra_nguon_hang", "Đã kiểm tra nguồn hàng"
+        CHO_TINH_GIA = "cho_tinh_gia", "Chờ tính giá"
+        CHO_DUYET = "cho_duyet", "Chờ duyệt giá"
+        DA_DUYET = "da_duyet", "Đã duyệt giá"
+        DA_GUI_KHACH = "da_gui_khach", "Đã gửi khách"
+        KHACH_DONG_Y = "khach_dong_y", "Khách đồng ý"
+        KHACH_TU_CHOI = "khach_tu_choi", "Khách từ chối"
+        DANG_THUONG_LUONG = "dang_thuong_luong", "Đang thương lượng"
+        HUY = "huy", "Huỷ"
 
-    # Mã hỏi giá tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
-    code = models.CharField("Id hỏi giá", max_length=20, unique=True, blank=True, editable=False)
+    # Mã yêu cầu giá tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
+    code = models.CharField("Id yêu cầu giá", max_length=20, unique=True, blank=True, editable=False)
     customer = models.ForeignKey(
-        Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="price_inquiries"
+        Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="price_requests"
     )
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_inquiries")
-    # 1 Hỏi giá chỉ cho đúng 1 loại hàng — không cần bảng dòng riêng như Dòng dịch vụ cấu thành
-    # (PriceInquiryQuoteLine, dùng cho phía Cung ứng báo giá VỐN, khác mục đích với 3 field này).
-    item_name = models.CharField("Tên hàng", max_length=255, blank=True)
-    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
-    unit = models.CharField("Đơn vị", max_length=50, blank=True)
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_requests")
+    # Nhân sự phụ trách — cùng kiểu FK hr.Profile với Partner.assigned_to (không phải Tài khoản đăng nhập).
+    assigned_to = models.ForeignKey(
+        "hr.Profile", verbose_name="Nhân sự phụ trách", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="price_requests"
+    )
+    direction = models.CharField("Chiều mua bán", max_length=20, choices=Direction.choices, blank=True)
     # Điểm giao hàng — cùng cấu trúc Quốc gia/Tỉnh/Quận/Phường/Số nhà với hr.Profile (chuẩn hoá được
     # tới cấp Phường/Xã cho Việt Nam; Phường/Xã chưa có dữ liệu chuẩn cho nước khác thì để trống, ghi
     # chi tiết vào street_address). Không có "Điểm lấy hàng" — hỏi giá chỉ cần biết giao đến đâu, lấy
@@ -328,20 +357,7 @@ class PriceInquiry(models.Model):
     )
     street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
     description = models.TextField("Mô tả", blank=True)
-    image = models.FileField("Hình ảnh", upload_to="price_inquiries/%Y/%m/", null=True, blank=True)
-    status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.OPEN)
-    cost_price = models.DecimalField("Giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
-    floor_price = models.DecimalField("Giá sàn", max_digits=14, decimal_places=2, null=True, blank=True)
-    ceiling_price = models.DecimalField("Giá trần", max_digits=14, decimal_places=2, null=True, blank=True)
-    # Tỷ lệ sàn/trần tổng hợp của cả báo giá — theo quy định: khi gộp nhiều dịch vụ, tỷ lệ chung là
-    # tỷ lệ sàn CAO NHẤT / tỷ lệ trần THẤP NHẤT trong các dịch vụ thành phần (không cộng dồn từng dòng).
-    floor_pct = models.DecimalField("Tỷ lệ giá sàn (%)", max_digits=6, decimal_places=2, null=True, blank=True)
-    ceiling_pct = models.DecimalField("Tỷ lệ giá trần (%)", max_digits=6, decimal_places=2, null=True, blank=True)
-    quoted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Người chốt giá", on_delete=models.SET_NULL,
-        null=True, blank=True, related_name="+"
-    )
-    quoted_at = models.DateTimeField("Thời điểm chốt giá", null=True, blank=True)
+    status = models.CharField("Trạng thái", max_length=30, choices=Status.choices, default=Status.CHO_CUNG_UNG)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -350,26 +366,186 @@ class PriceInquiry(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Hỏi giá"
-        verbose_name_plural = "Hỏi giá"
+        verbose_name = "Yêu cầu giá"
+        verbose_name_plural = "Yêu cầu giá"
 
     def __str__(self):
-        return f"Hỏi giá #{self.pk} — {self.customer}"
+        return f"Yêu cầu giá #{self.pk} — {self.customer}"
 
     def save(self, *args, **kwargs):
         if not self.code:
-            last = PriceInquiry.objects.exclude(pk=self.pk).order_by("-id").first()
+            last = PriceRequest.objects.exclude(pk=self.pk).order_by("-id").first()
             next_number = (last.id + 1) if last else 1
-            while PriceInquiry.objects.filter(code=f"HG{next_number:06d}").exists():
+            while PriceRequest.objects.filter(code=f"HG{next_number:06d}").exists():
                 next_number += 1
             self.code = f"HG{next_number:06d}"
         super().save(*args, **kwargs)
 
 
+class PriceRequestItem(models.Model):
+    """1 dòng sản phẩm trong 1 Yêu cầu giá — 1 Yêu cầu giá có thể có nhiều sản phẩm (không gắn cứng
+    1 yêu cầu = 1 hàng)."""
+
+    class SourceStatus(models.TextChoices):
+        CHUA_XAC_DINH = "chua_xac_dinh", "Chưa xác định"
+        TON_KHO = "ton_kho", "Tồn kho"
+        MUA_MOI = "mua_moi", "Mua mới"
+        TON_KHO_VA_MUA_BO_SUNG = "ton_kho_va_mua_bo_sung", "Tồn kho + mua bổ sung"
+
+    price_request = models.ForeignKey(PriceRequest, verbose_name="Yêu cầu giá", on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(
+        Product, verbose_name="Hàng hoá", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    item_name = models.CharField("Tên hàng", max_length=255, blank=True)
+    image = models.FileField("Hình ảnh sản phẩm", upload_to="price_requests/%Y/%m/", null=True, blank=True)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
+    unit = models.CharField("Đơn vị", max_length=50, blank=True)
+    # NguonHang — hệ thống tự tính (xem crm/services/price_request.py:refresh_source_status),
+    # KHÔNG cho nhập tay.
+    source_status = models.CharField(
+        "Nguồn hàng", max_length=30, choices=SourceStatus.choices,
+        default=SourceStatus.CHUA_XAC_DINH, editable=False,
+    )
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "Dòng sản phẩm yêu cầu giá"
+        verbose_name_plural = "Dòng sản phẩm yêu cầu giá"
+
+    def __str__(self):
+        return f"{self.item_name} x{self.quantity}"
+
+
+class PurchaseRequest(models.Model):
+    """Đề nghị mua hàng — KHÔNG gắn cứng 1-1 với 1 Yêu cầu giá. Có thể phục vụ nhiều Yêu cầu giá cùng
+    lúc (xem PurchaseRequestAllocation), hoặc không phục vụ khách nào cả (mua nhập kho bán dần)."""
+
+    class PurchaseType(models.TextChoices):
+        THEO_DON_KHACH = "theo_don_khach", "Mua theo nhu cầu khách"
+        NHAP_KHO = "nhap_kho", "Mua nhập kho"
+
+    code = models.CharField("Id đề nghị mua", max_length=20, unique=True, blank=True, editable=False)
+    purchase_type = models.CharField("Loại mua", max_length=20, choices=PurchaseType.choices)
+    # Chỉ có ý nghĩa với "Mua nhập kho" (chưa chắc gắn khách nào) — Kho nhận cho biết hàng về đâu.
+    warehouse = models.ForeignKey(
+        Warehouse, verbose_name="Kho nhận", on_delete=models.SET_NULL, null=True, blank=True, related_name="purchase_requests"
+    )
+    note = models.TextField("Ghi chú", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Đề nghị mua hàng"
+        verbose_name_plural = "Đề nghị mua hàng"
+
+    def __str__(self):
+        return f"{self.code} — {self.get_purchase_type_display()}"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = PurchaseRequest.objects.exclude(pk=self.pk).order_by("-id").first()
+            next_number = (last.id + 1) if last else 1
+            while PurchaseRequest.objects.filter(code=f"DM{next_number:06d}").exists():
+                next_number += 1
+            self.code = f"DM{next_number:06d}"
+        super().save(*args, **kwargs)
+
+
+class PurchaseRequestItem(models.Model):
+    """1 dòng sản phẩm cần mua trong 1 Đề nghị mua — hỗ trợ nhiều sản phẩm/đề nghị."""
+
+    purchase_request = models.ForeignKey(
+        PurchaseRequest, verbose_name="Đề nghị mua hàng", on_delete=models.CASCADE, related_name="items"
+    )
+    product = models.ForeignKey(
+        Product, verbose_name="Hàng hoá", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    item_name = models.CharField("Tên hàng", max_length=255, blank=True)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2)
+    unit = models.CharField("Đơn vị", max_length=50, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "Dòng đề nghị mua hàng"
+        verbose_name_plural = "Dòng đề nghị mua hàng"
+
+    def __str__(self):
+        return f"{self.item_name} x{self.quantity}"
+
+
+class PurchaseRequestAllocation(models.Model):
+    """Phân bổ 1 dòng Đề nghị mua cho 1 dòng Yêu cầu giá cụ thể — đúng nguyên tắc "1 đề nghị mua có
+    thể phục vụ nhiều yêu cầu giá, 1 yêu cầu giá có thể dùng chung 1 đề nghị mua với người khác".
+    `price_request_item` để trống nghĩa là phần đó dành cho tồn kho bán dần, không phục vụ riêng
+    khách nào (vd mua 5.000, 1.000 cho khách A, 2.000 cho khách B, 2.000 còn lại vào kho)."""
+
+    purchase_request_item = models.ForeignKey(
+        PurchaseRequestItem, verbose_name="Dòng đề nghị mua", on_delete=models.CASCADE, related_name="allocations"
+    )
+    price_request_item = models.ForeignKey(
+        PriceRequestItem, verbose_name="Dòng yêu cầu giá", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="purchase_allocations"
+    )
+    quantity_allocated = models.DecimalField("Số lượng phân bổ", max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "Phân bổ đề nghị mua"
+        verbose_name_plural = "Phân bổ đề nghị mua"
+
+    def __str__(self):
+        target = self.price_request_item or "Tồn kho"
+        return f"{self.purchase_request_item} → {target}: {self.quantity_allocated}"
+
+
+class SupplierQuote(models.Model):
+    """Báo giá NCC cho 1 dòng Đề nghị mua — nhiều dòng lịch sử, KHÔNG ghi đè (mỗi báo giá mới là 1
+    bản ghi riêng để giữ lịch sử so sánh)."""
+
+    purchase_request_item = models.ForeignKey(
+        PurchaseRequestItem, verbose_name="Dòng đề nghị mua", on_delete=models.CASCADE, related_name="supplier_quotes"
+    )
+    supplier = models.ForeignKey(
+        Partner, verbose_name="Nhà cung cấp", on_delete=models.CASCADE, related_name="supplier_quotes"
+    )
+    unit_price = models.DecimalField("Giá mua", max_digits=14, decimal_places=2)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2)
+    unit = models.CharField("Đơn vị", max_length=50, blank=True)
+    pickup_point = models.CharField("Điểm lấy hàng", max_length=255, blank=True)
+    total_packages = models.PositiveIntegerField("Tổng số kiện", null=True, blank=True)
+    package_dimensions = models.CharField("Kích thước kiện", max_length=255, blank=True)
+    total_cbm = models.DecimalField("Tổng CBM", max_digits=10, decimal_places=2, null=True, blank=True)
+    total_weight_kg = models.DecimalField("Tổng trọng lượng (kg)", max_digits=10, decimal_places=2, null=True, blank=True)
+    available_at = models.DateField("Thời gian có hàng", null=True, blank=True)
+    payment_terms = models.CharField("Điều kiện thanh toán", max_length=255, blank=True)
+    delivery_terms = models.CharField("Điều kiện giao nhận", max_length=255, blank=True)
+    note = models.TextField("Ghi chú", blank=True)
+    # NCC được chọn làm nguồn mua chính cho dòng đề nghị mua này — không tự động đổi is_selected của
+    # các báo giá khác, Cung ứng tự chọn tay đúng 1 cái (nghiệp vụ chỉ 1 NCC chính tại 1 thời điểm,
+    # nhưng không ép ràng buộc unique ở DB để không chặn việc đổi ý giữa chừng).
+    is_selected = models.BooleanField("Là nguồn mua chính", default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Báo giá nhà cung cấp"
+        verbose_name_plural = "Báo giá nhà cung cấp"
+
+    def __str__(self):
+        return f"{self.supplier}: {self.unit_price}/{self.unit}"
+
+
 class PriceInquiryMessage(models.Model):
     """Trao đổi qua lại giữa Kinh doanh và Cung ứng trong một yêu cầu hỏi giá."""
 
-    inquiry = models.ForeignKey(PriceInquiry, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="messages")
+    inquiry = models.ForeignKey(PriceRequest, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="messages")
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người gửi", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -421,7 +597,7 @@ class PriceInquiryQuoteLine(models.Model):
     """Một dòng mặt hàng/dịch vụ trong báo giá chi tiết của một Hỏi giá — Cung ứng nhập sau khi trao đổi xong."""
 
     inquiry = models.ForeignKey(
-        PriceInquiry, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="quote_lines"
+        PriceRequest, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="quote_lines"
     )
     item = models.ForeignKey(
         PriceListItem, verbose_name="Dịch vụ", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
@@ -502,13 +678,90 @@ class PriceInquiryQuoteLineBid(models.Model):
         return f"{self.quote_line.item_name}: {self.unit_cost} — {self.bidder}"
 
 
+class PriceCalculation(models.Model):
+    """Tính giá theo version cho 1 Yêu cầu giá — thay vai trò Quotation/QuotationLine cho luồng
+    Yêu cầu giá mới (2 model đó GIỮ NGUYÊN, không đụng, chỉ không dùng cho bản ghi mới nữa). Mỗi lần
+    tính lại giá (vd cước vận chuyển đổi) phải tạo version MỚI, không ghi đè version cũ — giữ đủ lịch
+    sử "Version 1: 14,2 USD ... Version 2: 13,9 USD, giữ cả hai"."""
+
+    class ApprovalStatus(models.TextChoices):
+        CHO_DUYET = "cho_duyet", "Chờ duyệt"
+        DA_DUYET = "da_duyet", "Đã duyệt"
+        TU_CHOI = "tu_choi", "Từ chối"
+        YEU_CAU_SUA = "yeu_cau_sua", "Yêu cầu sửa"
+
+    price_request = models.ForeignKey(
+        PriceRequest, verbose_name="Yêu cầu giá", on_delete=models.CASCADE, related_name="calculations"
+    )
+    # Tăng dần theo TỪNG price_request (không phải mã duy nhất toàn cục như `code` các model khác) —
+    # version 1, 2, 3... của cùng 1 Yêu cầu giá.
+    version = models.PositiveIntegerField("Phiên bản", editable=False)
+    profit_pct = models.DecimalField("Tỷ lệ lợi nhuận (%)", max_digits=6, decimal_places=2, default=0)
+    approval_status = models.CharField(
+        "Trạng thái duyệt", max_length=20, choices=ApprovalStatus.choices, default=ApprovalStatus.CHO_DUYET
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người duyệt", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+"
+    )
+    approved_at = models.DateTimeField("Thời điểm duyệt", null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["price_request_id", "version"]
+        verbose_name = "Tính giá"
+        verbose_name_plural = "Tính giá"
+
+    def __str__(self):
+        return f"{self.price_request} — v{self.version}"
+
+    def save(self, *args, **kwargs):
+        if not self.version:
+            last = PriceCalculation.objects.filter(price_request=self.price_request).order_by("-version").first()
+            self.version = (last.version + 1) if last else 1
+        super().save(*args, **kwargs)
+
+
+class PriceCalculationItem(models.Model):
+    """Chi tiết giá vốn/giá bán cho 1 dòng sản phẩm trong 1 phiên bản tính giá — đúng công thức
+    Giá mua + Vận chuyển + Hải quan + Chi phí khác = Giá vốn."""
+
+    price_calculation = models.ForeignKey(
+        PriceCalculation, verbose_name="Tính giá", on_delete=models.CASCADE, related_name="items"
+    )
+    price_request_item = models.ForeignKey(
+        PriceRequestItem, verbose_name="Dòng yêu cầu giá", on_delete=models.CASCADE, related_name="calculation_items"
+    )
+    purchase_cost = models.DecimalField("Giá mua", max_digits=16, decimal_places=2, default=0)
+    transport_cost = models.DecimalField("Vận chuyển", max_digits=16, decimal_places=2, default=0)
+    customs_cost = models.DecimalField("Hải quan", max_digits=16, decimal_places=2, default=0)
+    other_cost = models.DecimalField("Chi phí khác", max_digits=16, decimal_places=2, default=0)
+    proposed_price = models.DecimalField("Giá đề xuất", max_digits=16, decimal_places=2, default=0)
+    final_price = models.DecimalField("Giá chốt", max_digits=16, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "Dòng tính giá"
+        verbose_name_plural = "Dòng tính giá"
+
+    def __str__(self):
+        return f"{self.price_request_item.item_name}: {self.proposed_price}"
+
+    @property
+    def total_cost(self):
+        return self.purchase_cost + self.transport_cost + self.customs_cost + self.other_cost
+
+
 class Quotation(models.Model):
     """Báo giá chính thức gửi khách hàng — tạo từ 1 Hỏi giá đã chốt giá nội bộ, copy lại dữ liệu
     đã có (mô tả + các dòng dịch vụ) và cho chỉnh sửa tiếp trước khi gửi khách, độc lập với Hỏi giá gốc."""
 
     # 1 Hỏi giá có thể có nhiều báo giá đã lưu song song (vd nhiều phương án giá gửi khách) — mỗi cái
     # độc lập, Xuất PDF/Tạo đơn/Xoá riêng từng cái.
-    inquiry = models.ForeignKey(PriceInquiry, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="quotations")
+    inquiry = models.ForeignKey(PriceRequest, verbose_name="Hỏi giá", on_delete=models.CASCADE, related_name="quotations")
     note = models.TextField("Mô tả", blank=True)
     # Giá tổng báo giá phải nằm trong [giá sàn, giá trần] của Hỏi giá gốc mới lưu được trực tiếp —
     # nếu không, phải gửi đề xuất qua đây cho Cung ứng duyệt trước, duyệt xong mới lưu tiếp được.

@@ -15,7 +15,8 @@ from .models import (
     Order,
     OrderItem,
     Partner,
-    PriceInquiry,
+    PriceRequest,
+    PriceRequestItem,
     PriceInquiryMessage,
     PriceInquiryQuoteLine,
     PriceInquiryQuoteLineBid,
@@ -24,6 +25,7 @@ from .models import (
     QuotationLine,
     Task,
 )
+from .services.price_request import refresh_source_status
 
 User = get_user_model()
 
@@ -173,7 +175,7 @@ class PriceInquiryQuoteLineBidSerializer(serializers.ModelSerializer):
     def validate_quote_line(self, quote_line):
         # Sàn tự đóng khi Hỏi giá đã chốt giá — không cho chào giá thêm sau mốc đó, tránh chào giá
         # rồi âm thầm lệch với cost_price tổng đã lưu lúc confirm-quote.
-        if quote_line.inquiry.status != PriceInquiry.Status.OPEN:
+        if quote_line.inquiry.status != PriceRequest.Status.CHO_CUNG_UNG:
             raise serializers.ValidationError("Hỏi giá này đã đóng, không thể chào giá thêm.")
         return quote_line
 
@@ -348,28 +350,41 @@ class QuotationSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PriceInquirySerializer(serializers.ModelSerializer):
+class PriceRequestItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name", read_only=True, default=None)
+
+    class Meta:
+        model = PriceRequestItem
+        fields = [
+            "id", "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
+        ]
+        read_only_fields = ["source_status"]
+
+
+class PriceRequestSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
-    quoted_by_name = serializers.CharField(source="quoted_by.username", read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
+    assigned_to_detail = AssignedProfileSerializer(source="assigned_to", read_only=True)
     country_name = serializers.CharField(source="country.name", read_only=True, default=None)
     province_name = serializers.CharField(source="province.name", read_only=True, default=None)
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
+    items = PriceRequestItemSerializer(many=True)
     messages = PriceInquiryMessageSerializer(many=True, read_only=True)
     quote_lines = PriceInquiryQuoteLineSerializer(many=True, read_only=True)
     quotations = QuotationSerializer(many=True, read_only=True)
 
     class Meta:
-        model = PriceInquiry
+        model = PriceRequest
         fields = [
             "id",
             "code",
             "customer",
             "customer_name",
-            "item_name",
-            "quantity",
-            "unit",
+            "assigned_to",
+            "assigned_to_detail",
+            "direction",
+            "items",
             "country",
             "country_name",
             "province",
@@ -380,16 +395,7 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "ward_name",
             "street_address",
             "description",
-            "image",
             "status",
-            "cost_price",
-            "floor_price",
-            "ceiling_price",
-            "floor_pct",
-            "ceiling_pct",
-            "quoted_by",
-            "quoted_by_name",
-            "quoted_at",
             "created_by",
             "created_by_name",
             "created_at",
@@ -398,20 +404,27 @@ class PriceInquirySerializer(serializers.ModelSerializer):
             "quote_lines",
             "quotations",
         ]
-        read_only_fields = [
-            "code",
-            "status",
-            "cost_price",
-            "floor_price",
-            "ceiling_price",
-            "floor_pct",
-            "ceiling_pct",
-            "quoted_by",
-            "quoted_at",
-            "created_by",
-            "created_at",
-            "updated_at",
-        ]
+        read_only_fields = ["code", "status", "created_by", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items")
+        price_request = PriceRequest.objects.create(**validated_data)
+        for item_data in items_data:
+            item = PriceRequestItem.objects.create(price_request=price_request, **item_data)
+            refresh_source_status(item)
+        return price_request
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("items", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if items_data is not None:
+            instance.items.all().delete()
+            for item_data in items_data:
+                item = PriceRequestItem.objects.create(price_request=instance, **item_data)
+                refresh_source_status(item)
+        return instance
 
 
 class PartnerSerializer(serializers.ModelSerializer):

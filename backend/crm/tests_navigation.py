@@ -6,7 +6,7 @@ from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from companies.models import Company
-from crm.models import Activity, Order, OrderItem, Partner, PriceInquiry, Quotation
+from crm.models import Activity, Order, OrderItem, Partner, PriceRequest, Quotation
 from crm.serializers import OrderItemSerializer, QuotationSerializer
 from hr.models import Profile
 from inventory.models import Product, StockMovement, Warehouse
@@ -79,7 +79,7 @@ class RecordNavigationTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 401)
 
     def test_link_relation_ids_are_explicit_and_read_only(self):
-        inquiry = PriceInquiry.objects.create(customer=self.partner, company=self.a)
+        inquiry = PriceRequest.objects.create(customer=self.partner, company=self.a)
         quote = Quotation.objects.create(inquiry=inquiry)
         product = Product.objects.create(company=self.a, sku="SYN-NAV-P", name="Synthetic product")
         order = Order.objects.create(company=self.a, customer=self.partner)
@@ -97,7 +97,7 @@ class RecordNavigationTests(TestCase):
 
     def test_existing_detail_routes_deny_cross_company(self):
         order = Order.objects.create(company=self.a, customer=self.partner)
-        inquiry = PriceInquiry.objects.create(company=self.a, customer=self.partner)
+        inquiry = PriceRequest.objects.create(company=self.a, customer=self.partner)
         batch = ShipmentBatch.objects.create(company=self.a, route="Synthetic route")
         shipment = Shipment.objects.create(company=self.a, partner=self.partner, batch=batch, description="Synthetic shipment")
         product = Product.objects.create(company=self.a, sku="SYN-NAV-P", name="Synthetic product")

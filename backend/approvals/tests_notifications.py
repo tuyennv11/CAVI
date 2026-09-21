@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from companies.models import Company
-from crm.models import Partner, PriceInquiry, Quotation, QuotationLine
+from crm.models import Partner, PriceRequest, Quotation, QuotationLine
 from notifications.models import Notification, PushOutbox
 from .models import ApprovalRequest
 
@@ -36,7 +36,7 @@ class ApprovalNotificationTests(TestCase):
     def quotation(self, approval=None):
         partner = Partner.objects.create(name="Synthetic quotation customer", assigned_to=self.requester.profile)
         partner.companies.add(self.company)
-        inquiry = PriceInquiry.objects.create(company=self.company, customer=partner, floor_price=100, ceiling_price=150)
+        inquiry = PriceRequest.objects.create(company=self.company, customer=partner, floor_price=100, ceiling_price=150)
         obj = Quotation.objects.create(inquiry=inquiry, note="Synthetic previous note", pending_approval=approval,
             pending_snapshot={"note": "Synthetic new note", "lines": [{"item_name": "Synthetic new line", "quantity": "2", "price": "100"}]} if approval else None)
         QuotationLine.objects.create(quotation=obj, item_name="Synthetic previous line", quantity=1, price=100)
@@ -148,10 +148,10 @@ class ApprovalNotificationTests(TestCase):
     def test_linked_quote_must_match_company_and_have_snapshot(self):
         approval = self.approval()
         quotation = self.quotation(approval)
-        PriceInquiry.objects.filter(pk=quotation.inquiry_id).update(company=self.other)
+        PriceRequest.objects.filter(pk=quotation.inquiry_id).update(company=self.other)
         url = f"/api/approval-requests/{approval.pk}/approve/"
         self.assertEqual(self.client.post(url).status_code, 400)
-        PriceInquiry.objects.filter(pk=quotation.inquiry_id).update(company=self.company)
+        PriceRequest.objects.filter(pk=quotation.inquiry_id).update(company=self.company)
         Quotation.objects.filter(pk=quotation.pk).update(pending_snapshot=None)
         self.assertEqual(self.client.post(url).status_code, 400)
         approval.refresh_from_db()
