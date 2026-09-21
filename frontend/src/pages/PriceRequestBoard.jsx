@@ -94,6 +94,7 @@ export default function PriceRequestBoard() {
                       <th>SL</th>
                       <th>ĐVT</th>
                       <th>Nguồn hàng</th>
+                      <th>Hình ảnh</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -106,6 +107,19 @@ export default function PriceRequestBoard() {
                           <span className={`badge badge-source-${it.source_status}`}>
                             {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                           </span>
+                        </td>
+                        <td>
+                          {it.image ? (
+                            <a href={it.image} target="_blank" rel="noreferrer">
+                              <img
+                                src={it.image}
+                                alt=""
+                                style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+                              />
+                            </a>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                       </tr>
                     ))}

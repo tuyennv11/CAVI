@@ -9,6 +9,7 @@ from .views import (
     PartnerViewSet,
     PriceInquiryQuoteLineBidViewSet,
     PriceInquiryQuoteLineViewSet,
+    PriceRequestItemViewSet,
     PriceRequestViewSet,
     PriceListItemViewSet,
     QuotationViewSet,
@@ -22,6 +23,7 @@ router.register("orders", OrderViewSet, basename="order")
 router.register("activities", ActivityViewSet, basename="activity")
 router.register("tasks", TaskViewSet, basename="task")
 router.register("price-inquiries", PriceRequestViewSet, basename="price-inquiry")
+router.register("price-inquiry-items", PriceRequestItemViewSet, basename="price-inquiry-item")
 router.register("quote-lines", PriceInquiryQuoteLineViewSet, basename="quote-line")
 router.register("quote-line-bids", PriceInquiryQuoteLineBidViewSet, basename="quote-line-bid")
 router.register("quotations", QuotationViewSet, basename="quotation")

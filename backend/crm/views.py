@@ -36,6 +36,7 @@ from .models import (
     OrderItem,
     Partner,
     PriceRequest,
+    PriceRequestItem,
     PriceInquiryQuoteLine,
     PriceInquiryQuoteLineBid,
     PriceListItem,
@@ -51,6 +52,7 @@ from .serializers import (
     PriceInquiryMessageSerializer,
     PriceInquiryQuoteLineBidSerializer,
     PriceInquiryQuoteLineSerializer,
+    PriceRequestItemSerializer,
     PriceRequestSerializer,
     PriceListItemSerializer,
     QuotationSerializer,
@@ -307,6 +309,24 @@ class PriceRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
     # xoá khỏi PriceRequest. Quotation/PriceInquiryQuoteLine vẫn giữ nguyên model (không xoá dữ liệu
     # cũ), chỉ không còn đường tạo MỚI qua API này nữa. Giao diện gọi qua action này (tab Hỏi giá cũ
     # trên PartnerDetail.jsx) sẽ lỗi tạm thời cho tới khi Giai đoạn 3 viết lại giao diện.
+
+
+class PriceRequestItemViewSet(
+    CompanyScopedMixin,
+    mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet,
+):
+    """Chỉ cho sửa 1 dòng sản phẩm đã có sẵn (dùng để đính/thay Hình ảnh sau khi tạo Yêu cầu giá) —
+    tạo/xoá dòng vẫn qua PriceRequestSerializer (nested write) trong PriceRequestViewSet."""
+
+    serializer_class = PriceRequestItemSerializer
+    permission_classes = [IsAuthenticated]
+    company_field = "price_request__company"
+
+    def get_queryset(self):
+        qs = self.scope_by_company(PriceRequestItem.objects.select_related("price_request", "product"))
+        if is_manager(self.request.user):
+            return qs
+        return qs.filter(price_request__customer__assigned_to=self.request.user.profile)
 
 
 class QuotationViewSet(

@@ -63,7 +63,7 @@ function formatPct(value) {
   return `${parseFloat(Number(value ?? 0).toFixed(2))}%`;
 }
 
-const EMPTY_PRICE_REQUEST_ITEM = { product: "", item_name: "", quantity: 1, unit: "" };
+const EMPTY_PRICE_REQUEST_ITEM = { product: "", item_name: "", quantity: 1, unit: "", image: null };
 
 function emptyAddress() {
   return { country: "", province: "", district: "", ward: "", street_address: "" };
@@ -278,20 +278,19 @@ export default function PartnerDetail() {
   async function handleCreateInquiry(e) {
     e.preventDefault();
     setInquiryError("");
-    const items = inquiryItems
-      .filter((it) => it.product || it.item_name)
-      .map((it) => ({
-        product: it.product ? Number(it.product) : null,
-        item_name: it.item_name,
-        quantity: it.quantity,
-        unit: it.unit,
-      }));
-    if (items.length === 0) {
+    const filledItems = inquiryItems.filter((it) => it.product || it.item_name);
+    if (filledItems.length === 0) {
       setInquiryError("Cần ít nhất 1 dòng sản phẩm.");
       return;
     }
+    const items = filledItems.map((it) => ({
+      product: it.product ? Number(it.product) : null,
+      item_name: it.item_name,
+      quantity: it.quantity,
+      unit: it.unit,
+    }));
     try {
-      await apiFetch("/api/price-inquiries/", {
+      const created = await apiFetch("/api/price-inquiries/", {
         method: "POST",
         body: JSON.stringify({
           customer: Number(id),
@@ -300,6 +299,17 @@ export default function PartnerDetail() {
           items,
         }),
       });
+      // Ảnh chọn sẵn ở form (chưa có Id lúc đó) — up ngay sau khi dòng sản phẩm đã có Id, để người
+      // dùng chỉ cần bấm "Tạo yêu cầu" 1 lần là xong, không phải quay lại tìm dòng để đính ảnh.
+      await Promise.all(
+        filledItems.map((it, i) => {
+          const createdItem = created.items[i];
+          if (!it.image || !createdItem) return null;
+          const fd = new FormData();
+          fd.set("image", it.image);
+          return apiUpload(`/api/price-inquiry-items/${createdItem.id}/`, fd, "PATCH");
+        })
+      );
       setInquiryAddress(emptyAddress());
       setInquiryItems([{ ...EMPTY_PRICE_REQUEST_ITEM }]);
       setInquiryDescription("");
@@ -322,6 +332,19 @@ export default function PartnerDetail() {
       loadInquiries();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function handleUploadItemImage(itemId, file) {
+    if (!file) return;
+    setInquiryError("");
+    const fd = new FormData();
+    fd.set("image", file);
+    try {
+      await apiUpload(`/api/price-inquiry-items/${itemId}/`, fd, "PATCH");
+      loadInquiries();
+    } catch (err) {
+      setInquiryError(err.message);
     }
   }
 
@@ -696,7 +719,7 @@ export default function PartnerDetail() {
 
               <label>Sản phẩm</label>
               {inquiryItems.map((it, i) => (
-                <div className="order-item-row" style={{ gridTemplateColumns: "1.5fr 1fr 80px 80px 32px" }} key={i}>
+                <div className="order-item-row" style={{ gridTemplateColumns: "1.5fr 1fr 80px 80px 90px 32px" }} key={i}>
                   <select
                     value={it.product}
                     onChange={(e) => {
@@ -734,6 +757,23 @@ export default function PartnerDetail() {
                     value={it.unit}
                     onChange={(e) => updateInquiryItem(i, "unit", e.target.value)}
                   />
+                  <label className="link-btn" style={{ cursor: "pointer", fontSize: 12, textAlign: "center" }}>
+                    {it.image ? (
+                      <img
+                        src={URL.createObjectURL(it.image)}
+                        alt=""
+                        style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 6, verticalAlign: "middle" }}
+                      />
+                    ) : (
+                      "+ Ảnh"
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => updateInquiryItem(i, "image", e.target.files[0] || null)}
+                    />
+                  </label>
                   {inquiryItems.length > 1 && (
                     <button
                       type="button"
@@ -805,6 +845,7 @@ export default function PartnerDetail() {
                           <th>SL</th>
                           <th>ĐVT</th>
                           <th>Nguồn hàng</th>
+                          <th>Hình ảnh</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -817,6 +858,31 @@ export default function PartnerDetail() {
                               <span className={`badge badge-source-${it.source_status}`}>
                                 {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                               </span>
+                            </td>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                {it.image && (
+                                  <a href={it.image} target="_blank" rel="noreferrer">
+                                    <img
+                                      src={it.image}
+                                      alt=""
+                                      style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+                                    />
+                                  </a>
+                                )}
+                                <label className="link-btn" style={{ cursor: "pointer", fontSize: 12 }}>
+                                  {it.image ? "Đổi ảnh" : "+ Thêm ảnh"}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={(e) => {
+                                      handleUploadItemImage(it.id, e.target.files[0]);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                              </div>
                             </td>
                           </tr>
                         ))}
