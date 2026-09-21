@@ -32,6 +32,12 @@ const ICONS = {
       <path d="M3 4h14l-5 6.5V16l-4 1.5v-7z" strokeLinejoin="round" />
     </svg>
   ),
+  priceRequest: (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M3 3h6.5l7.5 7.5-6.5 6.5L3 9.5V3z" strokeLinejoin="round" />
+      <circle cx="7.3" cy="7.3" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  ),
   notices: (
     <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 9l13-5v11L3 11z" strokeLinejoin="round" />
@@ -169,6 +175,9 @@ export default function Sidebar({ user, open, onClose }) {
         <div className="sidebar-section">Kinh doanh</div>
         <NavItem to="/partners" icon={ICONS.customers}>
           Đối tác
+        </NavItem>
+        <NavItem to="/price-requests" icon={ICONS.priceRequest}>
+          Yêu cầu giá
         </NavItem>
         <NavItem to="/pipeline" icon={ICONS.pipeline}>
           Pipeline bán hàng

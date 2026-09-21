@@ -521,7 +521,7 @@ export default function PartnerDetail() {
           Tương tác
         </button>
         <button className={`tab-btn${tab === "inquiries" ? " active" : ""}`} onClick={() => setTab("inquiries")}>
-          Hỏi giá ({inquiries.length})
+          Yêu cầu giá ({inquiries.length})
         </button>
         <button className={`tab-btn${tab === "orders" ? " active" : ""}`} onClick={() => setTab("orders")}>
           Phiếu nhận hàng ({orders.length})

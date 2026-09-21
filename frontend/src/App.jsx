@@ -12,6 +12,7 @@ import OrderReceiving from "./pages/OrderReceiving";
 import PartnerDetail from "./pages/PartnerDetail";
 import PartnerList from "./pages/PartnerList";
 import Pipeline from "./pages/Pipeline";
+import PriceRequestBoard from "./pages/PriceRequestBoard";
 import Profile from "./pages/Profile";
 import ShipmentBatches from "./pages/ShipmentBatches";
 import Shipments from "./pages/Shipments";
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/notices" element={<Notices />} />
           <Route path="/partners" element={<PartnerList />} />
           <Route path="/partners/:id" element={<PartnerDetail />} />
+          <Route path="/price-requests" element={<PriceRequestBoard />} />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/order-receiving" element={<OrderReceiving />} />
