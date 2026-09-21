@@ -366,7 +366,7 @@ a:hover { text-decoration: underline; }
 }
 
 /* ---------- Page header ---------- */
-.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
+.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px; flex-wrap: wrap; }
 .page-head h1 { font-size: 22px; margin: 0; font-weight: 700; }
 .page-head-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
 
@@ -414,6 +414,23 @@ a:hover { text-decoration: underline; }
 /* ---------- Data table ---------- */
 .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; overflow-x: auto; box-shadow: var(--shadow-sm); }
 .data-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+/* Bảng luôn rộng hơn màn hình điện thoại (min-width 640px) — không có gợi ý thì người dùng không
+   biết còn cột bị che bên phải, phải vô tình vuốt mới thấy. Gợi ý này dính theo mép trái khi cuộn
+   (position: sticky) nên luôn hiện, bất kể đang cuộn tới đâu. */
+@media (max-width: 700px) {
+  .table-wrap::after {
+    content: "‹ Vuốt ngang để xem thêm ›";
+    position: sticky;
+    left: 8px;
+    display: inline-block;
+    font-size: 11px;
+    color: var(--faint);
+    background: var(--surface-muted);
+    padding: 3px 10px;
+    margin: 6px 0 2px;
+    border-radius: 999px;
+  }
+}
 .data-table thead th {
   text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--muted); font-weight: 700; padding: 9px 16px; background: var(--surface-muted);
@@ -728,4 +745,10 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Order items / detail forms ---------- */
 .order-item-row { display: grid; grid-template-columns: 1fr 90px 140px; gap: 8px; }
+/* Nhiều nơi tự đặt gridTemplateColumns bằng inline style (vd form Yêu cầu giá có tới 6 cột, nhiều
+   cột cố định px) — trên điện thoại (~360-390px) cộng dồn lại là vỡ layout/chữ bị bóp nhỏ xíu.
+   !important ở đây là có chủ đích, để thắng được style inline, ép về 1 cột xếp chồng cho dễ bấm. */
+@media (max-width: 560px) {
+  .order-item-row { grid-template-columns: 1fr !important; }
+}
 .stakes { display: flex; gap: 8px; flex-wrap: wrap; }
