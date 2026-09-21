@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Product, StockMovement, Warehouse
+from .models import Product, ProductImage, StockMovement, Warehouse
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -9,8 +9,16 @@ class WarehouseSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "address", "is_active"]
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ["id", "product", "image", "created_at"]
+        read_only_fields = ["created_at"]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     stock_on_hand = serializers.SerializerMethodField()
+    images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -23,6 +31,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "sale_price",
             "is_active",
             "stock_on_hand",
+            "images",
             "created_at",
         ]
 

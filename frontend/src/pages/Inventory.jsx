@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "../api";
+import { apiFetch, apiUpload, mediaUrl } from "../api";
 import Modal from "../components/Modal";
 import { formatMoney, MOVEMENT_TYPE_LABEL } from "../constants";
 
@@ -82,6 +82,30 @@ export default function Inventory() {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleUploadImage(productId, file) {
+    if (!file) return;
+    setError("");
+    const fd = new FormData();
+    fd.set("product", productId);
+    fd.set("image", file);
+    try {
+      await apiUpload("/api/product-images/", fd, "POST");
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteImage(imageId) {
+    setError("");
+    try {
+      await apiFetch(`/api/product-images/${imageId}/`, { method: "DELETE" });
+      loadAll();
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -182,6 +206,7 @@ export default function Inventory() {
                     <th>Giá vốn</th>
                     <th>Giá bán</th>
                     <th>Tồn kho</th>
+                    <th>Hình ảnh</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,6 +221,46 @@ export default function Inventory() {
                         <span className={`badge badge-${Number(p.stock_on_hand) > 0 ? "new" : "neutral"}`}>
                           {p.stock_on_hand}
                         </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                          {(p.images || []).map((img) => (
+                            <div key={img.id} style={{ position: "relative" }}>
+                              <a href={mediaUrl(img.image)} target="_blank" rel="noreferrer">
+                                <img
+                                  src={mediaUrl(img.image)}
+                                  alt=""
+                                  style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+                                />
+                              </a>
+                              <button
+                                type="button"
+                                className="link-btn"
+                                title="Xoá ảnh"
+                                onClick={() => handleDeleteImage(img.id)}
+                                style={{
+                                  position: "absolute", top: -6, right: -6, width: 16, height: 16, padding: 0,
+                                  lineHeight: "16px", fontSize: 11, borderRadius: "50%", background: "var(--danger)",
+                                  color: "#fff",
+                                }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          <label className="link-btn" style={{ cursor: "pointer" }}>
+                            + Thêm ảnh
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) => {
+                                handleUploadImage(p.id, e.target.files[0]);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        </div>
                       </td>
                     </tr>
                   ))}

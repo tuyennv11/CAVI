@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from companies.mixins import CompanyScopedMixin
 
-from .models import Product, StockMovement, Warehouse
-from .serializers import ProductSerializer, StockMovementSerializer, WarehouseSerializer
+from .models import Product, ProductImage, StockMovement, Warehouse
+from .serializers import ProductImageSerializer, ProductSerializer, StockMovementSerializer, WarehouseSerializer
 
 
 class WarehouseViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
@@ -30,6 +30,18 @@ class ProductViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(company=self.get_active_company())
+
+
+class ProductImageViewSet(
+    CompanyScopedMixin,
+    mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
+):
+    serializer_class = ProductImageSerializer
+    permission_classes = [IsAuthenticated]
+    company_field = "product__company"
+
+    def get_queryset(self):
+        return self.scope_by_company(ProductImage.objects.select_related("product"))
 
 
 class StockMovementViewSet(

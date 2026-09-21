@@ -3,7 +3,7 @@ from import_export.admin import ImportExportModelAdmin
 
 from config.admin_import_export import ExcelModelResource
 
-from .models import InventoryReservation, Lot, LotCost, Product, StockMovement, Warehouse
+from .models import InventoryReservation, Lot, LotCost, Product, ProductImage, StockMovement, Warehouse
 
 
 class WarehouseResource(ExcelModelResource):
@@ -14,6 +14,12 @@ class WarehouseResource(ExcelModelResource):
 class ProductResource(ExcelModelResource):
     class Meta:
         model = Product
+
+
+class ProductImageResource(ExcelModelResource):
+    class Meta:
+        model = ProductImage
+        exclude = ("image",)  # FileField — không xuất/nhập file qua Excel
 
 
 class StockMovementResource(ExcelModelResource):
@@ -43,6 +49,12 @@ class WarehouseAdmin(ImportExportModelAdmin):
     exclude = ("company",)
 
 
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 0
+    readonly_fields = ("created_at",)
+
+
 @admin.register(Product)
 class ProductAdmin(ImportExportModelAdmin):
     resource_classes = [ProductResource]
@@ -50,6 +62,15 @@ class ProductAdmin(ImportExportModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("sku", "name")
     exclude = ("company",)
+    inlines = [ProductImageInline]
+
+
+@admin.register(ProductImage)
+class ProductImageAdmin(ImportExportModelAdmin):
+    resource_classes = [ProductImageResource]
+    list_display = ("id", "product", "image", "created_at")
+    search_fields = ("product__sku", "product__name")
+    autocomplete_fields = ["product"]
 
 
 @admin.register(StockMovement)

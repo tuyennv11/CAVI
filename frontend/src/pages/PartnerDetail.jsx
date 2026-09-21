@@ -754,7 +754,7 @@ export default function PartnerDetail() {
               </button>
 
               <label>
-                Lưu ý
+                Mô tả thêm
                 <textarea
                   rows={3}
                   value={inquiryDescription}

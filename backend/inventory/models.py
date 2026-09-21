@@ -80,6 +80,23 @@ class Product(models.Model):
         return on_hand - reserved
 
 
+class ProductImage(models.Model):
+    """Hình ảnh hàng hoá — 1 sản phẩm có thể có nhiều hình hoặc không có hình nào, nên tách bảng
+    riêng thay vì 1 field ảnh cứng trên Product (giống EmployeeDocument/hr.Profile)."""
+
+    product = models.ForeignKey(Product, verbose_name="Hàng hoá", on_delete=models.CASCADE, related_name="images")
+    image = models.FileField("Hình ảnh", upload_to="products/%Y/%m/")
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Hình ảnh hàng hoá"
+        verbose_name_plural = "Hình ảnh hàng hoá"
+
+    def __str__(self):
+        return f"Ảnh của {self.product}"
+
+
 class StockMovement(models.Model):
     """Nhật ký nhập/xuất kho — tồn kho LUÔN suy ra bằng cộng dồn bảng này (nhập trừ xuất), không lưu
     field "tồn kho hiện tại" riêng ở Product — đúng nguyên tắc history-as-rows đã dùng cho Lương/
