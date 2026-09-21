@@ -887,60 +887,43 @@ export default function PartnerDetail() {
                         </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={6} style={{ background: "var(--surface-muted)" }}>
-                              {inq.description && <div className="inquiry-description">{inq.description}</div>}
+                            <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "8px 16px" }}>
+                              {inq.description && (
+                                <div className="inquiry-description" style={{ margin: "0 0 6px" }}>
+                                  {inq.description}
+                                </div>
+                              )}
 
-                              <div className="table-wrap" style={{ marginBottom: 8 }}>
-                                <table className="data-table">
-                                  <thead>
-                                    <tr>
-                                      <th>Sản phẩm</th>
-                                      <th>SL</th>
-                                      <th>ĐVT</th>
-                                      <th>Nguồn hàng</th>
-                                      <th>Hình ảnh</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {inq.items.map((it) => (
-                                      <tr key={it.id}>
-                                        <td>{it.product_name || it.item_name}</td>
-                                        <td>{it.quantity}</td>
-                                        <td>{it.unit}</td>
-                                        <td>
-                                          <span className={`badge badge-source-${it.source_status}`}>
-                                            {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
-                                          </span>
-                                        </td>
-                                        <td>
-                                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                            {it.image && (
-                                              <a href={it.image} target="_blank" rel="noreferrer">
-                                                <img
-                                                  src={it.image}
-                                                  alt=""
-                                                  style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
-                                                />
-                                              </a>
-                                            )}
-                                            <label className="link-btn" style={{ cursor: "pointer", fontSize: 12 }}>
-                                              {it.image ? "Đổi ảnh" : "+ Thêm ảnh"}
-                                              <input
-                                                type="file"
-                                                accept="image/*"
-                                                hidden
-                                                onChange={(e) => {
-                                                  handleUploadItemImage(it.id, e.target.files[0]);
-                                                  e.target.value = "";
-                                                }}
-                                              />
-                                            </label>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+                                {inq.items.map((it) => (
+                                  <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                                    <span style={{ fontWeight: 600 }}>{it.product_name || it.item_name}</span>
+                                    <span className={`badge badge-source-${it.source_status}`}>
+                                      {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
+                                    </span>
+                                    {it.image && (
+                                      <a href={it.image} target="_blank" rel="noreferrer">
+                                        <img
+                                          src={it.image}
+                                          alt=""
+                                          style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
+                                        />
+                                      </a>
+                                    )}
+                                    <label className="link-btn" style={{ cursor: "pointer", fontSize: 11.5 }}>
+                                      {it.image ? "Đổi ảnh" : "+ Ảnh"}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        hidden
+                                        onChange={(e) => {
+                                          handleUploadItemImage(it.id, e.target.files[0]);
+                                          e.target.value = "";
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                ))}
                               </div>
 
                               {inq.messages.length > 0 && (

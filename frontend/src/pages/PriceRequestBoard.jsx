@@ -118,51 +118,34 @@ export default function PriceRequestBoard() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} style={{ background: "var(--surface-muted)" }}>
-                          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                        <td colSpan={7} style={{ background: "var(--surface-muted)", padding: "8px 16px" }}>
+                          <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
                             Mã: {r.code}
                           </div>
-                          {r.description && <div className="inquiry-description">{r.description}</div>}
+                          {r.description && (
+                            <div className="inquiry-description" style={{ margin: "0 0 6px" }}>
+                              {r.description}
+                            </div>
+                          )}
 
-                          <div className="table-wrap" style={{ marginBottom: 8 }}>
-                            <table className="data-table">
-                              <thead>
-                                <tr>
-                                  <th>Sản phẩm</th>
-                                  <th>SL</th>
-                                  <th>ĐVT</th>
-                                  <th>Nguồn hàng</th>
-                                  <th>Hình ảnh</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {r.items.map((it) => (
-                                  <tr key={it.id}>
-                                    <td>{it.product_name || it.item_name}</td>
-                                    <td>{it.quantity}</td>
-                                    <td>{it.unit}</td>
-                                    <td>
-                                      <span className={`badge badge-source-${it.source_status}`}>
-                                        {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      {it.image ? (
-                                        <a href={it.image} target="_blank" rel="noreferrer">
-                                          <img
-                                            src={it.image}
-                                            alt=""
-                                            style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
-                                          />
-                                        </a>
-                                      ) : (
-                                        "—"
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+                            {r.items.map((it) => (
+                              <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                                <span style={{ fontWeight: 600 }}>{it.product_name || it.item_name}</span>
+                                <span className={`badge badge-source-${it.source_status}`}>
+                                  {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
+                                </span>
+                                {it.image && (
+                                  <a href={it.image} target="_blank" rel="noreferrer">
+                                    <img
+                                      src={it.image}
+                                      alt=""
+                                      style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
+                                    />
+                                  </a>
+                                )}
+                              </div>
+                            ))}
                           </div>
 
                           <Link
