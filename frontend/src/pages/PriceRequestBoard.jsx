@@ -92,8 +92,8 @@ export default function PriceRequestBoard() {
               {requests.map((r) => {
                 const itemsSummary = r.items.map((it) => it.product_name || it.item_name).filter(Boolean).join(", ");
                 const qtySummary = r.items.map((it) => [it.quantity, it.unit].filter(Boolean).join(" ")).filter(Boolean).join(", ");
-                const addressDetail = [r.street_address, r.ward_name, r.district_name, r.province_name].filter(Boolean).join(", ");
-                const address = [r.country_name, addressDetail].filter(Boolean).join(" · ");
+                const addressDetail = [r.district_name, r.ward_name, r.street_address].filter(Boolean).join(", ");
+                const address = [r.country_name, r.province_name, addressDetail].filter(Boolean).join(" · ");
                 const isExpanded = expandedId === r.id;
                 return (
                   <Fragment key={r.id}>
