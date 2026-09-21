@@ -8,19 +8,17 @@ import Modal from "../components/Modal";
 import PhoneInput from "../components/PhoneInput";
 import { TIER_LABEL } from "../constants";
 
-const TABS = [
-  { key: "customer", label: "Khách hàng" },
-  { key: "supplier", label: "Nhà cung cấp" },
-];
-
-function emptyForm(tab, activeCompanyId) {
+// LIVI không tách Khách hàng/Nhà cung cấp thành 2 danh mục riêng — 1 đối tác dùng chung 1 dữ liệu,
+// is_customer/is_supplier chỉ còn là cờ nội bộ phục vụ vài chỗ lọc (vd chọn NCC khi nhập kho),
+// mặc định luôn bật cả 2 khi tạo mới qua app, không bắt người dùng chọn tay.
+function emptyForm(activeCompanyId) {
   return {
     name: "",
     contact_person: "",
     phone: "",
     note: "",
-    is_customer: tab === "customer",
-    is_supplier: tab === "supplier",
+    is_customer: true,
+    is_supplier: true,
     companies: activeCompanyId ? [Number(activeCompanyId)] : [],
   };
 }
@@ -28,13 +26,12 @@ function emptyForm(tab, activeCompanyId) {
 export default function PartnerList() {
   const navigate = useNavigate();
   const { activeCompanyId } = useAuth();
-  const [tab, setTab] = useState("customer");
   const [partners, setPartners] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
-  const [form, setForm] = useState(emptyForm("customer", activeCompanyId));
+  const [form, setForm] = useState(emptyForm(activeCompanyId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,17 +59,13 @@ export default function PartnerList() {
   }
 
   function openNew() {
-    setForm(emptyForm(tab, activeCompanyId));
+    setForm(emptyForm(activeCompanyId));
     setShowNew(true);
   }
 
   async function handleCreate(e) {
     e.preventDefault();
     setError("");
-    if (!form.is_customer && !form.is_supplier) {
-      setError("Phải chọn ít nhất 1 loại: Khách hàng hoặc Nhà cung cấp.");
-      return;
-    }
     if (form.companies.length === 0) {
       setError("Phải tick ít nhất 1 công ty.");
       return;
@@ -89,24 +82,14 @@ export default function PartnerList() {
     }
   }
 
-  const visible = partners.filter((p) => (tab === "customer" ? p.is_customer : p.is_supplier));
-
   return (
     <div>
       <div className="page-head">
         <div>
           <h1>Đối tác</h1>
-          <div className="page-head-sub">{visible.length} {tab === "customer" ? "khách hàng" : "nhà cung cấp"}</div>
+          <div className="page-head-sub">{partners.length} đối tác</div>
         </div>
-        <button onClick={openNew}>+ Thêm {tab === "customer" ? "khách hàng" : "nhà cung cấp"}</button>
-      </div>
-
-      <div className="tabs">
-        {TABS.map((t) => (
-          <button key={t.key} className={`tab-btn${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
-            {t.label}
-          </button>
-        ))}
+        <button onClick={openNew}>+ Thêm đối tác</button>
       </div>
 
       <div className="toolbar">
@@ -127,9 +110,9 @@ export default function PartnerList() {
 
       {loading ? (
         <p className="muted">Đang tải...</p>
-      ) : visible.length === 0 ? (
+      ) : partners.length === 0 ? (
         <div className="panel">
-          <p className="muted">Chưa có {tab === "customer" ? "khách hàng" : "nhà cung cấp"} nào.</p>
+          <p className="muted">Chưa có đối tác nào.</p>
         </div>
       ) : (
         <div className="table-wrap">
@@ -138,26 +121,19 @@ export default function PartnerList() {
               <tr>
                 <th>Đối tác</th>
                 <th>Công ty</th>
-                {tab === "customer" && <th>Hạng</th>}
+                <th>Hạng</th>
                 <th>Phụ trách</th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((p) => {
+              {partners.map((p) => {
                 return (
                   <tr key={p.id} className="clickable" onClick={() => navigate(`/partners/${p.id}`)}>
                     <td>
                       <div className="row-name">
                         <Avatar name={p.name} />
                         <div>
-                          <div>
-                            {p.name}
-                            {p.is_customer && p.is_supplier && (
-                              <span className="badge badge-neutral" style={{ marginLeft: 8 }}>
-                                Khách hàng - NCC
-                              </span>
-                            )}
-                          </div>
+                          <div>{p.name}</div>
                           {p.contact_person && (
                             <div className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>
                               {p.contact_person}
@@ -173,15 +149,13 @@ export default function PartnerList() {
                         </span>
                       ))}
                     </td>
-                    {tab === "customer" && (
-                      <td>
-                        {p.tier_override ? (
-                          <span className={`badge badge-tier-${p.tier_override}`}>{TIER_LABEL[p.tier_override]}</span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    )}
+                    <td>
+                      {p.tier_override ? (
+                        <span className={`badge badge-tier-${p.tier_override}`}>{TIER_LABEL[p.tier_override]}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td>{p.assigned_to_detail?.username ?? "—"}</td>
                   </tr>
                 );
@@ -192,32 +166,11 @@ export default function PartnerList() {
       )}
 
       {showNew && (
-        <Modal title={`Thêm ${tab === "customer" ? "khách hàng" : "nhà cung cấp"}`} onClose={() => setShowNew(false)}>
+        <Modal title="Thêm đối tác" onClose={() => setShowNew(false)}>
           <form className="field-grid" onSubmit={handleCreate}>
             <label>
               Tên *
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </label>
-            <label>
-              Loại đối tác
-              <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_customer}
-                    onChange={(e) => setForm({ ...form, is_customer: e.target.checked })}
-                  />
-                  Khách hàng
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_supplier}
-                    onChange={(e) => setForm({ ...form, is_supplier: e.target.checked })}
-                  />
-                  Nhà cung cấp
-                </label>
-              </div>
             </label>
             <label>
               Thuộc công ty
