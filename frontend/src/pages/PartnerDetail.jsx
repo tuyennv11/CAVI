@@ -887,17 +887,12 @@ export default function PartnerDetail() {
                         </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "8px 16px" }}>
-                              {inq.description && (
-                                <div className="inquiry-description" style={{ margin: "0 0 6px" }}>
-                                  {inq.description}
-                                </div>
-                              )}
-
-                              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+                            <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "6px 16px" }}>
+                              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 18px", fontSize: 13, marginBottom: 6 }}>
+                                {inq.description && <span>{inq.description}</span>}
                                 {inq.items.map((it) => (
-                                  <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                                    <span style={{ fontWeight: 600 }}>{it.product_name || it.item_name}</span>
+                                  <span key={it.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <b>{it.product_name || it.item_name}</b>
                                     <span className={`badge badge-source-${it.source_status}`}>
                                       {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                     </span>
@@ -906,7 +901,7 @@ export default function PartnerDetail() {
                                         <img
                                           src={it.image}
                                           alt=""
-                                          style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
+                                          style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
                                         />
                                       </a>
                                     )}
@@ -922,7 +917,7 @@ export default function PartnerDetail() {
                                         }}
                                       />
                                     </label>
-                                  </div>
+                                  </span>
                                 ))}
                               </div>
 

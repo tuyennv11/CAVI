@@ -118,20 +118,13 @@ export default function PriceRequestBoard() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} style={{ background: "var(--surface-muted)", padding: "8px 16px" }}>
-                          <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                            Mã: {r.code}
-                          </div>
-                          {r.description && (
-                            <div className="inquiry-description" style={{ margin: "0 0 6px" }}>
-                              {r.description}
-                            </div>
-                          )}
-
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+                        <td colSpan={7} style={{ background: "var(--surface-muted)", padding: "6px 16px" }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 18px", fontSize: 13 }}>
+                            <span className="muted">Mã: {r.code}</span>
+                            {r.description && <span>{r.description}</span>}
                             {r.items.map((it) => (
-                              <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                                <span style={{ fontWeight: 600 }}>{it.product_name || it.item_name}</span>
+                              <span key={it.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <b>{it.product_name || it.item_name}</b>
                                 <span className={`badge badge-source-${it.source_status}`}>
                                   {SOURCE_STATUS_LABEL[it.source_status] ?? it.source_status}
                                 </span>
@@ -140,21 +133,20 @@ export default function PriceRequestBoard() {
                                     <img
                                       src={it.image}
                                       alt=""
-                                      style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
+                                      style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }}
                                     />
                                   </a>
                                 )}
-                              </div>
+                              </span>
                             ))}
+                            <Link
+                              className="link-btn"
+                              to={`/partners/${r.customer}?tab=inquiries&inquiry=${r.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Xem chi tiết trong hồ sơ đối tác →
+                            </Link>
                           </div>
-
-                          <Link
-                            className="link-btn"
-                            to={`/partners/${r.customer}?tab=inquiries&inquiry=${r.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Xem chi tiết trong hồ sơ đối tác →
-                          </Link>
                         </td>
                       </tr>
                     )}
