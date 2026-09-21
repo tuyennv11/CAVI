@@ -137,7 +137,7 @@ export default function PriceRequestBoard() {
                               to={`/partners/${r.customer}?tab=inquiries&inquiry=${r.id}`}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              Xem chi tiết trong hồ sơ đối tác →
+                              Xem trong đối tác →
                             </Link>
                           </div>
                         </td>
