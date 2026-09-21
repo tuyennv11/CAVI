@@ -172,14 +172,13 @@ export default function Sidebar({ user, open, onClose }) {
           Ký duyệt
         </NavItem>
 
-        <div className="sidebar-section">Nhân sự</div>
-        <NavItem to="/profile" icon={ICONS.profile}>
-          Hồ sơ cá nhân
-        </NavItem>
         {(user?.is_manager || user?.is_hr || user?.is_accountant) && (
-          <NavItem to="/employees" icon={ICONS.employees}>
-            Nhân viên
-          </NavItem>
+          <>
+            <div className="sidebar-section">Nhân sự</div>
+            <NavItem to="/employees" icon={ICONS.employees}>
+              Nhân viên
+            </NavItem>
+          </>
         )}
 
         <div className="sidebar-section">Kinh doanh</div>
@@ -225,6 +224,11 @@ export default function Sidebar({ user, open, onClose }) {
             </NavItem>
           </>
         )}
+
+        <div className="sidebar-section">Cá nhân</div>
+        <NavItem to="/profile" icon={ICONS.profile}>
+          Hồ sơ cá nhân
+        </NavItem>
       </nav>
         {user && (
           <div className="sidebar-foot">
