@@ -19,3 +19,5 @@ class ApprovalRequestAdmin(ImportExportModelAdmin):
         "status", "requested_by", "reviewed_by", "reviewed_at", "created_at",
     )
     list_filter = ("request_type", "status")
+    # Field tự điền qua default=get_default_company_id (xem approvals/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)

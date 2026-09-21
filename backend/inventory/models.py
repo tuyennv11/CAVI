@@ -5,12 +5,13 @@ from django.db import models
 from django.db.models import Case, DecimalField, F, Sum, When
 
 from companies.models import Company
+from companies.utils import get_default_company_id
 
 
 class Warehouse(models.Model):
     """Kho hàng — chỉ công ty Thương mại (LIVI, AVI...) dùng."""
 
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.CASCADE, related_name="warehouses")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.CASCADE, default=get_default_company_id, related_name="warehouses")
     name = models.CharField("Tên kho", max_length=255)
     address = models.CharField("Địa chỉ", max_length=255, blank=True)  # text tự do, chỉ tham khảo
     is_active = models.BooleanField("Đang hoạt động", default=True)
@@ -27,7 +28,7 @@ class Warehouse(models.Model):
 class Product(models.Model):
     """Hàng hoá — mỗi công ty Thương mại có danh mục riêng."""
 
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.CASCADE, related_name="products")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.CASCADE, default=get_default_company_id, related_name="products")
     sku = models.CharField("Mã hàng", max_length=50)
     name = models.CharField("Tên hàng hoá", max_length=255)
     unit = models.CharField("ĐVT", max_length=50, blank=True)

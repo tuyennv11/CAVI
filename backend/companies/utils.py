@@ -7,6 +7,16 @@ from .models import Company
 ACTIVE_COMPANY_HEADER = "HTTP_X_COMPANY_ID"  # request.META key cho header "X-Company-Id"
 
 
+def get_default_company_id():
+    """Id của công ty duy nhất đang hoạt động — dùng làm `default=` cho field FK "company" ở các
+    model chỉ vận hành cho đúng 1 công ty hiện tại (LIVI), để KHÔNG bắt chọn tay 1 lựa chọn luôn
+    duy nhất trong form Admin. Trả về None nếu có 0 hoặc từ 2 công ty đang hoạt động trở lên — lúc
+    đó field vẫn bắt buộc chọn tay như cũ (đúng ý nghĩa an toàn: quay lại multi-company thì phải
+    chọn rõ, không tự đoán bừa)."""
+    companies = list(Company.objects.filter(is_active=True).values_list("id", flat=True)[:2])
+    return companies[0] if len(companies) == 1 else None
+
+
 def get_active_company(request):
     """Công ty đang được thao tác cho request này — mọi ViewSet cần lọc dữ liệu theo công ty đều
     gọi hàm này (thường qua CompanyScopedMixin, xem mixins.py) thay vì tự đọc header tay.

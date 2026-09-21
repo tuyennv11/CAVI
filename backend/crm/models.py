@@ -6,6 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 from companies.models import Company
+from companies.utils import get_default_company_id
 from geo.models import Country, District, Province, Ward
 from inventory.models import Product, Warehouse
 
@@ -101,7 +102,7 @@ class Order(models.Model):
     customer = models.ForeignKey(Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="orders")
     # Nullable tạm thời — backfill CAVI cho dữ liệu cũ ở migration, rồi chuyển NOT NULL (xem
     # migration liên quan). Đơn hàng luôn thuộc đúng 1 công ty, không như Partner (dùng chung).
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="orders")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, default=get_default_company_id, related_name="orders")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -261,7 +262,7 @@ class Activity(models.Model):
     # tượng (đối tác/công ty/loại/trạng thái/tiêu đề) -> thời điểm -> người liên quan -> nội dung chi
     # tiết -> nhóm theo dõi lại -> tham chiếu liên quan -> nhật ký tạo/sửa.
     customer = models.ForeignKey(Partner, verbose_name="Đối tác", on_delete=models.CASCADE, related_name="activities")
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="activities")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, default=get_default_company_id, related_name="activities")
     activity_type = models.CharField("Loại hoạt động", max_length=20, choices=ActivityType.choices)
     status = models.CharField("Trạng thái", max_length=20, choices=Status.choices, default=Status.NOT_PROCESSED)
     title = models.CharField("Tiêu đề", max_length=255)
@@ -332,7 +333,7 @@ class PriceRequest(models.Model):
     customer = models.ForeignKey(
         Partner, verbose_name="Khách hàng", on_delete=models.CASCADE, related_name="price_requests"
     )
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_requests")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, default=get_default_company_id, related_name="price_requests")
     # Nhân sự phụ trách — cùng kiểu FK hr.Profile với Partner.assigned_to (không phải Tài khoản đăng nhập).
     assigned_to = models.ForeignKey(
         "hr.Profile", verbose_name="Nhân sự phụ trách", on_delete=models.SET_NULL,
@@ -573,7 +574,7 @@ class PriceListItem(models.Model):
 
     # Chỉ công ty Vận chuyển (CAVI) dùng bảng này — thêm field cho đồng nhất với mọi bảng khác
     # (tránh phải xử lý đặc biệt 1 bảng duy nhất không có company ở mọi chỗ lọc theo công ty).
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, related_name="price_list_items")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.PROTECT, default=get_default_company_id, related_name="price_list_items")
     category = models.CharField("Phân loại", max_length=5, choices=Category.choices)
     group_name = models.CharField("Nhóm dịch vụ", max_length=255)
     group_code = models.CharField("Mã nhóm", max_length=10)
@@ -840,7 +841,7 @@ class Task(models.Model):
     content = models.TextField("Nội dung", blank=True)
     # Tuỳ chọn, giống hệt field `partner` — 1 công việc có thể không thuộc công ty cụ thể nào (vd
     # việc nội bộ chung cho cả 2 công ty).
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="tasks")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, default=get_default_company_id, related_name="tasks")
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người phụ trách", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="tasks"
@@ -888,7 +889,7 @@ class KPITarget(models.Model):
     )
     # Tuỳ chọn — tách chỉ tiêu theo từng công ty (đổi unique_together thành 4 cột) không nằm trong
     # yêu cầu hiện tại, để nullable, không mở rộng tính năng ngoài phạm vi.
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="kpi_targets")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, default=get_default_company_id, related_name="kpi_targets")
     year = models.IntegerField("Năm")
     month = models.IntegerField("Tháng")
     revenue_target = models.DecimalField("Chỉ tiêu doanh thu", max_digits=16, decimal_places=2, default=0)
@@ -910,7 +911,7 @@ class KPITarget(models.Model):
 class Notice(models.Model):
     # Không set = thông báo cho TẤT CẢ công ty; set = thông báo riêng 1 công ty. Vì vậy để nullable
     # vĩnh viễn, không ép buộc — ép NOT NULL sẽ mất khả năng thông báo chung.
-    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, related_name="notices")
+    company = models.ForeignKey(Company, verbose_name="Công ty", on_delete=models.SET_NULL, null=True, blank=True, default=get_default_company_id, related_name="notices")
     code = models.CharField("Số hiệu", max_length=50, blank=True)
     title = models.CharField("Tiêu đề", max_length=255)
     body = models.TextField("Nội dung", blank=True)

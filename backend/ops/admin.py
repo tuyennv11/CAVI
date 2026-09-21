@@ -39,6 +39,8 @@ class ShipmentAdmin(ImportExportModelAdmin):
     )
     list_filter = ("kd_status", "cu_status", "vh_status", "kt_status")
     search_fields = ("tracking_code", "description")
+    # Field tự điền qua default=get_default_company_id (xem ops/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
 
     @admin.display(description="Đối tác")
     def partner_link(self, obj):
@@ -50,3 +52,4 @@ class ShipmentBatchAdmin(ImportExportModelAdmin):
     resource_classes = [ShipmentBatchResource]
     list_display = ("route", "status", "operator", "created_at")
     list_filter = ("status",)
+    exclude = ("company",)

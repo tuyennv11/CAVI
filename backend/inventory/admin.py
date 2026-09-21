@@ -39,6 +39,8 @@ class WarehouseAdmin(ImportExportModelAdmin):
     list_display = ("name", "address", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name", "address")
+    # Field tự điền qua default=get_default_company_id (xem inventory/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
 
 
 @admin.register(Product)
@@ -47,6 +49,7 @@ class ProductAdmin(ImportExportModelAdmin):
     list_display = ("sku", "name", "unit", "cost_price", "sale_price", "is_active")
     list_filter = ("is_active",)
     search_fields = ("sku", "name")
+    exclude = ("company",)
 
 
 @admin.register(StockMovement)

@@ -214,6 +214,9 @@ class OrderAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
     list_filter = ("status", "paid", "on_platform")
     inlines = [OrderItemInline]
     autocomplete_fields = ["pickup_ward", "delivery_ward"]
+    # Chỉ còn đúng 1 công ty (LIVI) đang hoạt động — field tự điền qua default=get_default_company_id
+    # (xem crm/models.py), ẩn hẳn khỏi form thêm/sửa cho gọn, không bắt chọn tay 1 lựa chọn duy nhất.
+    exclude = ("company",)
 
     @admin.display(description="Khách hàng")
     def customer_link(self, obj):
@@ -228,6 +231,8 @@ class OrderAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin):
 class NoticeAdmin(ImportExportModelAdmin):
     resource_classes = [NoticeResource]
     list_display = ("code", "title", "body", "created_by", "created_at")
+    # Field tự điền qua default=get_default_company_id (xem crm/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
 
 
 @admin.register(Activity)
@@ -247,6 +252,8 @@ class ActivityAdmin(ImportExportMixin, admin.ModelAdmin):
     )
     list_filter = ("activity_type", "status")
     search_fields = ("title", "content")
+    # Field tự điền qua default=get_default_company_id (xem crm/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
 
     @admin.display(description="Đối tác")
     def customer_link(self, obj):
@@ -262,6 +269,8 @@ class TaskAdmin(ImportExportModelAdmin):
     )
     list_filter = ("status", "priority")
     search_fields = ("title", "content")
+    # Field tự điền qua default=get_default_company_id (xem crm/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
 
     @admin.display(description="Khách hàng/đối tác liên quan")
     def partner_link(self, obj):
@@ -271,6 +280,7 @@ class TaskAdmin(ImportExportModelAdmin):
 @admin.register(KPITarget)
 class KPITargetAdmin(ImportExportModelAdmin):
     resource_classes = [KPITargetResource]
+    exclude = ("company",)
     list_display = ("user", "year", "month", "revenue_target", "new_customer_target", "quote_target", "order_target", "task_target")
     list_filter = ("year", "month")
 
@@ -310,6 +320,8 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
     readonly_fields = ("code",)
     autocomplete_fields = ["country", "province", "district", "ward", "assigned_to"]
     inlines = [PriceRequestItemInline, PriceInquiryQuoteLineInline, PriceInquiryMessageInline]
+    # Field tự điền qua default=get_default_company_id (xem crm/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
 
     @admin.display(description="Khách hàng")
     def customer_link(self, obj):
@@ -497,3 +509,5 @@ class PriceListItemAdmin(ImportExportModelAdmin):
     list_filter = ("category", "group_code", "is_active")
     search_fields = ("item_code", "name", "group_name")
     list_editable = ("floor_pct", "ceiling_pct", "is_active")
+    # Field tự điền qua default=get_default_company_id (xem crm/models.py), ẩn khỏi form cho gọn.
+    exclude = ("company",)
