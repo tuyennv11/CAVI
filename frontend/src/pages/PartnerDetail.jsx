@@ -457,7 +457,7 @@ export default function PartnerDetail() {
             {partner.contact_person && <span className="profile-pill">👤 {partner.contact_person}</span>}
             {partner.phone && <span className="profile-pill">📞 {partner.phone}</span>}
             {partner.assigned_to_detail && (
-              <span className="profile-pill">Phụ trách: {partner.assigned_to_detail.username}</span>
+              <span className="profile-pill">Phụ trách: {partner.assigned_to_detail.full_name}</span>
             )}
           </div>
           <div className="profile-meta-row">

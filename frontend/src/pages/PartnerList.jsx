@@ -120,7 +120,6 @@ export default function PartnerList() {
             <thead>
               <tr>
                 <th>Đối tác</th>
-                <th>Công ty</th>
                 <th>Hạng</th>
                 <th>Phụ trách</th>
               </tr>
@@ -143,20 +142,13 @@ export default function PartnerList() {
                       </div>
                     </td>
                     <td>
-                      {(p.companies_detail || []).map((c) => (
-                        <span className="badge badge-neutral" key={c.id} style={{ marginRight: 4 }}>
-                          {c.code}
-                        </span>
-                      ))}
-                    </td>
-                    <td>
                       {p.tier_override ? (
                         <span className={`badge badge-tier-${p.tier_override}`}>{TIER_LABEL[p.tier_override]}</span>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td>{p.assigned_to_detail?.username ?? "—"}</td>
+                    <td>{p.assigned_to_detail?.full_name ?? "—"}</td>
                   </tr>
                 );
               })}
