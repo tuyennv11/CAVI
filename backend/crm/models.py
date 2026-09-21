@@ -418,6 +418,31 @@ class PriceRequestItem(models.Model):
         return f"{self.item_name} x{self.quantity}"
 
 
+class CostQuote(models.Model):
+    """Báo giá vốn — nằm giữa Yêu cầu giá và Sàn báo giá NCC (khác estimated_cost_price ở trên, vốn
+    chỉ là 1 con số ước lượng nhanh). Đây là 1 bảng riêng để sau này bổ sung thêm các trường dữ liệu
+    cụ thể (anh sẽ cung cấp) — nhiều dòng lịch sử cho 1 dòng Yêu cầu giá, không ghi đè, giống cách
+    SupplierQuote/PriceCalculation đang làm."""
+
+    price_request_item = models.ForeignKey(
+        PriceRequestItem, verbose_name="Dòng yêu cầu giá", on_delete=models.CASCADE, related_name="cost_quotes"
+    )
+    note = models.TextField("Ghi chú", blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Báo giá vốn"
+        verbose_name_plural = "Báo giá vốn"
+
+    def __str__(self):
+        return f"Báo giá vốn — {self.price_request_item}"
+
+
 class PurchaseRequest(models.Model):
     """Đề nghị mua hàng — KHÔNG gắn cứng 1-1 với 1 Yêu cầu giá. Có thể phục vụ nhiều Yêu cầu giá cùng
     lúc (xem PurchaseRequestAllocation), hoặc không phục vụ khách nào cả (mua nhập kho bán dần)."""

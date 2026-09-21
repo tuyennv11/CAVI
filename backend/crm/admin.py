@@ -7,6 +7,7 @@ from ops.models import Shipment as OpsShipment
 
 from .models import (
     Activity,
+    CostQuote,
     KPITarget,
     Notice,
     Order,
@@ -328,6 +329,17 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
         return linked_fk(obj.customer)
 
 
+class CostQuoteResource(ExcelModelResource):
+    class Meta:
+        model = CostQuote
+
+
+class CostQuoteInline(admin.TabularInline):
+    model = CostQuote
+    extra = 0
+    readonly_fields = ("created_by", "created_at", "updated_at")
+
+
 # Đăng ký riêng (không chỉ để inline trong Yêu cầu giá) để PurchaseRequestAllocation/
 # InventoryReservation bên dưới (kể cả ở app inventory) autocomplete được tới đúng dòng.
 @admin.register(PriceRequestItem)
@@ -340,6 +352,16 @@ class PriceRequestItemAdmin(ImportExportModelAdmin):
     search_fields = ("item_name", "price_request__code")
     readonly_fields = ("source_status",)
     autocomplete_fields = ["price_request", "product"]
+    inlines = [CostQuoteInline]
+
+
+@admin.register(CostQuote)
+class CostQuoteAdmin(ImportExportModelAdmin):
+    resource_classes = [CostQuoteResource]
+    list_display = ("price_request_item", "note", "created_by", "created_at", "updated_at")
+    search_fields = ("price_request_item__item_name", "price_request_item__price_request__code")
+    autocomplete_fields = ["price_request_item"]
+    readonly_fields = ("created_by", "created_at", "updated_at")
 
 
 class PurchaseRequestResource(ExcelModelResource):
