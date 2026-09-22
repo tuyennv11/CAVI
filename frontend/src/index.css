@@ -712,6 +712,15 @@ a:hover { text-decoration: underline; }
 }
 .cost-item-result b { color: var(--ink); font-weight: 700; }
 
+/* Tổng cộng TẤT CẢ mặt hàng trong 1 câu trả lời — nổi bật hơn hẳn dải kết quả từng dòng (tint theo
+   màu primary) vì đây là số quan trọng nhất khi câu trả lời có nhiều hơn 1 mặt hàng. */
+.cost-grand-total {
+  display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline;
+  margin-top: 10px; padding: 11px 15px; background: var(--primary-soft); border-radius: var(--radius-md);
+  font-size: 12.5px; color: var(--primary-dark); font-weight: 600;
+}
+.cost-grand-total b { font-size: 14.5px; }
+
 /* Thẻ hiện 1 câu trả lời đã lưu — cùng bộ khung .cost-item-card nhưng có thêm badge/footer riêng. */
 .cost-quote-card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);

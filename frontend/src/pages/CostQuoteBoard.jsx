@@ -115,6 +115,19 @@ function previewTotals(row) {
   return { totalCost, totalVolumeM3, totalWeightKg, kind };
 }
 
+// Cộng dồn Tổng giá vốn/kích thước/trọng lượng của TẤT CẢ mặt hàng trong 1 câu trả lời — dùng cho
+// cả xem trước lúc nhập (previewTotals mỗi dòng) lẫn hiện lại câu trả lời đã lưu (total_* từ API).
+function sumItemTotals(totalsList) {
+  return totalsList.reduce(
+    (acc, t) => ({
+      totalCost: acc.totalCost + (t.totalCost || 0),
+      totalVolumeM3: acc.totalVolumeM3 + (t.totalVolumeM3 || 0),
+      totalWeightKg: acc.totalWeightKg + (t.totalWeightKg || 0),
+    }),
+    { totalCost: 0, totalVolumeM3: 0, totalWeightKg: 0 },
+  );
+}
+
 // Tổng giá vốn vận chuyển: NCC báo trọn gói (basis "total") thì lấy thẳng Giá cước; báo theo đơn
 // giá/kg hoặc /m3 thì nhân với tổng trọng lượng/thể tích cộng dồn mọi mặt hàng — y hệt công thức
 // CostQuote.shipping_cost tính lại ở backend sau khi lưu.
@@ -350,6 +363,34 @@ export default function CostQuoteBoard() {
                                       </div>
                                     );
                                   })}
+                                  {(q.items || []).length > 1 &&
+                                    (() => {
+                                      const grand = sumItemTotals(
+                                        (q.items || []).map((it) => ({
+                                          totalCost: Number(it.total_cost) || 0,
+                                          totalVolumeM3: Number(it.total_volume_m3) || 0,
+                                          totalWeightKg: Number(it.total_weight_kg) || 0,
+                                        })),
+                                      );
+                                      return (
+                                        <div className="cost-grand-total">
+                                          <span>
+                                            Tổng giá vốn (mọi mặt hàng): <b>{grand.totalCost ? formatMoney(grand.totalCost) : "—"}</b>
+                                          </span>
+                                          <span>
+                                            Tổng kích thước:{" "}
+                                            <b>
+                                              {grand.totalVolumeM3
+                                                ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
+                                                : "—"}
+                                            </b>
+                                          </span>
+                                          <span>
+                                            Tổng trọng lượng: <b>{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</b>
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                   <div className="cost-quote-meta">
                                     <span>Điểm nhận hàng: {address || "—"}</span>
                                     {q.shipping_rate && q.shipping_rate_basis !== "total" && (
@@ -501,6 +542,28 @@ export default function CostQuoteBoard() {
                               <button type="button" className="link-btn" style={{ marginTop: 4 }} onClick={addItemRow}>
                                 + Thêm mặt hàng
                               </button>
+
+                              {form.items.length > 1 && (() => {
+                                const grand = sumItemTotals(form.items.map(previewTotals));
+                                return (
+                                  <div className="cost-grand-total">
+                                    <span>
+                                      Tổng giá vốn (mọi mặt hàng): <b>{grand.totalCost ? formatMoney(grand.totalCost) : "—"}</b>
+                                    </span>
+                                    <span>
+                                      Tổng kích thước:{" "}
+                                      <b>
+                                        {grand.totalVolumeM3
+                                          ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
+                                          : "—"}
+                                      </b>
+                                    </span>
+                                    <span>
+                                      Tổng trọng lượng: <b>{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</b>
+                                    </span>
+                                  </div>
+                                );
+                              })()}
 
                               <div className="cost-section-label">Vận chuyển &amp; điểm nhận hàng</div>
                               {item.price_request_delivery_address && (
