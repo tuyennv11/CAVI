@@ -412,6 +412,15 @@ class PriceRequestItemSerializer(serializers.ModelSerializer):
     assigned_to_id = serializers.IntegerField(source="price_request.assigned_to_id", read_only=True, default=None)
     assigned_to_name = serializers.SerializerMethodField()
     cost_quotes = CostQuoteSerializer(many=True, read_only=True)
+    # Địa chỉ giao hàng đã nhập sẵn trên Yêu cầu giá gốc — để tab Trả lời yêu cầu giá điền sẵn luôn
+    # vào Điểm nhận hàng thay vì bắt Cung ứng gõ lại từ đầu (xem CostQuoteBoard.jsx prefillForm).
+    price_request_country = serializers.IntegerField(source="price_request.country_id", read_only=True, default=None)
+    price_request_province = serializers.IntegerField(source="price_request.province_id", read_only=True, default=None)
+    price_request_district = serializers.IntegerField(source="price_request.district_id", read_only=True, default=None)
+    price_request_ward = serializers.IntegerField(source="price_request.ward_id", read_only=True, default=None)
+    price_request_street_address = serializers.CharField(
+        source="price_request.street_address", read_only=True, default=None
+    )
 
     class Meta:
         model = PriceRequestItem
@@ -419,6 +428,8 @@ class PriceRequestItemSerializer(serializers.ModelSerializer):
             "id", "price_request", "price_request_code", "customer_name", "assigned_to_id", "assigned_to_name",
             "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
             "estimated_cost_price", "purchase_request_item_id", "cost_quotes",
+            "price_request_country", "price_request_province", "price_request_district", "price_request_ward",
+            "price_request_street_address",
         ]
         read_only_fields = ["source_status", "price_request"]
 

@@ -111,10 +111,15 @@ export default function CostQuoteBoard() {
   }
 
   function prefillForm(item) {
-    // Mặt hàng/Số lượng/ĐVT lấy sẵn từ dòng Yêu cầu giá gốc — Cung ứng vẫn sửa được, và có thể
-    // thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng).
+    // Mặt hàng/Số lượng/ĐVT + Điểm nhận hàng lấy sẵn từ Yêu cầu giá gốc — Cung ứng vẫn sửa được,
+    // và có thể thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng).
     setForm({
       ...emptyQuoteForm(),
+      country: item.price_request_country ?? "",
+      province: item.price_request_province ?? "",
+      district: item.price_request_district ?? "",
+      ward: item.price_request_ward ?? "",
+      street_address: item.price_request_street_address || "",
       items: [
         {
           ...emptyItemRow(),
