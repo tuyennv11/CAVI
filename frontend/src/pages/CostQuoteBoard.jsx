@@ -111,20 +111,13 @@ export default function CostQuoteBoard() {
   }
 
   function prefillForm(item) {
-    // Mặt hàng/Số lượng/ĐVT + Điểm nhận hàng lấy sẵn từ Yêu cầu giá gốc — Cung ứng vẫn sửa được,
-    // và có thể thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng). Điểm nhận
-    // hàng KHÔNG lấy từ địa chỉ giao khách của Yêu cầu giá — đó là 2 nơi khác nhau (xem
-    // price_request_delivery_address, chỉ hiện tham khảo).
+    // Chỉ lấy sẵn tên Mặt hàng — KHÔNG lấy Số lượng/ĐVT của Yêu cầu giá gốc (đó là số khách hỏi
+    // lúc đầu, đã hiện sẵn ở cột "SL / ĐVT" ngoài bảng). Số lượng ở đây là số thực mua (vd theo
+    // kiện/thùng) — chỉ có sau khi Cung ứng kiểm tra nguồn hàng, và dùng để nhân ra Tổng giá vốn/
+    // Tổng kích thước/Tổng trọng lượng, nên không thể lấy trùng số của khách để tránh sai lệch.
     setForm({
       ...emptyQuoteForm(),
-      items: [
-        {
-          ...emptyItemRow(),
-          item_name: item.product_name || item.item_name || "",
-          quantity: item.quantity ?? "",
-          unit: item.unit || "",
-        },
-      ],
+      items: [{ ...emptyItemRow(), item_name: item.product_name || item.item_name || "" }],
     });
   }
 
@@ -315,16 +308,21 @@ export default function CostQuoteBoard() {
                                       />
                                     </label>
                                     <label style={{ width: 70 }}>
-                                      SL
+                                      SL thực mua
                                       <input
                                         type="number" step="0.01"
+                                        placeholder="vd: 5"
                                         value={row.quantity}
                                         onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
                                       />
                                     </label>
                                     <label style={{ width: 70 }}>
                                       ĐVT
-                                      <input value={row.unit} onChange={(e) => updateItemRow(i, "unit", e.target.value)} />
+                                      <input
+                                        placeholder="vd: thùng"
+                                        value={row.unit}
+                                        onChange={(e) => updateItemRow(i, "unit", e.target.value)}
+                                      />
                                     </label>
                                     <label style={{ width: 100 }}>
                                       Giá vốn/đv
