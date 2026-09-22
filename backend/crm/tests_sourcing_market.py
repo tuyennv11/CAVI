@@ -205,3 +205,38 @@ class SourcingMarketTests(TestCase):
     def test_negative_price_and_empty_rows_rejected(self):
         self.assertEqual(self.client.post("/api/cost-quotes/", self.payload(items=[]), format="json").status_code, 400)
         self.assertEqual(self.client.post("/api/cost-quotes/", self.payload(shipping_rate="-1"), format="json").status_code, 400)
+
+    def test_same_method_goods_bid_keeps_route_and_cargo(self):
+        q = self.quote()
+        self.client.force_authenticate(self.other)
+        response = self.client.post(f"/api/cost-quotes/{q['id']}/bid-goods/", {
+            "prices": ["450"], "supplier_name": "NCC B", "confirmed": True, "valid_until": self.until,
+            "street_address": "Wrong pickup", "items": [], "shipping_rate": "0",
+        }, format="json")
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["based_on"], q["id"])
+        self.assertEqual(response.data["street_address"], "Pickup A")
+        self.assertEqual(response.data["items"][0]["quantity"], q["items"][0]["quantity"])
+        self.assertEqual(Decimal(response.data["market"]["goods_total"]), Decimal("900"))
+        self.assertIsNone(response.data["market"]["shipping_total"])
+        self.assertEqual(response.data["market"]["comparison_key"], q["market"]["comparison_key"])
+        self.assertTrue(CostQuote.objects.get(pk=q["id"]).active)
+
+    def test_same_method_bid_rejects_invalid_price_and_withdrawn_source(self):
+        q = self.quote()
+        path = f"/api/cost-quotes/{q['id']}/bid-goods/"
+        for prices in [[], [None], ["-1"], ["abc"]]:
+            self.assertEqual(self.client.post(path, {"prices": prices}, format="json").status_code, 400)
+        self.client.post(f"/api/cost-quotes/{q['id']}/withdraw/")
+        self.assertEqual(self.client.post(path, {"prices": ["100"]}, format="json").status_code, 400)
+
+    def test_comparison_separates_different_routes(self):
+        a = self.quote()
+        b = self.quote(street_address="Pickup B")
+        self.assertNotEqual(a["market"]["comparison_key"], b["market"]["comparison_key"])
+
+    def test_sales_cannot_bid_goods(self):
+        q = self.quote()
+        self.client.force_authenticate(self.sales)
+        response = self.client.post(f"/api/cost-quotes/{q['id']}/bid-goods/", {"prices": ["100"]}, format="json")
+        self.assertEqual(response.status_code, 403)

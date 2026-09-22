@@ -421,9 +421,9 @@ class CostQuoteSerializer(serializers.ModelSerializer):
             "shipping_rate", "shipping_rate_basis", "shipping_cost",
             "note", "items", "created_by", "created_by_name", "created_at", "updated_at",
             "supplier_name", "carrier_name", "confirmed", "valid_until", "available_at", "tax_basis",
-            "payment_terms", "delivery_terms", "delivery_snapshot", "active", "supersedes", "freight_offers", "market",
+            "payment_terms", "delivery_terms", "delivery_snapshot", "active", "supersedes", "based_on", "freight_offers", "market",
         ]
-        read_only_fields = ["created_by", "created_at", "updated_at", "delivery_snapshot", "active"]
+        read_only_fields = ["created_by", "created_at", "updated_at", "delivery_snapshot", "active", "based_on"]
 
     @transaction.atomic
     def create(self, validated_data):

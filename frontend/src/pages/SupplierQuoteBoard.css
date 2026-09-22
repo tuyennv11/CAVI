@@ -114,3 +114,16 @@
 .market-source-choice { display:grid;gap:8px;text-align:left;width:100%;margin:10px 0;padding:14px; }
 .market-source-choice span { font-size:12px;font-weight:400; }
 @container(max-width:600px) { .market-overview-toolbar { flex-wrap:wrap; }.market-overview-toolbar input { width:100%; }.market-overview th:last-child,.market-overview td:last-child { position:sticky;right:0;background:white;box-shadow:-4px 0 8px #00000008; }.market-overview-actions { grid-template-columns:1fr;min-width:115px; }.market-quote-overlay { padding:8px; }.market-quote-dialog { padding:12px; } }
+.market-type-goods { color:var(--primary-dark);font-size:11px; }
+.market-type-freight { color:#216184;font-size:11px; }
+.market-freight-line { background:#f5f9fc; }
+.market-goods-line td { border-top:2px solid #d8dfe6; }
+.market-freight-line td { border-top:1px dashed #dbe3eb; }
+.market-freight-cta { background:#216184;color:white;font-size:12px;min-height:40px;white-space:nowrap; }
+.market-method-footer td { padding:8px 12px;background:#f1f3f5; }
+.market-method-footer td > div { display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:11px;color:var(--muted); }
+.market-method-footer td > div > div { display:flex;align-items:center;gap:16px; }
+.market-bid-price { display:flex;justify-content:space-between;gap:20px;align-items:center;margin:14px 0;font-size:13px; }
+.market-bid-price small { display:block;color:var(--muted);margin-top:4px; }
+.market-bid-price .money-input { width:170px; }
+.market-trade-board td { padding-top:12px;padding-bottom:12px; }

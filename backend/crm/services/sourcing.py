@@ -55,7 +55,9 @@ def comparison_key(quote):
             *[str(value.normalize()) if value is not None else None for value in [row.quantity,
                 row.unit_length_cm, row.unit_width_cm, row.unit_height_cm, row.unit_weight_kg]]])
     payload = [sorted(rows, key=lambda row: json.dumps(row)), quote.tax_basis,
-               quote.delivery_terms.strip().casefold(), quote.payment_terms.strip().casefold()]
+               quote.delivery_terms.strip().casefold(), quote.payment_terms.strip().casefold(),
+               pickup_address(quote).strip().casefold(), quote.delivery_snapshot.strip().casefold(),
+               str(quote.available_at), quote.price_request_item_id]
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()
 
 

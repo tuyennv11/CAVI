@@ -461,6 +461,7 @@ class CostQuote(models.Model):
     delivery_terms = models.CharField(max_length=500, blank=True)
     delivery_snapshot = models.TextField(blank=True)
     active = models.BooleanField(default=True)
+    based_on = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="competing_quotes")
     supersedes = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT, related_name="next_version")
 
     class ShippingRateBasis(models.TextChoices):

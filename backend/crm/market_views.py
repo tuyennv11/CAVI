@@ -63,6 +63,40 @@ class CostQuoteViewSet(MarketScope, mixins.CreateModelMixin, mixins.ListModelMix
             old.save(update_fields=["active"])
         serializer.save(created_by=self.request.user, delivery_snapshot=delivery_address(item))
 
+    @action(detail=True, methods=["post"], url_path="bid-goods")
+    @transaction.atomic
+    def bid_goods(self, request, pk=None):
+        self.require_supply()
+        source = self.get_object()
+        PriceRequestItem.objects.select_for_update().get(pk=source.price_request_item_id)
+        source.refresh_from_db()
+        if not live(source):
+            raise ValidationError("Phương án đã hết hiệu lực hoặc đã rút.")
+        if source.delivery_snapshot != delivery_address(source.price_request_item):
+            raise ValidationError("Điểm giao đã thay đổi. Hãy tạo phương án mới.")
+        prices = request.data.get("prices")
+        rows = list(source.items.all())
+        if not isinstance(prices, list) or len(prices) != len(rows):
+            raise ValidationError("Cần đơn giá cho từng mặt hàng trong phương án.")
+        data = {name: getattr(source, name) for name in [
+            "street_address", "available_at", "tax_basis", "payment_terms", "delivery_terms"]}
+        data.update({name: getattr(source, name + "_id") for name in ["country", "province", "district", "ward"]})
+        data.update(price_request_item=source.price_request_item_id,
+                    supplier_name=request.data.get("supplier_name", ""),
+                    confirmed=request.data.get("confirmed", False),
+                    valid_until=request.data.get("valid_until"),
+                    shipping_rate=None, carrier_name="",
+                    note="Báo giá hàng cùng phương án #" + str(source.id),
+                    items=[{**{name: getattr(row, name) for name in [
+                        "item_name", "quantity", "unit", "unit_length_cm", "unit_width_cm", "unit_height_cm", "unit_weight_kg"]},
+                        "unit_cost": price} for row, price in zip(rows, prices)])
+        if any(price is None or price == "" for price in prices):
+            raise ValidationError("Nhập đủ đơn giá hàng.")
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(created_by=request.user, delivery_snapshot=source.delivery_snapshot, based_on_id=source.based_on_id or source.id)
+        return Response(serializer.data, status=201)
+
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def withdraw(self, request, pk=None):
