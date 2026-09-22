@@ -604,16 +604,15 @@ export default function CostQuoteBoard() {
                                 </div>
                               </div>
 
-                              <textarea
-                                rows={1}
-                                placeholder="Mô tả thêm (không bắt buộc)"
-                                style={{ display: "block", width: "100%", marginTop: 6, resize: "vertical" }}
-                                value={form.note}
-                                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                              />
-
-                              <div className="modal-actions" style={{ marginTop: 8 }}>
-                                <button type="submit" disabled={saving}>
+                              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 6 }}>
+                                <textarea
+                                  rows={1}
+                                  placeholder="Mô tả thêm (không bắt buộc)"
+                                  style={{ flex: 1, resize: "vertical" }}
+                                  value={form.note}
+                                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                                />
+                                <button type="submit" disabled={saving} style={{ flexShrink: 0 }}>
                                   {saving ? "Đang lưu..." : "Lưu trả lời"}
                                 </button>
                               </div>
