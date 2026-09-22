@@ -43,7 +43,6 @@ export default function CostQuoteBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(onlyItemId ? Number(onlyItemId) : null);
-  const [showFormFor, setShowFormFor] = useState(null);
   const [form, setForm] = useState(emptyQuoteForm());
   const [saving, setSaving] = useState(false);
 
@@ -71,11 +70,7 @@ export default function CostQuoteBoard() {
     return user?.is_manager || user?.is_supply;
   }
 
-  function toggleForm(item) {
-    if (showFormFor === item.id) {
-      setShowFormFor(null);
-      return;
-    }
+  function prefillForm(item) {
     // Mặt hàng/Số lượng/ĐVT lấy sẵn từ dòng Yêu cầu giá gốc — Cung ứng vẫn sửa được, và có thể
     // thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng).
     setForm({
@@ -89,7 +84,15 @@ export default function CostQuoteBoard() {
         },
       ],
     });
-    setShowFormFor(item.id);
+  }
+
+  function toggleExpanded(item) {
+    if (expandedId === item.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(item.id);
+    if (canSupply()) prefillForm(item);
   }
 
   function updateItemRow(index, field, value) {
@@ -107,7 +110,7 @@ export default function CostQuoteBoard() {
     setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
   }
 
-  async function handleAddQuote(e, itemId) {
+  async function handleAddQuote(e, item) {
     e.preventDefault();
     setError("");
     setSaving(true);
@@ -115,7 +118,7 @@ export default function CostQuoteBoard() {
       await apiFetch("/api/cost-quotes/", {
         method: "POST",
         body: JSON.stringify({
-          price_request_item: itemId,
+          price_request_item: item.id,
           country: form.country || null,
           province: form.province || null,
           district: form.district || null,
@@ -136,8 +139,7 @@ export default function CostQuoteBoard() {
           })),
         }),
       });
-      setForm(emptyQuoteForm());
-      setShowFormFor(null);
+      prefillForm(item);
       load();
     } catch (err) {
       setError(err.message);
@@ -184,7 +186,7 @@ export default function CostQuoteBoard() {
                 const isExpanded = expandedId === item.id;
                 return (
                   <Fragment key={item.id}>
-                    <tr className="clickable" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
+                    <tr className="clickable" onClick={() => toggleExpanded(item)}>
                       <td>{item.price_request_code}</td>
                       <td className="ellipsis-cell" title={item.customer_name}>
                         {item.customer_name}
@@ -262,21 +264,8 @@ export default function CostQuoteBoard() {
                           )}
 
                           {canSupply() && (
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleForm(item);
-                              }}
-                            >
-                              {showFormFor === item.id ? "Đóng" : "+ Trả lời"}
-                            </button>
-                          )}
-
-                          {showFormFor === item.id && (
                             <form
-                              onSubmit={(e) => handleAddQuote(e, item.id)}
+                              onSubmit={(e) => handleAddQuote(e, item)}
                               onClick={(e) => e.stopPropagation()}
                               style={{ marginTop: 12 }}
                             >
