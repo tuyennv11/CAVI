@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {offersFor,isBestOffer} from './sourcingMarket.js';
+const quote=(id,goods,shipping,issues=[],key='same')=>({id,available_at:'2026-09-23',delivery_terms:'2 days',market:{goods_total:goods,shipping_total:shipping,issues,comparison_key:key},freight_offers:[]});
+for(const value of [null,undefined,'']) assert.equal(offersFor(quote(1,100,value))[0].total,null);
+assert.equal(offersFor(quote(1,100,0))[0].total,100);
+assert.equal(offersFor(quote(1,'2160000','300090000'))[0].total,302250000);
+const a=offersFor(quote(1,100,20))[0], b=offersFor(quote(2,100,30))[0];
+assert.equal(isBestOffer(a,[a,b]),true);
+assert.equal(isBestOffer(a,[a]),false);
+assert.equal(isBestOffer(a,[a,{...b,group:'different'}]),false);
+assert.equal(isBestOffer({...a,issues:['tax']},[a,b]),false);
+const q=quote(3,100,20); q.freight_offers=[{id:5,is_live:true,total_cost:10,issues:[],terms:'same',delivery_days:2},{id:6,is_live:false,total_cost:1}];
+assert.equal(offersFor(q).length,2);assert.equal(offersFor(q)[1].quote.id,3);assert.equal(offersFor(q)[1].total,110);
+console.log('Sourcing market arithmetic and comparable-price checks passed');

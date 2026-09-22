@@ -6,19 +6,13 @@ import { formatMoney } from "../constants";
 import QuoteTerms from "../components/QuoteTerms";
 import MoneyInput from "../components/MoneyInput";
 import SavedCostQuote from "../components/SavedCostQuote";
+import { offersFor, isBestOffer } from "../utils/sourcingMarket";
+import "./SupplierQuoteBoard.css";
 import LegacySupplierQuoteBoard from "./LegacySupplierQuoteBoard";
 
 const weight = (kg) => kg >= 1000 ? (kg / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 3 }) + " tấn" : kg.toLocaleString("vi-VN") + " kg";
 const money = (value) => value === null || value === undefined ? "Chưa đủ giá" : formatMoney(value);
 const dateTime = (value) => new Date(value).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-function offersFor(quote) {
-  const base = { quote, goods: quote.market.goods_total };
-  return [{ ...base, freight: null, key: "q" + quote.id, shipping: quote.market.shipping_total, issues: quote.market.issues },
-    ...(quote.freight_offers || []).filter((freight) => freight.is_live).map((freight) => ({ ...base, freight, key: "f" + freight.id, shipping: freight.total_cost, issues: freight.issues }))]
-    .map((offer) => ({ ...offer, total: offer.goods !== null && offer.shipping !== null ? Number(offer.goods) + Number(offer.shipping) : null,
-      group: quote.market.comparison_key ? quote.market.comparison_key + "|" + (quote.available_at || "") + "|" + (offer.freight ? offer.freight.terms + "|" + offer.freight.delivery_days : quote.delivery_terms) : null }));
-}
-
 function FreightForm({ quote, revision, onClose, onSaved }) {
   const [form, setForm] = useState({ carrier_name: "", rate: "", basis: "total", confirmed: false, valid_until: "", tax_basis: "unknown", terms: "", delivery_days: "", ...revision });
   const [saving, setSaving] = useState(false);
@@ -38,54 +32,59 @@ function FreightForm({ quote, revision, onClose, onSaved }) {
 }
 
 export function MarketItem({ item, user, run, busy, reload }) {
-  const [detailsQuote, setDetailsQuote] = useState(null);
+  const [sourceId, setSourceId] = useState(() => (item.cost_quotes || []).find((q) => q.market.is_live)?.id ?? "");
+  const [offerKey, setOfferKey] = useState(() => { const q = (item.cost_quotes || []).find((q) => q.market.is_live); return q ? "q" + q.id : ""; });
+  const [tab, setTab] = useState("goods");
+  const [sort, setSort] = useState("newest");
+  const [details, setDetails] = useState(false);
   const [freightFor, setFreightFor] = useState(null);
   const [revision, setRevision] = useState(null);
-  const [candidate, setCandidate] = useState("");
   const [reason, setReason] = useState("");
   const supply = user?.is_manager || user?.is_supply;
   const quotes = item.cost_quotes || [];
-  const liveQuotes = quotes.filter((q) => q.market.is_live);
-  const offers = liveQuotes.flatMap(offersFor);
-  const ready = offers.filter((o) => o.issues.length === 0 && o.total !== null);
-  const selected = offers.find((o) => o.key === candidate);
+  const live = quotes.filter((q) => q.market.is_live);
+  const allOffers = live.flatMap(offersFor);
+  const source = sourceId === null ? live[0] : live.find((q) => q.id === sourceId);
+  const offers = source ? offersFor(source) : [];
+  const selected = offerKey === null ? offers[0] : offers.find((o) => o.key === offerKey);
   const plans = item.sourcing_plans || [];
   const approved = plans.find((p) => p.status === "approved");
-  const status = approved ? "Đã chốt" : plans.some((p) => p.status === "proposed") ? "Chờ duyệt" : quotes.length > 1 ? "Đang so sánh" : "Đang tìm giá";
-  const lowestGoods = (q) => {
-    const peers = liveQuotes.filter((p) => p.confirmed && p.valid_until && p.market.comparison_key && p.market.comparison_key === q.market.comparison_key);
-    return q.confirmed && q.valid_until && q.market.is_live && peers.length > 1 && peers.every((p) => Number(p.market.goods_total) >= Number(q.market.goods_total));
-  };
-  const lowestFreight = (offer) => {
-    const peers = ready.filter((p) => p.quote.id === offer.quote.id && p.group === offer.group);
-    return !offer.issues.length && peers.length > 1 && peers.every((p) => Number(p.shipping) >= Number(offer.shipping));
-  };
+  const ready = allOffers.filter((o) => !o.issues.length && o.total !== null);
   const owner = (q) => supply && (user?.is_manager || q.created_by === user?.id);
-  const best = (offer) => { const group = ready.filter((o) => o.group && o.group === offer.group); return group.length > 1 && group.every((o) => o.total >= offer.total) && !offer.issues.length; };
-  async function propose(e) { e.preventDefault(); if (!selected) return; const ok = await run("/api/sourcing-plans/", { price_request_item: item.id, goods_quote: selected.quote.id, freight_offer: selected.freight?.id || null, reason }); if (ok) { setCandidate(""); setReason(""); } }
-  return <section className="panel market-request">
-    <div className="market-toolbar"><div><strong>{item.price_request_code} · {item.product_name || item.item_name}</strong><div className="muted">{item.customer_name} · Cần {item.quantity || "—"} {item.unit} · {quotes.length} giá hàng</div></div><span className={approved ? "badge badge-done" : "badge"}>{status}</span></div>
-    <p className="market-destination"><b>Điểm giao:</b> {item.price_request_delivery_address || "Chưa có địa chỉ"}</p>
-    {approved && <div className="market-approved"><b>Đã chốt: {approved.snapshot.supplier} + {approved.snapshot.carrier}</b><span>{money(approved.snapshot.landed_total)} · Duyệt bởi {approved.reviewed_by_name}</span><small>{approved.snapshot.pickup} → {approved.snapshot.delivery}</small></div>}
-    <div className="market-toolbar"><h3>Hàng hóa</h3>{supply && <Link className="market-add" to={"/cost-quotes?price_request_item=" + item.id + "&new=1"}>+ Báo giá hàng hóa</Link>}</div>
-    {quotes.length === 0 ? <p className="muted">Chưa có nguồn hàng. Cung ứng có thể gửi giá đầu tiên.</p> : <div className="table-wrap"><table className="data-table market-table"><thead><tr><th>Nguồn hàng / Người báo</th><th>Tiền hàng</th><th>Xác nhận / Hiệu lực</th><th>Điểm nhận</th><th>Thao tác</th></tr></thead><tbody>{quotes.map((q) => <tr key={q.id} className={!q.market.is_live ? "market-inactive" : ""}>
-      <td><b>{q.supplier_name || "Chưa rõ NCC"}</b><small>#{q.id} · {q.created_by_name} · {dateTime(q.created_at)}</small>{Date.now() - new Date(q.created_at).getTime() < 86400000 && <span className="badge">Mới · 24 giờ</span>}{q.supersedes && <small>Thay giá #{q.supersedes}</small>}</td>
-      <td><b>{money(q.market.goods_total)}</b>{lowestGoods(q) && <small className="market-best">Tiền hàng thấp nhất nhóm</small>}<small>{q.tax_basis === "included" ? "Đã gồm thuế" : q.tax_basis === "excluded" ? "Chưa gồm thuế" : "Chưa rõ thuế"}</small></td>
-      <td>{!q.market.is_live ? "Đã rút / hết hiệu lực" : q.confirmed ? "NCC xác nhận" : "Tham khảo"}<small>Đến {q.valid_until || "chưa xác định"}</small></td>
-      <td>{q.street_address || "Chưa khai báo"}</td>
-      <td><div className="market-actions">{supply && q.market.is_live && <button className="secondary" type="button" onClick={() => { setFreightFor(q); setRevision(null); }}>+ Báo cước</button>}{owner(q) && q.market.is_live && approved?.goods_quote !== q.id && <><Link to={"/cost-quotes?price_request_item=" + item.id + "&revise=" + q.id}>Cập nhật giá</Link><button disabled={busy} className="link-btn" onClick={() => run("/api/cost-quotes/" + q.id + "/withdraw/", {})}>Rút giá</button></>}</div><button className="link-btn" onClick={() => setDetailsQuote(detailsQuote === q.id ? null : q.id)}>Chi tiết</button></td>
-    </tr>)}</tbody></table></div>}
-    {detailsQuote && quotes.filter((q) => q.id === detailsQuote).map((q) => <SavedCostQuote key={q.id} quote={q} index={quotes.indexOf(q)} formatWeight={weight} deliveryAddress={q.delivery_snapshot || item.price_request_delivery_address} />)}
-    <div className="market-toolbar"><h3>Vận chuyển & Tổng chi phí</h3><span className="muted">Cước gắn đúng nguồn hàng · Giá đã gồm thuế mới đủ điều kiện chốt</span></div>
-    {offers.length > 0 && <div className="table-wrap"><table className="data-table market-table"><thead><tr><th>Nguồn hàng → Đơn vị vận chuyển</th><th>Cước</th><th>Tổng về điểm giao</th><th>Đánh giá / Thao tác</th></tr></thead><tbody>{offers.map((o) => <tr key={o.key}>
-      <td><b>#{o.quote.id} {o.quote.supplier_name || "Nguồn hàng"}</b><small>→ {o.freight?.carrier_name || o.quote.carrier_name || "Chưa có nhà vận chuyển"}</small><small>{o.freight ? "Cước #" + o.freight.id + " · " + o.freight.created_by_name : "Cước kèm báo giá hàng"}</small></td>
-      <td>{money(o.shipping)}{lowestFreight(o) && <small className="market-best">Cước thấp nhất cùng nguồn</small>}</td><td><b>{money(o.total)}</b>{best(o) && <small className="market-best">Thấp nhất nhóm tương đương</small>}</td>
-      <td>{o.issues.length ? <details><summary>Chưa đủ điều kiện ({o.issues.length})</summary><ul>{o.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></details> : <span className="badge badge-done">Đủ thông tin</span>}{o.freight && owner(o.freight) && approved?.freight_offer !== o.freight.id && <div className="market-actions"><button className="link-btn" onClick={() => { setFreightFor(o.quote); setRevision(o.freight); }}>Cập nhật cước</button><button disabled={busy} className="link-btn" onClick={() => run("/api/freight-offers/" + o.freight.id + "/withdraw/", {})}>Rút cước</button></div>}</td>
-    </tr>)}</tbody></table></div>}
-    {quotes.some((q) => q.freight_offers?.some((f) => !f.is_live)) && <details className="market-history"><summary>Lịch sử cước đã rút / hết hiệu lực</summary>{quotes.flatMap((q) => (q.freight_offers || []).filter((f) => !f.is_live).map((f) => <p key={f.id}>Nguồn #{q.id} · Cước #{f.id} · {f.carrier_name} · {money(f.total_cost)} · {f.created_by_name} · {dateTime(f.created_at)}</p>))}</details>}
+  const choose = (q) => { setSourceId(q.id); setOfferKey("q" + q.id); setReason(""); setDetails(false); setFreightFor(null); };
+  const sorted = [...live].sort((a, b) => sort === "price" ? (a.market.goods_total == null ? Infinity : Number(a.market.goods_total)) - (b.market.goods_total == null ? Infinity : Number(b.market.goods_total)) : new Date(b.created_at) - new Date(a.created_at));
+  async function propose(e) {
+    e.preventDefault();
+    if (!selected || selected.issues.length || selected.total === null || approved || !reason.trim()) return;
+    if (await run("/api/sourcing-plans/", { price_request_item: item.id, goods_quote: selected.quote.id, freight_offer: selected.freight?.id || null, reason })) { setReason(""); setTab("history"); }
+  }
+  return <section className="exchange-workspace">
+    <header className="exchange-heading"><div><span className="exchange-eyebrow">{item.price_request_code} · {item.customer_name}</span><h2>{item.product_name || item.item_name || "Yêu cầu giá"}</h2><p>Cần {Number(item.quantity || 0).toLocaleString("vi-VN")} {item.unit}</p></div><span className={"exchange-status " + (approved ? "good" : "")}>{approved ? "Đã chốt" : plans.some((p) => p.status === "proposed") ? "Chờ quản lý duyệt" : "Đang tìm giá"}</span></header>
+    <div className="exchange-delivery"><span>ĐIỂM GIAO</span>{item.price_request_delivery_address || "Chưa khai báo điểm giao"}</div>
+    <div className="exchange-stats"><div><strong>{live.length}</strong><span>Nguồn đang chào</span></div><div><strong>{allOffers.filter((o) => o.shipping != null).length}</strong><span>Giá vận chuyển</span></div><div><strong>{ready.length}</strong><span>Phương án đủ thông tin</span></div></div>
+    {approved && <div className="exchange-approved"><b>Đã chốt · {money(approved.snapshot.landed_total)}</b><span>{approved.snapshot.supplier} → {approved.snapshot.carrier} · Duyệt bởi {approved.reviewed_by_name}</span></div>}
+    <div className="exchange-grid"><div className="exchange-book">
+      <div className="exchange-tabs" role="tablist" aria-label="Bảng báo giá">{[["goods","Hàng hóa",live.length],["freight","Vận chuyển",offers.filter((o) => o.shipping != null).length],["history","Lịch sử / Duyệt",plans.filter((p) => p.status === "proposed").length]].map(([key,label,count]) => <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}{count > 0 && <span>{count}</span>}</button>)}</div>
+      {tab === "goods" && <><div className="exchange-tools"><span>Chọn nguồn để so cước vận chuyển</span><select aria-label="Sắp xếp nguồn hàng" value={sort} onChange={(e) => setSort(e.target.value)}><option value="newest">Mới nhất</option><option value="price">Tiền hàng tăng dần</option></select></div>
+        <div className="exchange-table-scroll"><table className="exchange-table"><thead><tr><th>Nguồn hàng</th><th className="numeric">Tiền hàng</th><th>Hiệu lực</th><th></th></tr></thead><tbody>{sorted.map((q) => <tr key={q.id} className={source?.id === q.id ? "selected" : ""}><td><b>{q.supplier_name || "Chưa rõ NCC"}</b><small>#{q.id} · {q.created_by_name}</small><small>{dateTime(q.created_at)}</small></td><td className="numeric"><strong>{money(q.market.goods_total)}</strong><small>{q.tax_basis === "included" ? "Đã gồm thuế" : q.tax_basis === "excluded" ? "Chưa gồm thuế" : "Chưa rõ thuế"}</small></td><td><span className={"exchange-status " + (q.confirmed ? "good" : "warn")}>{q.confirmed ? "Đã xác nhận" : "Tham khảo"}</span><small>{q.valid_until ? "Đến " + q.valid_until : "Chưa có hạn giá"}</small></td><td><button className="exchange-select" aria-pressed={source?.id === q.id} onClick={() => choose(q)}>{source?.id === q.id ? "Đang chọn" : "Chọn"}</button></td></tr>)}</tbody></table></div>
+        {!live.length && <div className="exchange-empty">Chưa có nguồn hàng đang chào.<br/>Thêm báo giá đầu tiên để bắt đầu so sánh.</div>}
+        {supply && <Link className="exchange-add" to={"/cost-quotes?price_request_item=" + item.id + "&new=1"}>+ Báo giá hàng hóa</Link>}
+      </>}
+      {tab === "freight" && <><div className="exchange-tools"><span>Nguồn #{source?.id || "—"} · {source?.supplier_name || "Chưa rõ NCC"}</span>{supply && source && <button className="secondary" onClick={() => { setFreightFor(source); setRevision(null); }}>+ Báo cước</button>}</div><div className="exchange-table-scroll"><table className="exchange-table"><thead><tr><th>Đơn vị vận chuyển</th><th className="numeric">Cước</th><th className="numeric">Tổng về điểm giao</th><th></th></tr></thead><tbody>{offers.map((o) => <tr key={o.key} className={selected?.key === o.key ? "selected" : ""}><td><b>{o.freight?.carrier_name || o.quote.carrier_name || "Chưa rõ đơn vị"}</b><small>{o.freight ? "Cước #" + o.freight.id + " · " + o.freight.created_by_name : "Cước kèm nguồn hàng"}</small><small>{o.issues.length ? "Cần bổ sung " + o.issues.length + " mục" : "Đủ thông tin"}</small></td><td className="numeric">{money(o.shipping)}</td><td className="numeric"><strong>{money(o.total)}</strong>{isBestOffer(o, allOffers) && <small className="exchange-best">Thấp nhất nhóm tương đương</small>}</td><td><button className="exchange-select" aria-pressed={selected?.key === o.key} onClick={() => { setOfferKey(o.key); setReason(""); }}>{selected?.key === o.key ? "Đang chọn" : "Chọn"}</button></td></tr>)}</tbody></table></div>{!source && <div className="exchange-empty">Chọn một nguồn hàng còn hiệu lực để xem cước.</div>}</>}
+      {tab === "history" && <div className="exchange-history"><h3>Đề xuất & quyết định</h3>{!plans.length && <p className="muted">Chưa có đề xuất gửi quản lý.</p>}{plans.map((p) => <article key={p.id}><div className="market-toolbar"><b>{p.snapshot.supplier} + {p.snapshot.carrier}</b><strong>{money(p.snapshot.landed_total)}</strong></div><p>{p.reason}</p><small>{p.created_by_name} · {dateTime(p.created_at)} · {p.status === "approved" ? "Đã chốt" : p.status === "rejected" ? "Không chọn" : "Chờ duyệt"}</small>{user?.is_manager && p.status === "proposed" && <div className="market-actions"><button disabled={busy} onClick={() => run("/api/sourcing-plans/" + p.id + "/approve/", {})}>Duyệt chốt</button><button className="secondary" disabled={busy} onClick={() => run("/api/sourcing-plans/" + p.id + "/reject/", {})}>Không chọn</button></div>}</article>)}<h3>Giá đã rút / hết hiệu lực</h3>{!quotes.some((q) => !q.market.is_live || q.freight_offers?.some((f) => !f.is_live)) && <p className="muted">Chưa có lịch sử thay đổi giá.</p>}{quotes.map((q) => <div key={q.id}>{!q.market.is_live && <details><summary>Hàng #{q.id} · {q.supplier_name || "Chưa rõ NCC"} · {money(q.market.goods_total)}</summary><SavedCostQuote quote={q} index={quotes.indexOf(q)} formatWeight={weight} deliveryAddress={q.delivery_snapshot || item.price_request_delivery_address} /></details>}{(q.freight_offers || []).filter((f) => !f.is_live).map((f) => <p key={f.id}>Cước #{f.id} · Nguồn #{q.id} · {f.carrier_name} · {money(f.total_cost)}<small>{f.created_by_name} · {dateTime(f.created_at)}</small></p>)}</div>)}</div>}
+    </div>
+    <aside className="exchange-ticket"><div className="exchange-ticket-title"><span>PHƯƠNG ÁN ĐANG XEM</span><span>VND</span></div>{selected ? <>
+      <h3>{source.supplier_name || "Chưa rõ NCC"}</h3><p className="exchange-carrier">→ {selected.freight?.carrier_name || source.carrier_name || "Chưa có đơn vị vận chuyển"}</p>
+      <dl className="exchange-breakdown"><div><dt>Tiền hàng</dt><dd>{money(selected.goods)}</dd></div><div><dt>Vận chuyển</dt><dd>{money(selected.shipping)}</dd></div></dl>
+      <div className="exchange-total"><span>{selected.issues.length ? "TỔNG TẠM TÍNH" : "TỔNG VỀ ĐIỂM GIAO"}</span><strong>{money(selected.total)}</strong>{isBestOffer(selected, allOffers) && <small>Thấp nhất trong nhóm cùng điều kiện</small>}</div>
+      <div className="exchange-route"><span>Điểm nhận</span><p>{[source.street_address, source.ward_name, source.district_name, source.province_name, source.country_name].filter(Boolean).join(", ") || "Chưa khai báo"}</p><span>Điểm giao</span><p>{source.delivery_snapshot || item.price_request_delivery_address || "Chưa khai báo"}</p></div>
+      <div className="exchange-route"><span>Điều kiện nguồn hàng</span><p>Có hàng: {source.available_at || "Chưa rõ"} · {source.payment_terms || "Chưa rõ thanh toán"}</p><p>{source.delivery_terms || "Chưa rõ điều kiện giao"}</p>{selected.freight && <><span>Điều kiện vận chuyển</span><p>{selected.freight.terms || "Chưa khai báo"} · {selected.freight.delivery_days == null ? "Chưa rõ thời gian" : selected.freight.delivery_days + " ngày"}</p></>}</div><button className="exchange-detail" onClick={() => setDetails(!details)}>{details ? "Ẩn" : "Xem"} chi tiết hàng hóa & điều kiện</button>
+      {selected.issues.length ? <div className="exchange-checklist"><b>Cần bổ sung {selected.issues.length} mục</b><ul>{selected.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : <p className="exchange-ready">✓ Đủ thông tin để gửi duyệt</p>}
+      <div className="exchange-ticket-actions">{supply && <button className="secondary" onClick={() => { setFreightFor(source); setRevision(null); }}>+ Báo cước cho nguồn này</button>}{owner(source) && approved?.goods_quote !== source.id && <div><Link to={"/cost-quotes?price_request_item=" + item.id + "&revise=" + source.id}>Cập nhật giá hàng</Link><button disabled={busy} className="link-btn" onClick={() => run("/api/cost-quotes/" + source.id + "/withdraw/", {})}>Rút giá</button></div>}{selected.freight && owner(selected.freight) && approved?.freight_offer !== selected.freight.id && <div><button className="link-btn" onClick={() => { setFreightFor(source); setRevision(selected.freight); }}>Cập nhật cước</button><button disabled={busy} className="link-btn" onClick={() => run("/api/freight-offers/" + selected.freight.id + "/withdraw/", {})}>Rút cước</button></div>}</div>
+      {!approved && <form className="exchange-propose" onSubmit={propose}><label>Lý do chọn<textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Giá, chất lượng, thời gian giao…" required /></label><button disabled={busy || !!selected.issues.length || selected.total === null || !reason.trim()}>Gửi quản lý duyệt</button></form>}
+    </> : <div className="exchange-empty">{sourceId !== null || offerKey !== null ? "Giá đã chọn không còn hiệu lực. Hãy chọn lại nguồn hàng hoặc cước trong bảng." : "Chọn nguồn hàng và cước để xem chi phí, điều kiện và gửi quản lý duyệt."}</div>}</aside></div>
+    {details && source && <div className="exchange-expanded"><SavedCostQuote quote={source} index={quotes.indexOf(source)} formatWeight={weight} deliveryAddress={source.delivery_snapshot || item.price_request_delivery_address} /></div>}
     {freightFor && <FreightForm key={freightFor.id + "-" + (revision?.id || "new")} quote={freightFor} revision={revision} onClose={() => setFreightFor(null)} onSaved={() => { setFreightFor(null); reload(); }} />}
-    {!approved && ready.length > 0 && <form className="market-propose" onSubmit={propose}><h3>Đề xuất phương án</h3><label>Hàng hóa + vận chuyển<select required value={candidate} onChange={(e) => setCandidate(e.target.value)}><option value="">Chọn phương án đủ thông tin</option>{ready.map((o) => <option key={o.key} value={o.key}>#{o.quote.id} {o.quote.supplier_name} + {o.freight?.carrier_name || o.quote.carrier_name} · {money(o.total)}</option>)}</select></label><label>Lý do chọn<input required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Giá, chất lượng, tiến độ, điều kiện…" /></label><button disabled={busy || !selected}>Gửi quản lý duyệt</button></form>}
-    {plans.length > 0 && <div className="market-plans"><h3>Đề xuất & Lịch sử chốt</h3>{plans.map((p) => <div key={p.id} className="market-plan"><div><b>{p.snapshot.supplier} + {p.snapshot.carrier} · {money(p.snapshot.landed_total)}</b><p>{p.reason}</p><small>{p.created_by_name} · {dateTime(p.created_at)} · {p.status === "approved" ? "Đã chốt" : p.status === "rejected" ? "Không chọn" : "Chờ duyệt"}</small></div>{user?.is_manager && p.status === "proposed" && <div className="market-actions"><button disabled={busy} onClick={() => run("/api/sourcing-plans/" + p.id + "/approve/", {})}>Duyệt chốt</button><button disabled={busy} className="secondary" onClick={() => run("/api/sourcing-plans/" + p.id + "/reject/", {})}>Không chọn</button></div>}</div>)}</div>}
   </section>;
 }
 
@@ -94,17 +93,17 @@ export default function SupplierQuoteBoard() {
   const legacy = params.has("purchase_request_item") || params.get("tab") === "purchase";
   const focus = params.get("price_request_item");
   const [items, setItems] = useState([]), [error, setError] = useState(""), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [search, setSearch] = useState("");
+  const [updated, setUpdated] = useState(null);
   const load = useCallback(async () => { try {
-    let path = "/api/price-inquiry-items/" + (focus ? "?id=" + encodeURIComponent(focus) : ""), rows = [];
+    let path = "/api/price-inquiry-items/", rows = [];
     while (path) { const data = await apiFetch(path); rows = rows.concat(data.results ?? data); path = data.next ? new URL(data.next, window.location.origin).pathname + new URL(data.next, window.location.origin).search : null; }
-    setItems(rows); setError("");
-  } catch (err) { setError(err.message); } finally { setLoading(false); } }, [focus]);
+    setItems(rows); setUpdated(new Date());
+  } catch (err) { setError(err.message); } finally { setLoading(false); } }, []);
   useEffect(() => { if (legacy) return; load(); const timer = setInterval(load, 30000); return () => clearInterval(timer); }, [load, legacy]);
   async function run(path, body) { setBusy(true); setError(""); try { await apiFetch(path, { method: "POST", body: JSON.stringify(body) }); await load(); return true; } catch (err) { setError(err.message); return false; } finally { setBusy(false); } }
-  return <div><div className="market-tabs"><button className={legacy ? "secondary" : ""} onClick={() => setParams({})}>Theo Yêu cầu giá</button><button className={legacy ? "" : "secondary"} onClick={() => setParams({ tab: "purchase" })}>Theo Đề nghị mua (cũ)</button></div>{legacy ? <LegacySupplierQuoteBoard /> : <>
-    <div className="page-head"><div><h1>Sàn báo giá NCC</h1><div className="page-head-sub">Chung nguồn hàng, cạnh tranh giá và vận chuyển. Cung ứng đề xuất · Quản lý chốt.</div></div><button className="secondary" onClick={load}>Làm mới</button></div>
-    <input className="market-search" placeholder="Tìm mã yêu cầu, khách hàng, mặt hàng…" value={search} onChange={(e) => setSearch(e.target.value)} />
-    {error && <p className="error" role="alert">{error}</p>}{loading ? <p>Đang tải…</p> : items.filter((item) => [item.price_request_code, item.customer_name, item.product_name, item.item_name].join(" ").toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((item) => <details className="market-request-disclosure" key={item.id} open={focus || items.length === 1 ? true : undefined}><summary><b>{item.price_request_code} · {item.product_name || item.item_name || "Chưa có tên hàng"}</b><span>{item.customer_name} · {item.cost_quotes.length} giá hàng · {item.sourcing_plans.some((p) => p.status === "approved") ? "Đã chốt" : item.sourcing_plans.some((p) => p.status === "proposed") ? "Chờ duyệt" : item.cost_quotes.length > 1 ? "Đang so sánh" : "Đang tìm giá"}</span></summary><MarketItem item={item} user={user} run={run} busy={busy} reload={load} /></details>)}
-    {!loading && items.length === 0 && <p className="muted">Chưa có Yêu cầu giá.</p>}
+  const visible = items.filter((i) => [i.price_request_code,i.customer_name,i.product_name,i.item_name].join(" ").toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+  const active = focus ? items.find((i) => String(i.id) === focus) : visible[0];
+  return <div className="exchange-page"><div className="exchange-page-head"><div><h1>Sàn báo giá NCC</h1><p>Cùng nguồn hàng · So giá vận chuyển · Quản lý chốt</p></div><div className="exchange-page-controls"><select aria-label="Loại sàn" value={legacy ? "purchase" : "inquiry"} onChange={(e) => setParams(e.target.value === "purchase" ? { tab:"purchase" } : {})}><option value="inquiry">Theo yêu cầu giá</option><option value="purchase">Đề nghị mua (cũ)</option></select><button className="secondary" onClick={() => { setError(""); load(); }}>Làm mới</button></div></div>{legacy ? <LegacySupplierQuoteBoard /> : <>
+    {error && <p className="error" role="alert">{error}</p>}<div className="exchange-shell"><nav className="exchange-watchlist" aria-label="Danh sách yêu cầu giá"><div className="exchange-watchlist-title">YÊU CẦU GIÁ <span>{items.length}</span></div><input aria-label="Tìm yêu cầu" placeholder="Tìm mã, hàng, khách hàng…" value={search} onChange={(e) => setSearch(e.target.value)} /><div className="exchange-watchlist-items">{visible.map((i) => <button key={i.id} className={active?.id === i.id ? "active" : ""} aria-current={active?.id === i.id ? "true" : undefined} onClick={() => setParams({ price_request_item:String(i.id) })}><span>{i.price_request_code}<small>{i.sourcing_plans?.some((p) => p.status === "approved") ? "Đã chốt" : "Đang mở"}</small></span><b>{i.product_name || i.item_name || "Chưa có tên hàng"}</b><small>{i.customer_name} · {(i.cost_quotes || []).filter((q) => q.market.is_live).length} nguồn</small></button>)}</div>{!visible.length && <p className="exchange-empty">{loading ? "Đang tải…" : "Không có yêu cầu phù hợp."}</p>}<div className="exchange-updated">Cập nhật mỗi 30 giây{updated && <small>Lần cuối {updated.toLocaleTimeString("vi-VN")}</small>}</div></nav><div className="exchange-content">{active ? <MarketItem key={active.id} item={active} user={user} run={run} busy={busy} reload={load} /> : <div className="exchange-empty">{loading ? "Đang tải bảng giá…" : "Chọn một yêu cầu trong danh sách để xem báo giá."}</div>}</div></div>
   </>}</div>;
 }
