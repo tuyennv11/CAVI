@@ -322,96 +322,97 @@ export default function CostQuoteBoard() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "18px 20px" }}>
-                          <div className="cost-section-label">Câu trả lời đã có</div>
+                        <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "12px 16px" }}>
                           {quotes.length === 0 ? (
-                            <p className="muted" style={{ margin: 0 }}>
+                            <p className="muted" style={{ margin: "0 0 4px" }}>
                               Chưa có câu trả lời nào.
                             </p>
                           ) : (
-                            quotes.map((q) => {
-                              const address = [
-                                q.street_address, q.ward_name, q.district_name, q.province_name, q.country_name,
-                              ]
-                                .filter(Boolean)
-                                .join(", ");
-                              return (
-                                <div key={q.id} className="cost-quote-card">
-                                  {(q.items || []).map((it) => {
-                                    const kind = unitKind(it.unit);
-                                    const dims = [it.unit_length_cm, it.unit_width_cm, it.unit_height_cm]
-                                      .filter((v) => v !== null && v !== undefined)
-                                      .join(" × ");
-                                    return (
-                                      <div key={it.id} className="cost-quote-item">
-                                        <b>{it.item_name || "—"}</b>
-                                        <span>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</span>
-                                        {it.unit_cost && <span>Giá vốn/đv: {formatMoney(it.unit_cost)}</span>}
-                                        {kind !== "volume" && dims && <span>KT/đv: {dims} cm</span>}
-                                        {kind !== "weight" && it.unit_weight_kg && <span>TL/đv: {it.unit_weight_kg} kg</span>}
-                                        {it.total_cost && (
-                                          <span className="highlight">Tổng giá vốn: {formatMoney(it.total_cost)}</span>
-                                        )}
-                                        {it.total_volume_m3 && (
-                                          <span>
-                                            Tổng KT: {Number(it.total_volume_m3).toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3
-                                          </span>
-                                        )}
-                                        {it.total_weight_kg && (
-                                          <span>Tổng TL: {formatWeightDisplay(it.unit, it.quantity, Number(it.total_weight_kg))}</span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                  {(q.items || []).length > 1 &&
-                                    (() => {
-                                      const grand = sumItemTotals(
-                                        (q.items || []).map((it) => ({
-                                          totalCost: Number(it.total_cost) || 0,
-                                          totalVolumeM3: Number(it.total_volume_m3) || 0,
-                                          totalWeightKg: Number(it.total_weight_kg) || 0,
-                                        })),
-                                      );
+                            <>
+                              <div className="cost-section-label">Câu trả lời đã có</div>
+                              {quotes.map((q) => {
+                                const address = [
+                                  q.street_address, q.ward_name, q.district_name, q.province_name, q.country_name,
+                                ]
+                                  .filter(Boolean)
+                                  .join(", ");
+                                return (
+                                  <div key={q.id} className="cost-quote-card">
+                                    {(q.items || []).map((it) => {
+                                      const kind = unitKind(it.unit);
+                                      const dims = [it.unit_length_cm, it.unit_width_cm, it.unit_height_cm]
+                                        .filter((v) => v !== null && v !== undefined)
+                                        .join(" × ");
                                       return (
-                                        <div className="cost-grand-total">
-                                          <span>
-                                            Tổng giá vốn (mọi mặt hàng): <b>{grand.totalCost ? formatMoney(grand.totalCost) : "—"}</b>
-                                          </span>
-                                          <span>
-                                            Tổng kích thước:{" "}
-                                            <b>
-                                              {grand.totalVolumeM3
-                                                ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
-                                                : "—"}
-                                            </b>
-                                          </span>
-                                          <span>
-                                            Tổng trọng lượng: <b>{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</b>
-                                          </span>
+                                        <div key={it.id} className="cost-quote-item">
+                                          <b>{it.item_name || "—"}</b>
+                                          <span>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</span>
+                                          {it.unit_cost && <span>Giá vốn/đv: {formatMoney(it.unit_cost)}</span>}
+                                          {kind !== "volume" && dims && <span>KT/đv: {dims} cm</span>}
+                                          {kind !== "weight" && it.unit_weight_kg && <span>TL/đv: {it.unit_weight_kg} kg</span>}
+                                          {it.total_cost && (
+                                            <span className="highlight">Tổng giá vốn: {formatMoney(it.total_cost)}</span>
+                                          )}
+                                          {it.total_volume_m3 && (
+                                            <span>
+                                              Tổng KT: {Number(it.total_volume_m3).toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3
+                                            </span>
+                                          )}
+                                          {it.total_weight_kg && (
+                                            <span>Tổng TL: {formatWeightDisplay(it.unit, it.quantity, Number(it.total_weight_kg))}</span>
+                                          )}
                                         </div>
                                       );
-                                    })()}
-                                  <div className="cost-quote-meta">
-                                    <span>Điểm nhận hàng: {address || "—"}</span>
-                                    {q.shipping_rate && q.shipping_rate_basis !== "total" && (
-                                      <span>
-                                        Giá cước: {formatMoney(q.shipping_rate)}/{q.shipping_rate_basis}
+                                    })}
+                                    {(q.items || []).length > 1 &&
+                                      (() => {
+                                        const grand = sumItemTotals(
+                                          (q.items || []).map((it) => ({
+                                            totalCost: Number(it.total_cost) || 0,
+                                            totalVolumeM3: Number(it.total_volume_m3) || 0,
+                                            totalWeightKg: Number(it.total_weight_kg) || 0,
+                                          })),
+                                        );
+                                        return (
+                                          <div className="cost-grand-total">
+                                            <span>
+                                              Tổng giá vốn (mọi mặt hàng): <b>{grand.totalCost ? formatMoney(grand.totalCost) : "—"}</b>
+                                            </span>
+                                            <span>
+                                              Tổng kích thước:{" "}
+                                              <b>
+                                                {grand.totalVolumeM3
+                                                  ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
+                                                  : "—"}
+                                              </b>
+                                            </span>
+                                            <span>
+                                              Tổng trọng lượng: <b>{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</b>
+                                            </span>
+                                          </div>
+                                        );
+                                      })()}
+                                    <div className="cost-quote-meta">
+                                      <span>Điểm nhận hàng: {address || "—"}</span>
+                                      {q.shipping_rate && q.shipping_rate_basis !== "total" && (
+                                        <span>
+                                          Giá cước: {formatMoney(q.shipping_rate)}/{q.shipping_rate_basis}
+                                        </span>
+                                      )}
+                                      <span className="highlight">
+                                        Tổng giá vốn vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}
                                       </span>
-                                    )}
-                                    <span className="highlight">
-                                      Tổng giá vốn vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}
-                                    </span>
-                                    <span>Người trả lời: {q.created_by_name ?? "—"}</span>
-                                    {q.note && <span>{q.note}</span>}
+                                      <span>Người trả lời: {q.created_by_name ?? "—"}</span>
+                                      {q.note && <span>{q.note}</span>}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })
+                                );
+                              })}
+                            </>
                           )}
 
                           {canSupply() && (
                             <form onSubmit={(e) => handleAddQuote(e, item)} onClick={(e) => e.stopPropagation()}>
-                              <div className="cost-section-label">Trả lời mới — Mặt hàng</div>
                               <div className="cost-item-card">
                                 {form.items.map((row, i) => {
                                   const { kind } = previewTotals(row);
