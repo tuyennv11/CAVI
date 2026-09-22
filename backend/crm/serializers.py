@@ -355,11 +355,18 @@ class QuotationSerializer(serializers.ModelSerializer):
 
 
 class CostQuoteItemSerializer(serializers.ModelSerializer):
+    # 3 field dưới đây là property tính tự động trên model (không lưu DB) — luôn read-only, không
+    # cho gửi lên khi tạo/sửa (xem CostQuoteItem.total_cost/total_volume_m3/total_weight_kg).
+    total_cost = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True, allow_null=True)
+    total_volume_m3 = serializers.DecimalField(max_digits=14, decimal_places=4, read_only=True, allow_null=True)
+    total_weight_kg = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True, allow_null=True)
+
     class Meta:
         model = CostQuoteItem
         fields = [
-            "id", "item_name", "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg",
-            "total_cost", "total_dimensions", "total_weight_kg",
+            "id", "item_name", "quantity", "unit", "unit_cost",
+            "unit_length_cm", "unit_width_cm", "unit_height_cm", "unit_weight_kg",
+            "total_cost", "total_volume_m3", "total_weight_kg",
         ]
 
 

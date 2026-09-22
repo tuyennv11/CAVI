@@ -759,6 +759,14 @@ a:hover { text-decoration: underline; }
 .address-fields { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1.4fr; gap: 8px; }
 @media (max-width: 900px) { .address-fields { grid-template-columns: 1fr 1fr; } }
 
+/* ---------- Money input (số + hậu tố "đ" trong ô) ---------- */
+.money-input { position: relative; }
+.money-input input { width: 100%; padding-right: 24px; }
+.money-input-suffix {
+  position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+  font-size: 12px; color: var(--muted); pointer-events: none;
+}
+
 /* ---------- Order items / detail forms ---------- */
 .order-item-row { display: grid; grid-template-columns: 1fr 90px 140px; gap: 8px; }
 /* Nhiều nơi tự đặt gridTemplateColumns bằng inline style (vd form Yêu cầu giá có tới 6 cột, nhiều

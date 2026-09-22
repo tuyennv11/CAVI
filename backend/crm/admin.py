@@ -336,6 +336,14 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
 class CostQuoteItemInline(admin.TabularInline):
     model = CostQuoteItem
     extra = 1
+    # total_cost/total_volume_m3/total_weight_kg là property tính tự động (xem model), không phải
+    # cột lưu trong DB — hiện readonly trong inline để Quản lý xem qua Admin cũng thấy đúng số.
+    readonly_fields = ("total_cost", "total_volume_m3", "total_weight_kg")
+    fields = (
+        "item_name", "quantity", "unit", "unit_cost",
+        "unit_length_cm", "unit_width_cm", "unit_height_cm", "unit_weight_kg",
+        "total_cost", "total_volume_m3", "total_weight_kg",
+    )
 
 
 class CostQuoteResource(ExcelModelResource):

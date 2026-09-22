@@ -473,16 +473,20 @@ class CostQuoteItem(models.Model):
     """1 dòng mặt hàng trong 1 câu Trả lời yêu cầu giá (CostQuote) — dòng đầu tiên thường lấy sẵn từ
     Dòng yêu cầu giá gốc (item_name/quantity/unit), Cung ứng có thể sửa và thêm nhiều dòng khác."""
 
+    # Ngưỡng đổi đơn vị hiển thị Tổng trọng lượng: dưới ngưỡng hiện kg, từ ngưỡng trở lên hiện tấn.
+    WEIGHT_DISPLAY_THRESHOLD_KG = 1000
+
     cost_quote = models.ForeignKey(CostQuote, verbose_name="Câu trả lời", on_delete=models.CASCADE, related_name="items")
     item_name = models.CharField("Mặt hàng", max_length=255, blank=True)
     quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
     unit = models.CharField("ĐVT", max_length=50, blank=True)
     unit_cost = models.DecimalField("Giá vốn đơn vị", max_digits=14, decimal_places=2, null=True, blank=True)
-    unit_dimensions = models.CharField("Kích thước đơn vị", max_length=255, blank=True)
-    unit_weight_kg = models.DecimalField("Trọng lượng đơn vị", max_digits=10, decimal_places=2, null=True, blank=True)
-    total_cost = models.DecimalField("Tổng giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
-    total_dimensions = models.CharField("Tổng kích thước", max_length=255, blank=True)
-    total_weight_kg = models.DecimalField("Tổng trọng lượng", max_digits=10, decimal_places=2, null=True, blank=True)
+    # Kích thước/trọng lượng lưu cố định 1 đơn vị chuẩn (cm/kg) — ô nhập trên web cho chọn cm/m hoặc
+    # kg/tấn để gõ thuận tay hơn, tự quy đổi về đây trước khi lưu (xem CostQuoteBoard.jsx).
+    unit_length_cm = models.DecimalField("Dài (cm)", max_digits=10, decimal_places=2, null=True, blank=True)
+    unit_width_cm = models.DecimalField("Rộng (cm)", max_digits=10, decimal_places=2, null=True, blank=True)
+    unit_height_cm = models.DecimalField("Cao (cm)", max_digits=10, decimal_places=2, null=True, blank=True)
+    unit_weight_kg = models.DecimalField("Trọng lượng đơn vị (kg)", max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ["id"]
@@ -491,6 +495,28 @@ class CostQuoteItem(models.Model):
 
     def __str__(self):
         return f"{self.item_name} x{self.quantity}"
+
+    @property
+    def total_cost(self):
+        """Tổng giá vốn — luôn tính tự động (SL × Giá vốn đơn vị), không cho nhập tay."""
+        if self.quantity is None or self.unit_cost is None:
+            return None
+        return self.quantity * self.unit_cost
+
+    @property
+    def total_volume_m3(self):
+        """Tổng kích thước quy ra m3 — luôn tính tự động (Dài×Rộng×Cao đổi ra mét, nhân Số lượng)."""
+        if None in (self.quantity, self.unit_length_cm, self.unit_width_cm, self.unit_height_cm):
+            return None
+        unit_m3 = (self.unit_length_cm / 100) * (self.unit_width_cm / 100) * (self.unit_height_cm / 100)
+        return unit_m3 * self.quantity
+
+    @property
+    def total_weight_kg(self):
+        """Tổng trọng lượng (kg) — luôn tính tự động (SL × Trọng lượng đơn vị)."""
+        if self.quantity is None or self.unit_weight_kg is None:
+            return None
+        return self.quantity * self.unit_weight_kg
 
 
 class PurchaseRequest(models.Model):
