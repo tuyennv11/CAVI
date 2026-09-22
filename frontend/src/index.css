@@ -886,3 +886,38 @@ a:hover { text-decoration: underline; }
   .order-item-row { grid-template-columns: 1fr !important; }
 }
 .stakes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Shared sourcing market */
+.market-tabs, .market-toolbar, .market-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.market-tabs { margin-bottom:18px; }
+.market-toolbar { justify-content:space-between; margin:10px 0; }
+.market-toolbar h3, .market-propose h3, .market-plans h3 { font-size:14px; margin:0; }
+.market-terms { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px 14px; margin:12px 0; }
+.market-terms label, .market-propose label { display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted); }
+.market-wide { grid-column:span 2; }
+.market-terms input, .market-terms select, .market-propose input, .market-propose select { width:100%; min-width:0; }
+.market-search { width:100%; margin-bottom:14px; }
+.market-request-disclosure { margin-bottom:12px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); }
+.market-request-disclosure > summary { padding:14px 16px; cursor:pointer; }
+.market-request-disclosure > summary span { display:block; margin:5px 0 0 16px; color:var(--muted); font-size:12px; }
+.market-request { margin:0; border:0; box-shadow:none; }
+.market-table td { vertical-align:top; }
+.market-table small { display:block; margin-top:5px; color:var(--muted); font-size:11px; }
+.market-table details { font-size:12px; }
+.market-table summary { cursor:pointer; }
+.market-table .market-best { color:var(--primary-dark); font-weight:700; }
+.market-inactive { opacity:0.65; }
+.market-destination { color:var(--muted); font-size:12px; line-height:1.6; }
+.market-approved { display:grid; gap:6px; background:var(--primary-soft); padding:14px; border-radius:8px; }
+.market-approved span { font-weight:700; color:var(--primary-dark); }
+.market-approved small { color:var(--muted); }
+.market-add { font-size:13px; font-weight:600; }
+.market-freight-form, .market-propose { margin-top:16px; border:1px solid var(--line); padding:14px; border-radius:8px; background:var(--surface-muted); }
+.market-propose { display:grid; grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto; gap:12px; align-items:end; }
+.market-propose h3 { grid-column:1/-1; }
+.market-plan { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+.market-plan p { margin:5px 0; }
+.market-plan small, .market-history { color:var(--muted); font-size:12px; }
+.market-plans { margin-top:18px; }
+.market-history { margin-top:10px; }
+@media(max-width:700px) { .market-propose { grid-template-columns:1fr; } .market-wide { grid-column:auto; } .market-plan { flex-direction:column; align-items:flex-start; } }

@@ -20,7 +20,11 @@ from .views import (
 )
 from .workspace_views import WorkspaceKPIView, WorkspaceRankingView, WorkspaceTodayView
 
+from .market_views import FreightOfferViewSet, SourcingPlanViewSet
+
 router = DefaultRouter()
+router.register("freight-offers", FreightOfferViewSet, basename="freight-offer")
+router.register("sourcing-plans", SourcingPlanViewSet, basename="sourcing-plan")
 router.register("partners", PartnerViewSet, basename="partner")
 router.register("orders", OrderViewSet, basename="order")
 router.register("activities", ActivityViewSet, basename="activity")

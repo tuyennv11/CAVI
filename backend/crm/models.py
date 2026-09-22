@@ -451,6 +451,18 @@ class CostQuote(models.Model):
     )
     street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
 
+    supplier_name = models.CharField("Nhà cung cấp", max_length=200, blank=True)
+    carrier_name = models.CharField("Đơn vị vận chuyển", max_length=200, blank=True)
+    confirmed = models.BooleanField("NCC đã xác nhận", default=False)
+    valid_until = models.DateField("Hiệu lực đến", null=True, blank=True)
+    available_at = models.DateField("Ngày có hàng", null=True, blank=True)
+    tax_basis = models.CharField(max_length=20, default="unknown", choices=[("unknown", "Chưa rõ thuế"), ("included", "Đã gồm thuế"), ("excluded", "Chưa gồm thuế")])
+    payment_terms = models.CharField(max_length=500, blank=True)
+    delivery_terms = models.CharField(max_length=500, blank=True)
+    delivery_snapshot = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+    supersedes = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT, related_name="next_version")
+
     class ShippingRateBasis(models.TextChoices):
         KG = "kg", "kg"
         M3 = "m3", "m3"
@@ -486,19 +498,8 @@ class CostQuote(models.Model):
         shipping_rate/shipping_rate_basis). NCC báo trọn gói (basis TOTAL) thì lấy thẳng
         shipping_rate; báo theo đơn giá/kg hoặc /m3 thì nhân với tổng trọng lượng/thể tích cộng dồn
         mọi mặt hàng trong câu trả lời này."""
-        if not self.shipping_rate:
-            return None
-        if self.shipping_rate_basis == self.ShippingRateBasis.TOTAL:
-            return self.shipping_rate
-        total = Decimal("0")
-        for item in self.items.all():
-            value = (
-                item.total_weight_kg if self.shipping_rate_basis == self.ShippingRateBasis.KG
-                else item.total_volume_m3
-            )
-            if value:
-                total += value
-        return (self.shipping_rate * total) if total else None
+        from .services.sourcing import freight_total
+        return freight_total(self, self.shipping_rate, self.shipping_rate_basis)
 
 
 class CostQuoteItem(models.Model):
@@ -1074,3 +1075,40 @@ class Notice(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class FreightOffer(models.Model):
+    goods_quote = models.ForeignKey(CostQuote, on_delete=models.PROTECT, related_name="freight_offers")
+    carrier_name = models.CharField(max_length=200)
+    rate = models.DecimalField(max_digits=14, decimal_places=2)
+    basis = models.CharField(max_length=10, choices=CostQuote.ShippingRateBasis.choices, default="total")
+    confirmed = models.BooleanField(default=False)
+    valid_until = models.DateField(null=True, blank=True)
+    delivery_days = models.PositiveIntegerField(null=True, blank=True)
+    tax_basis = models.CharField(max_length=20, choices=[("unknown", "Chưa rõ thuế"), ("included", "Đã gồm thuế"), ("excluded", "Chưa gồm thuế")], default="unknown")
+    terms = models.CharField(max_length=500, blank=True)
+    delivery_snapshot = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+    supersedes = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT, related_name="next_version")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+
+class SourcingPlan(models.Model):
+    price_request_item = models.ForeignKey(PriceRequestItem, on_delete=models.PROTECT, related_name="sourcing_plans")
+    goods_quote = models.ForeignKey(CostQuote, on_delete=models.PROTECT, related_name="sourcing_plans")
+    freight_offer = models.ForeignKey(FreightOffer, on_delete=models.PROTECT, null=True, blank=True, related_name="sourcing_plans")
+    status = models.CharField(max_length=20, default="proposed", choices=[("proposed", "Chờ duyệt"), ("approved", "Đã chốt"), ("rejected", "Không chọn")])
+    reason = models.TextField()
+    snapshot = models.JSONField(default=dict)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="sourcing_proposals")
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="sourcing_reviews")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [models.UniqueConstraint(fields=["price_request_item"], condition=models.Q(status="approved"), name="one_approved_sourcing_plan")]

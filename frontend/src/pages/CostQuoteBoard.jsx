@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api";
 import { useAuth } from "../AuthContext";
 import AddressFields from "../components/AddressFields";
 import MoneyInput from "../components/MoneyInput";
 import CostQuoteItems from "../components/CostQuoteItems";
 import SavedCostQuote from "../components/SavedCostQuote";
+import QuoteTerms from "../components/QuoteTerms";
 import { formatMoney } from "../constants";
 
 const WEIGHT_DISPLAY_THRESHOLD_KG = 1000;
@@ -27,6 +28,8 @@ function emptyItemRow() {
 
 function emptyQuoteForm() {
   return {
+    supplier_name: "", carrier_name: "", confirmed: false, valid_until: "", available_at: "",
+    tax_basis: "unknown", payment_terms: "", delivery_terms: "", supersedes: null,
     country: "",
     province: "",
     district: "",
@@ -127,17 +130,19 @@ function sumItemTotals(totalsList) {
 function previewShippingCost(form) {
   if (!form.shipping_rate) return null;
   if (form.shipping_rate_basis === "total") return Number(form.shipping_rate);
-  const total = form.items.reduce((sum, row) => {
-    const { totalWeightKg, totalVolumeM3 } = previewTotals(row);
-    const value = form.shipping_rate_basis === "m3" ? totalVolumeM3 : totalWeightKg;
-    return sum + (value || 0);
-  }, 0);
+  const values = form.items.map((row) => {
+    const totals = previewTotals(row);
+    return form.shipping_rate_basis === "m3" ? totals.totalVolumeM3 : totals.totalWeightKg;
+  });
+  if (!values.length || values.some((value) => value === null || value <= 0)) return null;
+  const total = values.reduce((sum, value) => sum + value, 0);
   return total ? Number(form.shipping_rate) * total : null;
 }
 
 export default function CostQuoteBoard() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reviseId = searchParams.get("revise");
   const onlyItemId = searchParams.get("price_request_item");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,14 +151,16 @@ export default function CostQuoteBoard() {
   const [form, setForm] = useState(emptyQuoteForm());
   const [saving, setSaving] = useState(false);
 
-  async function load() {
+  async function load(initialize = false) {
     setLoading(true);
     try {
       const itemsPath = onlyItemId
         ? `/api/price-inquiry-items/?id=${onlyItemId}`
         : "/api/price-inquiry-items/";
       const data = await apiFetch(itemsPath);
-      setItems(data.results ?? data);
+      const loaded = data.results ?? data;
+      setItems(loaded);
+      if (initialize && onlyItemId && loaded[0]) prefillForm(loaded[0], (loaded[0].cost_quotes || []).find((q) => String(q.id) === reviseId));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -162,15 +169,19 @@ export default function CostQuoteBoard() {
   }
 
   useEffect(() => {
-    load();
+    load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyItemId]);
+  }, [onlyItemId, reviseId]);
 
   function canSupply() {
     return user?.is_manager || user?.is_supply;
   }
 
-  function prefillForm(item) {
+  function prefillForm(item, source) {
+    if (source) {
+      setForm({ ...emptyQuoteForm(), ...source, supersedes: source.id, items: source.items.map((row) => ({ ...emptyItemRow(), ...row, unit_length: row.unit_length_cm ?? "", unit_width: row.unit_width_cm ?? "", unit_height: row.unit_height_cm ?? "", unit_weight: row.unit_weight_kg ?? "" })) });
+      return;
+    }
     // Mặt hàng/Số lượng/ĐVT lấy sẵn từ Yêu cầu giá gốc — Cung ứng sửa lại thành số thực mua sau khi
     // kiểm tra nguồn hàng (số ban đầu chỉ là số khách hỏi). Khi ĐVT đã tự là đơn vị khối lượng/thể
     // tích (tấn, kg, khối/m3...) thì Tổng trọng lượng/Tổng kích thước lấy thẳng từ SL này luôn, xem
@@ -221,6 +232,9 @@ export default function CostQuoteBoard() {
         method: "POST",
         body: JSON.stringify({
           price_request_item: item.id,
+          supplier_name: form.supplier_name, carrier_name: form.carrier_name, confirmed: form.confirmed,
+          valid_until: form.valid_until || null, available_at: form.available_at || null, tax_basis: form.tax_basis,
+          payment_terms: form.payment_terms, delivery_terms: form.delivery_terms, supersedes: form.supersedes,
           country: form.country || null,
           province: form.province || null,
           district: form.district || null,
@@ -249,6 +263,7 @@ export default function CostQuoteBoard() {
         }),
       });
       prefillForm(item);
+      if (onlyItemId) setSearchParams({ price_request_item: onlyItemId });
       load();
     } catch (err) {
       setError(err.message);
@@ -263,7 +278,7 @@ export default function CostQuoteBoard() {
         <div>
           <h1>Trả lời yêu cầu giá</h1>
           <div className="page-head-sub">
-            Cung ứng nhập báo giá vốn nội bộ trả lời từng dòng Yêu cầu giá — trước khi có báo giá NCC thật.
+            Mọi câu trả lời được đưa lên Sàn báo giá NCC để cả nhóm cung ứng cùng so sánh.
           </div>
         </div>
       </div>
@@ -318,15 +333,17 @@ export default function CostQuoteBoard() {
                         <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "12px 16px" }}>
                           {quotes.length === 0 ? null : (
                             <>
-                              <div className="cost-section-label">Câu trả lời đã có</div>
+                              <div className="market-toolbar"><div className="cost-section-label">Câu trả lời đã có</div><Link to={`/supplier-quotes?price_request_item=${item.id}`}>So sánh trên sàn →</Link></div>
                               {quotes.map((q, index) => <SavedCostQuote key={q.id} quote={q} index={index} formatWeight={formatWeight} deliveryAddress={item.price_request_delivery_address} />)}
                             </>
                           )}
 
                           {canSupply() && (
-                            <details className="cq-new-answer" key={`${item.id}-${quotes.length}`} open={quotes.length === 0 ? true : undefined}>
+                            <details className="cq-new-answer" key={`${item.id}-${quotes.length}`} open={quotes.length === 0 || reviseId || searchParams.get("new") ? true : undefined}>
                               <summary>{quotes.length ? "+ Thêm câu trả lời" : "Nhập câu trả lời"}</summary>
                             <form onSubmit={(e) => handleAddQuote(e, item)} onClick={(e) => e.stopPropagation()}>
+                              {form.supersedes && <p className="muted">Phiên bản mới của báo giá #{form.supersedes}. Giá trước vẫn được lưu trong lịch sử.</p>}
+                              <QuoteTerms form={form} setForm={setForm} />
                               <CostQuoteItems
                                 items={form.items}
                                 updateItemRow={updateItemRow}
@@ -351,6 +368,7 @@ export default function CostQuoteBoard() {
                                     </span>
                                     <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
                                   </label>
+                                  <label style={{ minWidth: 180 }}>Đơn vị vận chuyển (nếu báo kèm)<input value={form.carrier_name} onChange={(e) => setForm({ ...form, carrier_name: e.target.value })} /></label>
                                   <label style={{ width: 150 }}>
                                     {form.shipping_rate_basis === "total" ? "Tổng giá vốn vận chuyển" : "Giá cước vận chuyển"}
                                     <MoneyInput

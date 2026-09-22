@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.db import transaction
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -370,7 +371,38 @@ class CostQuoteItemSerializer(serializers.ModelSerializer):
         ]
 
 
+from .market_serializers import FreightOfferSerializer, SourcingPlanSerializer
+from .services.sourcing import comparison_key, goods_total, live, readiness, freight_total
+
+
 class CostQuoteSerializer(serializers.ModelSerializer):
+    freight_offers = FreightOfferSerializer(many=True, read_only=True)
+    market = serializers.SerializerMethodField()
+
+    def get_market(self, obj):
+        total = goods_total(obj)
+        shipping = freight_total(obj, obj.shipping_rate, obj.shipping_rate_basis)
+        return {"goods_total": str(total) if total is not None else None,
+                "shipping_total": str(shipping) if shipping is not None else None,
+                "comparison_key": comparison_key(obj), "is_live": live(obj),
+                "issues": readiness(obj)}
+
+    def validate(self, data):
+        rows = data.get("items", [])
+        if not rows:
+            raise serializers.ValidationError({"items": "Cần ít nhất một mặt hàng."})
+        for row in rows:
+            if not row.get("item_name", "").strip() or not row.get("unit", "").strip() or not row.get("quantity") or row["quantity"] <= 0:
+                raise serializers.ValidationError({"items": "Nhập tên hàng, số lượng dương và ĐVT cho mọi dòng."})
+            for field in ["unit_cost", "unit_length_cm", "unit_width_cm", "unit_height_cm", "unit_weight_kg"]:
+                if row.get(field) is not None and row[field] < 0:
+                    raise serializers.ValidationError({"items": "Giá và quy cách không được âm."})
+        if data.get("shipping_rate") is not None and data["shipping_rate"] < 0:
+            raise serializers.ValidationError({"shipping_rate": "Cước không được âm."})
+        if data.get("confirmed") and (not data.get("supplier_name", "").strip() or not data.get("valid_until")):
+            raise serializers.ValidationError("Giá xác nhận cần tên NCC và hạn hiệu lực.")
+        return data
+
     created_by_name = serializers.CharField(source="created_by.username", read_only=True, default=None)
     country_name = serializers.CharField(source="country.name", read_only=True, default=None)
     province_name = serializers.CharField(source="province.name", read_only=True, default=None)
@@ -388,9 +420,12 @@ class CostQuoteSerializer(serializers.ModelSerializer):
             "district", "district_name", "ward", "ward_name", "street_address",
             "shipping_rate", "shipping_rate_basis", "shipping_cost",
             "note", "items", "created_by", "created_by_name", "created_at", "updated_at",
+            "supplier_name", "carrier_name", "confirmed", "valid_until", "available_at", "tax_basis",
+            "payment_terms", "delivery_terms", "delivery_snapshot", "active", "supersedes", "freight_offers", "market",
         ]
-        read_only_fields = ["created_by", "created_at", "updated_at"]
+        read_only_fields = ["created_by", "created_at", "updated_at", "delivery_snapshot", "active"]
 
+    @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("items")
         cost_quote = CostQuote.objects.create(**validated_data)
@@ -416,6 +451,7 @@ class PriceRequestItemSerializer(serializers.ModelSerializer):
     assigned_to_id = serializers.IntegerField(source="price_request.assigned_to_id", read_only=True, default=None)
     assigned_to_name = serializers.SerializerMethodField()
     cost_quotes = CostQuoteSerializer(many=True, read_only=True)
+    sourcing_plans = SourcingPlanSerializer(many=True, read_only=True)
     # Địa chỉ giao hàng cho KHÁCH đã nhập sẵn trên Yêu cầu giá gốc (Sales hỏi lúc tạo) — chỉ để tab
     # Trả lời yêu cầu giá hiện tham khảo, KHÔNG phải "Điểm nhận hàng" của CostQuote (đó là nơi NCC
     # giao tới, Cung ứng tự nhập riêng, 2 địa điểm khác nhau — vd khách ở Campuchia nhưng NCC giao
@@ -427,7 +463,7 @@ class PriceRequestItemSerializer(serializers.ModelSerializer):
         fields = [
             "id", "price_request", "price_request_code", "customer_name", "assigned_to_id", "assigned_to_name",
             "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
-            "estimated_cost_price", "purchase_request_item_id", "cost_quotes", "price_request_delivery_address",
+            "estimated_cost_price", "purchase_request_item_id", "cost_quotes", "price_request_delivery_address", "sourcing_plans",
         ]
         read_only_fields = ["source_status", "price_request"]
 

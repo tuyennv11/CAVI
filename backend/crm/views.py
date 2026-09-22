@@ -335,7 +335,9 @@ class PriceRequestItemViewSet(
     def get_queryset(self):
         qs = self.scope_by_company(
             PriceRequestItem.objects.select_related("price_request__customer", "price_request__assigned_to", "product")
-            .prefetch_related("cost_quotes__created_by", "cost_quotes__country", "cost_quotes__province")
+            .prefetch_related("cost_quotes__created_by", "cost_quotes__country", "cost_quotes__province",
+                "cost_quotes__district", "cost_quotes__ward", "cost_quotes__items",
+                "cost_quotes__freight_offers__created_by", "sourcing_plans__created_by", "sourcing_plans__reviewed_by")
         )
         # Cung ứng cần thấy mọi dòng (không chỉ khách mình phụ trách) để tạo Đề nghị mua/trả lời báo
         # giá vốn từ bất kỳ Yêu cầu giá nào đang chờ — giống quyền "thấy hết" đã cho Cung ứng ở Sàn
@@ -377,41 +379,8 @@ class PriceRequestItemViewSet(
         return Response(PurchaseRequestItemSerializer(purchase_item).data, status=201)
 
 
-class CostQuoteViewSet(
-    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
-):
-    """Tab "Trả lời yêu cầu giá" — Cung ứng/Quản lý nhập báo giá vốn nội bộ trả lời 1 dòng Yêu cầu
-    giá (khác Sàn báo giá NCC — đây là bước sớm hơn, trước khi có báo giá NCC thật). Nhiều dòng lịch
-    sử cho 1 dòng Yêu cầu giá, không ghi đè (xem CostQuote model)."""
-
-    serializer_class = CostQuoteSerializer
-    permission_classes = [IsAuthenticated]
-    filterset_fields = ["price_request_item"]
-
-    def get_queryset(self):
-        qs = CostQuote.objects.select_related(
-            "price_request_item__price_request", "created_by", "country", "province", "district", "ward"
-        )
-        if is_manager(self.request.user) or is_supply(self.request.user):
-            return qs
-        return qs.filter(price_request_item__price_request__assigned_to=self.request.user.profile)
-
-    def perform_create(self, serializer):
-        if not (is_manager(self.request.user) or is_supply(self.request.user)):
-            raise PermissionDenied("Chỉ Cung ứng/Quản lý mới trả lời được Yêu cầu giá.")
-        serializer.save(created_by=self.request.user)
-
-    def perform_update(self, serializer):
-        instance = serializer.instance
-        if not is_manager(self.request.user) and instance.created_by_id != self.request.user.id:
-            raise PermissionDenied("Chỉ sửa được câu trả lời của chính mình.")
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        if not is_manager(self.request.user) and instance.created_by_id != self.request.user.id:
-            raise PermissionDenied("Chỉ xoá được câu trả lời của chính mình.")
-        instance.delete()
+# Shared sourcing endpoints live in market_views to keep the legacy purchasing flow intact.
+from .market_views import CostQuoteViewSet
 
 
 class PurchaseRequestItemViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
