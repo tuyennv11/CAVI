@@ -440,14 +440,6 @@ export default function CostQuoteBoard() {
                                           onChange={(e) => updateItemRow(i, "unit", e.target.value)}
                                         />
                                       </label>
-                                      <label style={{ width: 110 }}>
-                                        {showLabel && "Giá vốn/đv"}
-                                        <MoneyInput
-                                          value={row.unit_cost}
-                                          onChange={(v) => updateItemRow(i, "unit_cost", v)}
-                                        />
-                                      </label>
-
                                       {kind !== "volume" && (
                                         <>
                                           <label style={{ width: 70 }}>
@@ -509,6 +501,14 @@ export default function CostQuoteBoard() {
                                           </label>
                                         </>
                                       )}
+
+                                      <label style={{ width: 110 }}>
+                                        {showLabel && "Giá vốn/đv"}
+                                        <MoneyInput
+                                          value={row.unit_cost}
+                                          onChange={(v) => updateItemRow(i, "unit_cost", v)}
+                                        />
+                                      </label>
 
                                       {form.items.length > 1 && (
                                         <button
