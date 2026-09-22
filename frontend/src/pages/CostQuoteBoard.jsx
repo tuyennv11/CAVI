@@ -527,10 +527,7 @@ export default function CostQuoteBoard() {
                               {(() => {
                                 const grand = sumItemTotals(form.items.map(previewTotals));
                                 return (
-                                  <div
-                                    className="cost-item-fields cost-grand-total"
-                                    style={{ gap: "8px 12px", alignItems: "flex-end" }}
-                                  >
+                                  <div className="cost-item-fields cost-grand-total" style={{ gap: "8px 12px" }}>
                                     <div style={{ minWidth: 160, flex: "1 1 160px" }}>
                                       <button type="button" className="link-btn" onClick={addItemRow}>
                                         + Thêm mặt hàng
@@ -539,27 +536,19 @@ export default function CostQuoteBoard() {
                                     <div style={{ width: 80 }} />
                                     <div style={{ width: 80 }} />
                                     {/* Thẳng cột với Dài+Rộng+Cao+Đơn vị (70+70+70+72 + 3 khoảng cách 12px) */}
-                                    <div style={{ width: 318, display: "flex", flexDirection: "column", gap: 3 }}>
-                                      <span className="total-label">Tổng kích thước</span>
-                                      <div className="cost-total-box">
-                                        {grand.totalVolumeM3
-                                          ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
-                                          : "—"}
-                                      </div>
+                                    <div className="cost-total-box" style={{ width: 318 }}>
+                                      Tổng kích thước:{" "}
+                                      {grand.totalVolumeM3
+                                        ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
+                                        : "—"}
                                     </div>
                                     {/* Thẳng cột với Trọng lượng/đv + Đơn vị (95+72 + 1 khoảng cách 12px) */}
-                                    <div style={{ width: 179, display: "flex", flexDirection: "column", gap: 3 }}>
-                                      <span className="total-label">Tổng trọng lượng</span>
-                                      <div className="cost-total-box">
-                                        {grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}
-                                      </div>
+                                    <div className="cost-total-box" style={{ width: 179 }}>
+                                      Tổng trọng lượng: {grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}
                                     </div>
                                     {/* Thẳng cột với Giá vốn/đv */}
-                                    <div style={{ width: 110, display: "flex", flexDirection: "column", gap: 3 }}>
-                                      <span className="total-label">Tổng giá vốn</span>
-                                      <div className="cost-total-box">
-                                        {grand.totalCost ? formatMoney(grand.totalCost) : "—"}
-                                      </div>
+                                    <div className="cost-total-box" style={{ width: 110 }}>
+                                      Tổng giá vốn: {grand.totalCost ? formatMoney(grand.totalCost) : "—"}
                                     </div>
                                   </div>
                                 );
