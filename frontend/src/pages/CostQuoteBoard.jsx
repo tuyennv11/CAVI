@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api";
 import { useAuth } from "../AuthContext";
@@ -33,6 +33,7 @@ export default function CostQuoteBoard() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState(onlyItemId ? Number(onlyItemId) : null);
   const [showFormFor, setShowFormFor] = useState(null);
   const [form, setForm] = useState(emptyQuoteForm());
   const [saving, setSaving] = useState(false);
@@ -118,174 +119,226 @@ export default function CostQuoteBoard() {
           <p className="muted">Chưa có Yêu cầu giá nào.</p>
         </div>
       ) : (
-        items.map((item) => {
-          const quotes = item.cost_quotes || [];
-          return (
-            <div className="panel" key={item.id} style={{ marginBottom: 14 }}>
-              <div className="row-name" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>
-                    {item.product_name || item.item_name}{" "}
-                    <span className="muted" style={{ fontWeight: 400 }}>
-                      x{item.quantity} {item.unit}
-                    </span>
-                  </div>
-                  <div className="muted" style={{ fontSize: 12.5 }}>
-                    {item.price_request_code} · {item.customer_name} — {item.assigned_to_name ?? "—"}
-                  </div>
-                </div>
-                {canSupply() && (
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => setShowFormFor(showFormFor === item.id ? null : item.id)}
-                  >
-                    {showFormFor === item.id ? "Đóng" : "+ Trả lời"}
-                  </button>
-                )}
-              </div>
-
-              {quotes.length === 0 ? (
-                <p className="muted" style={{ marginTop: 10 }}>
-                  Chưa có câu trả lời nào.
-                </p>
-              ) : (
-                <div className="table-wrap" style={{ marginTop: 10 }}>
-                  <table className="data-table">
-                    <thead>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Mã YCG</th>
+                <th>Khách hàng</th>
+                <th>Mặt hàng</th>
+                <th>SL / ĐVT</th>
+                <th>Phụ trách</th>
+                <th>Câu trả lời</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const quotes = item.cost_quotes || [];
+                const isExpanded = expandedId === item.id;
+                return (
+                  <Fragment key={item.id}>
+                    <tr className="clickable" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
+                      <td>{item.price_request_code}</td>
+                      <td className="ellipsis-cell" title={item.customer_name}>
+                        {item.customer_name}
+                      </td>
+                      <td className="ellipsis-cell" title={item.product_name || item.item_name}>
+                        {item.product_name || item.item_name || "—"}
+                      </td>
+                      <td>{item.quantity ? `${item.quantity} ${item.unit || ""}` : "—"}</td>
+                      <td>{item.assigned_to_name ?? "—"}</td>
+                      <td>
+                        {quotes.length > 0 ? (
+                          <span className="badge badge-done">{quotes.length}</span>
+                        ) : (
+                          <span className="muted">0</span>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && (
                       <tr>
-                        <th>Mặt hàng</th>
-                        <th>SL / ĐVT</th>
-                        <th>Giá vốn đơn vị</th>
-                        <th>Tổng giá vốn</th>
-                        <th>Giá vận chuyển</th>
-                        <th>Điểm nhận hàng</th>
-                        <th>Người trả lời</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quotes.map((q) => {
-                        const address = [q.street_address, q.ward_name, q.district_name, q.province_name, q.country_name]
-                          .filter(Boolean)
-                          .join(", ");
-                        const detail = [
-                          q.unit_dimensions && `KT/đv: ${q.unit_dimensions}`,
-                          q.unit_weight_kg && `TL/đv: ${q.unit_weight_kg} kg`,
-                          q.total_dimensions && `Tổng KT: ${q.total_dimensions}`,
-                          q.total_weight_kg && `Tổng TL: ${q.total_weight_kg} kg`,
-                          q.note,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ");
-                        return (
-                          <tr key={q.id}>
-                            <td title={detail || undefined}>{q.item_name || "—"}</td>
-                            <td>
-                              {q.quantity ?? "—"} {q.unit}
-                            </td>
-                            <td>{q.unit_cost ? formatMoney(q.unit_cost) : "—"}</td>
-                            <td style={{ fontWeight: 600 }}>{q.total_cost ? formatMoney(q.total_cost) : "—"}</td>
-                            <td>{q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}</td>
-                            <td>{address || "—"}</td>
-                            <td>{q.created_by_name ?? "—"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                        <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "14px 16px" }}>
+                          {quotes.length === 0 ? (
+                            <p className="muted" style={{ margin: "0 0 10px" }}>
+                              Chưa có câu trả lời nào.
+                            </p>
+                          ) : (
+                            <div className="table-wrap" style={{ marginBottom: 10 }}>
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th>Mặt hàng</th>
+                                    <th>SL / ĐVT</th>
+                                    <th>Giá vốn đơn vị</th>
+                                    <th>Tổng giá vốn</th>
+                                    <th>Giá vận chuyển</th>
+                                    <th>Điểm nhận hàng</th>
+                                    <th>Người trả lời</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {quotes.map((q) => {
+                                    const address = [
+                                      q.street_address, q.ward_name, q.district_name, q.province_name, q.country_name,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(", ");
+                                    const detail = [
+                                      q.unit_dimensions && `KT/đv: ${q.unit_dimensions}`,
+                                      q.unit_weight_kg && `TL/đv: ${q.unit_weight_kg} kg`,
+                                      q.total_dimensions && `Tổng KT: ${q.total_dimensions}`,
+                                      q.total_weight_kg && `Tổng TL: ${q.total_weight_kg} kg`,
+                                      q.note,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ");
+                                    return (
+                                      <tr key={q.id}>
+                                        <td title={detail || undefined}>{q.item_name || "—"}</td>
+                                        <td>{q.quantity ? `${q.quantity} ${q.unit || ""}` : "—"}</td>
+                                        <td>{q.unit_cost ? formatMoney(q.unit_cost) : "—"}</td>
+                                        <td style={{ fontWeight: 600 }}>
+                                          {q.total_cost ? formatMoney(q.total_cost) : "—"}
+                                        </td>
+                                        <td>{q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}</td>
+                                        <td className="ellipsis-cell" title={address}>
+                                          {address || "—"}
+                                        </td>
+                                        <td>{q.created_by_name ?? "—"}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
 
-              {showFormFor === item.id && (
-                <form className="field-grid" onSubmit={(e) => handleAddQuote(e, item.id)} style={{ marginTop: 10 }}>
-                  <label>
-                    Mặt hàng
-                    <input value={form.item_name} onChange={(e) => setForm({ ...form, item_name: e.target.value })} />
-                  </label>
-                  <label>
-                    Số lượng
-                    <input
-                      type="number" step="0.01"
-                      value={form.quantity}
-                      onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    ĐVT
-                    <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-                  </label>
-                  <label>
-                    Giá vốn đơn vị
-                    <input
-                      type="number" step="0.01"
-                      value={form.unit_cost}
-                      onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Tổng giá vốn
-                    <input
-                      type="number" step="0.01"
-                      value={form.total_cost}
-                      onChange={(e) => setForm({ ...form, total_cost: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Giá vốn vận chuyển (tự tra, nhập tay)
-                    <input
-                      type="number" step="0.01"
-                      value={form.shipping_cost}
-                      onChange={(e) => setForm({ ...form, shipping_cost: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Kích thước đơn vị
-                    <input
-                      value={form.unit_dimensions}
-                      onChange={(e) => setForm({ ...form, unit_dimensions: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Trọng lượng đơn vị (kg)
-                    <input
-                      type="number" step="0.01"
-                      value={form.unit_weight_kg}
-                      onChange={(e) => setForm({ ...form, unit_weight_kg: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Tổng kích thước
-                    <input
-                      value={form.total_dimensions}
-                      onChange={(e) => setForm({ ...form, total_dimensions: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Tổng trọng lượng (kg)
-                    <input
-                      type="number" step="0.01"
-                      value={form.total_weight_kg}
-                      onChange={(e) => setForm({ ...form, total_weight_kg: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Điểm nhận hàng
-                    <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
-                  </label>
-                  <label>
-                    Mô tả thêm
-                    <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-                  </label>
-                  <div className="modal-actions">
-                    <button type="submit" disabled={saving}>
-                      {saving ? "Đang lưu..." : "Lưu trả lời"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          );
-        })
+                          {canSupply() && (
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowFormFor(showFormFor === item.id ? null : item.id);
+                              }}
+                            >
+                              {showFormFor === item.id ? "Đóng" : "+ Trả lời"}
+                            </button>
+                          )}
+
+                          {showFormFor === item.id && (
+                            <form
+                              onSubmit={(e) => handleAddQuote(e, item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ marginTop: 12 }}
+                            >
+                              <div className="field-grid-cols">
+                                <label>
+                                  Mặt hàng
+                                  <input
+                                    value={form.item_name}
+                                    onChange={(e) => setForm({ ...form, item_name: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Số lượng
+                                  <input
+                                    type="number" step="0.01"
+                                    value={form.quantity}
+                                    onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  ĐVT
+                                  <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+                                </label>
+
+                                <label>
+                                  Giá vốn đơn vị
+                                  <input
+                                    type="number" step="0.01"
+                                    value={form.unit_cost}
+                                    onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Tổng giá vốn
+                                  <input
+                                    type="number" step="0.01"
+                                    value={form.total_cost}
+                                    onChange={(e) => setForm({ ...form, total_cost: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Giá vốn vận chuyển
+                                  <input
+                                    type="number" step="0.01"
+                                    placeholder="Tự tra, nhập tay"
+                                    value={form.shipping_cost}
+                                    onChange={(e) => setForm({ ...form, shipping_cost: e.target.value })}
+                                  />
+                                </label>
+
+                                <label>
+                                  Kích thước đơn vị
+                                  <input
+                                    value={form.unit_dimensions}
+                                    onChange={(e) => setForm({ ...form, unit_dimensions: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Trọng lượng đơn vị (kg)
+                                  <input
+                                    type="number" step="0.01"
+                                    value={form.unit_weight_kg}
+                                    onChange={(e) => setForm({ ...form, unit_weight_kg: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Tổng kích thước
+                                  <input
+                                    value={form.total_dimensions}
+                                    onChange={(e) => setForm({ ...form, total_dimensions: e.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  Tổng trọng lượng (kg)
+                                  <input
+                                    type="number" step="0.01"
+                                    value={form.total_weight_kg}
+                                    onChange={(e) => setForm({ ...form, total_weight_kg: e.target.value })}
+                                  />
+                                </label>
+
+                                <label className="span-all">
+                                  Điểm nhận hàng
+                                  <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
+                                </label>
+                                <label className="span-all">
+                                  Mô tả thêm
+                                  <textarea
+                                    rows={2}
+                                    value={form.note}
+                                    onChange={(e) => setForm({ ...form, note: e.target.value })}
+                                  />
+                                </label>
+                              </div>
+                              <div className="modal-actions">
+                                <button type="submit" disabled={saving}>
+                                  {saving ? "Đang lưu..." : "Lưu trả lời"}
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

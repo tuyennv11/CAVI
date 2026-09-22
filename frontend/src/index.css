@@ -679,6 +679,13 @@ a:hover { text-decoration: underline; }
 .field-grid { display: flex; flex-direction: column; gap: 12px; }
 .field-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
 
+/* Biến thể nhiều cột cho form dài (vd Trả lời yêu cầu giá) — gọn hơn hẳn so với xếp 1 cột dài dằng
+   dặc. .span-all cho field cần chiếm hết chiều ngang (địa chỉ, ghi chú). */
+.field-grid-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 14px; }
+.field-grid-cols label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.field-grid-cols .span-all { grid-column: 1 / -1; }
+@media (max-width: 640px) { .field-grid-cols { grid-template-columns: 1fr; } }
+
 /* ---------- Tabs ---------- */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
 .tab-btn {
