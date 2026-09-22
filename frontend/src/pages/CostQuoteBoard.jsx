@@ -30,7 +30,8 @@ function emptyQuoteForm() {
     district: "",
     ward: "",
     street_address: "",
-    shipping_cost: "",
+    shipping_rate: "",
+    shipping_rate_basis: "kg",
     note: "",
     items: [emptyItemRow()],
   };
@@ -112,6 +113,18 @@ function previewTotals(row) {
         })();
 
   return { totalCost, totalVolumeM3, totalWeightKg, kind };
+}
+
+// Tổng giá vốn vận chuyển = Giá cước × tổng trọng lượng (hoặc tổng thể tích) cộng dồn mọi mặt hàng
+// trong câu trả lời — y hệt công thức CostQuote.shipping_cost tính lại ở backend sau khi lưu.
+function previewShippingCost(form) {
+  if (!form.shipping_rate) return null;
+  const total = form.items.reduce((sum, row) => {
+    const { totalWeightKg, totalVolumeM3 } = previewTotals(row);
+    const value = form.shipping_rate_basis === "m3" ? totalVolumeM3 : totalWeightKg;
+    return sum + (value || 0);
+  }, 0);
+  return total ? Number(form.shipping_rate) * total : null;
 }
 
 export default function CostQuoteBoard() {
@@ -205,7 +218,8 @@ export default function CostQuoteBoard() {
           district: form.district || null,
           ward: form.ward || null,
           street_address: form.street_address,
-          shipping_cost: form.shipping_cost || null,
+          shipping_rate: form.shipping_rate || null,
+          shipping_rate_basis: form.shipping_rate_basis,
           note: form.note,
           items: form.items.map((it) => {
             const kind = unitKind(it.unit);
@@ -337,7 +351,14 @@ export default function CostQuoteBoard() {
                                   })}
                                   <div className="muted wrap-row-view" style={{ fontSize: 12 }}>
                                     <span>Điểm nhận hàng: {address || "—"}</span>
-                                    <span>Giá vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}</span>
+                                    {q.shipping_rate && (
+                                      <span>
+                                        Giá cước: {formatMoney(q.shipping_rate)}/{q.shipping_rate_basis}
+                                      </span>
+                                    )}
+                                    <span style={{ fontWeight: 600 }}>
+                                      Tổng giá vốn vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}
+                                    </span>
                                     <span>Người trả lời: {q.created_by_name ?? "—"}</span>
                                     {q.note && <span>{q.note}</span>}
                                   </div>
@@ -483,14 +504,29 @@ export default function CostQuoteBoard() {
                                   Điểm nhận hàng (nơi NCC giao tới)
                                   <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
                                 </label>
-                                <label>
-                                  Giá vốn vận chuyển
+                                <label style={{ width: 130 }}>
+                                  Giá cước vận chuyển
                                   <MoneyInput
-                                    placeholder="Tự tra, nhập tay — chung cho cả chuyến"
-                                    value={form.shipping_cost}
-                                    onChange={(v) => setForm({ ...form, shipping_cost: v })}
+                                    placeholder="Tự tra, nhập tay"
+                                    value={form.shipping_rate}
+                                    onChange={(v) => setForm({ ...form, shipping_rate: v })}
                                   />
                                 </label>
+                                <label style={{ width: 100 }}>
+                                  Tính theo
+                                  <select
+                                    value={form.shipping_rate_basis}
+                                    onChange={(e) => setForm({ ...form, shipping_rate_basis: e.target.value })}
+                                  >
+                                    <option value="kg">kg</option>
+                                    <option value="m3">m3</option>
+                                  </select>
+                                </label>
+                                <div className="muted span-all" style={{ fontSize: 12 }}>
+                                  Tự động — Tổng giá vốn vận chuyển:{" "}
+                                  {previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}
+                                  {" "}(= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"} mọi mặt hàng)
+                                </div>
                                 <label className="span-all">
                                   Mô tả thêm
                                   <textarea

@@ -377,12 +377,16 @@ class CostQuoteSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
     items = CostQuoteItemSerializer(many=True)
+    # shipping_cost là property tính tự động (Giá cước × tổng trọng lượng/thể tích mọi mặt hàng),
+    # không cho gửi lên — xem CostQuote.shipping_cost/shipping_rate/shipping_rate_basis.
+    shipping_cost = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True, allow_null=True)
 
     class Meta:
         model = CostQuote
         fields = [
             "id", "price_request_item", "country", "country_name", "province", "province_name",
-            "district", "district_name", "ward", "ward_name", "street_address", "shipping_cost",
+            "district", "district_name", "ward", "ward_name", "street_address",
+            "shipping_rate", "shipping_rate_basis", "shipping_cost",
             "note", "items", "created_by", "created_by_name", "created_at", "updated_at",
         ]
         read_only_fields = ["created_by", "created_at", "updated_at"]

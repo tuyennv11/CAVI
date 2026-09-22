@@ -450,9 +450,18 @@ class CostQuote(models.Model):
         Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
-    # Giá vận chuyển chung cho cả câu trả lời (gộp mọi mặt hàng trong cùng 1 chuyến) — Cung ứng tự
-    # tra bên ngoài rồi nhập tay, giống shipping_cost của SupplierQuote.
-    shipping_cost = models.DecimalField("Giá vốn vận chuyển", max_digits=14, decimal_places=2, null=True, blank=True)
+
+    class ShippingRateBasis(models.TextChoices):
+        KG = "kg", "kg"
+        M3 = "m3", "m3"
+
+    # Giá cước vận chuyển nhập theo ĐƠN GIÁ (Cung ứng tự tra bên ngoài) — Tổng giá vốn vận chuyển
+    # (property shipping_cost bên dưới) tự nhân với tổng trọng lượng hoặc tổng thể tích cộng dồn từ
+    # mọi mặt hàng trong câu trả lời này, tuỳ chọn ở shipping_rate_basis.
+    shipping_rate = models.DecimalField("Giá cước vận chuyển", max_digits=14, decimal_places=2, null=True, blank=True)
+    shipping_rate_basis = models.CharField(
+        "Tính cước theo", max_length=10, choices=ShippingRateBasis.choices, default=ShippingRateBasis.KG,
+    )
     note = models.TextField("Mô tả thêm", blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
@@ -467,6 +476,22 @@ class CostQuote(models.Model):
 
     def __str__(self):
         return f"Báo giá vốn — {self.price_request_item}"
+
+    @property
+    def shipping_cost(self):
+        """Tổng giá vốn vận chuyển — tính tự động (Giá cước × tổng trọng lượng/thể tích cộng dồn
+        mọi mặt hàng), không cho nhập tay trực tiếp (xem shipping_rate/shipping_rate_basis)."""
+        if not self.shipping_rate:
+            return None
+        total = Decimal("0")
+        for item in self.items.all():
+            value = (
+                item.total_weight_kg if self.shipping_rate_basis == self.ShippingRateBasis.KG
+                else item.total_volume_m3
+            )
+            if value:
+                total += value
+        return (self.shipping_rate * total) if total else None
 
 
 class CostQuoteItem(models.Model):

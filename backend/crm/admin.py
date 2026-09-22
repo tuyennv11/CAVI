@@ -350,17 +350,24 @@ class CostQuoteResource(ExcelModelResource):
     # Cột "Id yêu cầu giá" không phải trường lưu trực tiếp trên CostQuote — suy ra từ FK
     # price_request_item để khỏi lưu trùng dữ liệu (giống lý do bỏ cột "code" ở PriceRequestResource).
     price_request_code = ExportField(column_name="Id yêu cầu giá")
+    # shipping_cost giờ là property tính tự động (Giá cước × tổng trọng lượng/thể tích), không còn
+    # là field thật trên model nên phải khai tường minh mới xuất được ra Excel.
+    shipping_cost = ExportField(column_name="Tổng giá vốn vận chuyển")
 
     class Meta:
         model = CostQuote
         exclude = ("price_request_item",)
         export_order = (
             "id", "price_request_code", "country", "province", "district", "ward", "street_address",
-            "shipping_cost", "note", "created_by", "created_at", "updated_at",
+            "shipping_rate", "shipping_rate_basis", "shipping_cost", "note", "created_by", "created_at",
+            "updated_at",
         )
 
     def dehydrate_price_request_code(self, obj):
         return obj.price_request_item.price_request.code
+
+    def dehydrate_shipping_cost(self, obj):
+        return obj.shipping_cost
 
 
 class CostQuoteInline(admin.TabularInline):
@@ -392,7 +399,8 @@ class CostQuoteAdmin(ImportExportModelAdmin):
     # inline CostQuoteItem (1 câu trả lời có thể gồm nhiều mặt hàng), không còn là cột trực tiếp.
     list_display = (
         "price_request_code", "country", "province", "district", "ward", "street_address",
-        "shipping_cost", "note", "created_by", "created_at", "updated_at",
+        "shipping_rate", "shipping_rate_basis", "shipping_cost", "note", "created_by", "created_at",
+        "updated_at",
     )
     search_fields = ("price_request_item__item_name", "price_request_item__price_request__code")
     autocomplete_fields = ["price_request_item", "country", "province", "district", "ward"]
