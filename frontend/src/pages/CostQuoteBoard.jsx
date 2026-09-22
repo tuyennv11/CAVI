@@ -55,24 +55,63 @@ function formatWeight(kg) {
     : `${kg.toLocaleString("vi-VN", { maximumFractionDigits: 2 })} kg`;
 }
 
+// Khi ĐVT của mặt hàng đã tự là đơn vị khối lượng/thể tích (tấn, kg, khối/m3...), SL chính là
+// Tổng trọng lượng/Tổng kích thước luôn — không cần nhân với 1 "đơn vị/đv" nhập tay riêng nữa (đó
+// là trường hợp còn lại, vd ĐVT là "thùng"/"kiện" thì mới cần Dài×Rộng×Cao hoặc Trọng lượng/đv).
+function unitKind(unit) {
+  const u = (unit || "").trim().toLowerCase();
+  if (!u) return "other";
+  if (u.includes("khối") || u.includes("khoi") || u.includes("m3") || u.includes("m³")) return "volume";
+  if (u.includes("kg") || u.includes("tấn") || u.includes("tan") || u.includes("ký")) return "weight";
+  return "other";
+}
+function weightPerUnitKg(unit) {
+  const u = (unit || "").trim().toLowerCase();
+  return u.includes("tấn") || u.includes("tan") ? 1000 : 1;
+}
+
+// SL/ĐVT đã chốt là đơn vị khối lượng thì hiện Tổng trọng lượng đúng nguyên đơn vị đó (khớp với
+// ĐVT, không tự chuyển đổi kg/tấn theo ngưỡng nữa).
+function formatWeightDisplay(unit, quantity, totalWeightKg) {
+  if (totalWeightKg === null || totalWeightKg === undefined) return "—";
+  if (unitKind(unit) === "weight" && quantity) {
+    return `${Number(quantity).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${unit}`;
+  }
+  return formatWeight(Number(totalWeightKg));
+}
+
 // Xem trước Tổng giá vốn/Tổng kích thước/Tổng trọng lượng ngay khi đang gõ — CostQuoteItem model
 // tính lại y hệt công thức này ở backend (property, không cho nhập tay) sau khi lưu.
 function previewTotals(row) {
   const quantity = Number(row.quantity) || 0;
   const unitCost = Number(row.unit_cost) || 0;
-  const lengthCm = toCm(row.unit_length, row.dimension_unit);
-  const widthCm = toCm(row.unit_width, row.dimension_unit);
-  const heightCm = toCm(row.unit_height, row.dimension_unit);
-  const weightKg = toKg(row.unit_weight, row.weight_unit);
+  const kind = unitKind(row.unit);
 
   const totalCost = quantity && row.unit_cost ? quantity * unitCost : null;
-  const totalVolumeM3 =
-    quantity && lengthCm && widthCm && heightCm
-      ? quantity * (lengthCm / 100) * (widthCm / 100) * (heightCm / 100)
-      : null;
-  const totalWeightKg = quantity && weightKg ? quantity * weightKg : null;
 
-  return { totalCost, totalVolumeM3, totalWeightKg };
+  const totalWeightKg =
+    kind === "weight"
+      ? quantity
+        ? quantity * weightPerUnitKg(row.unit)
+        : null
+      : (() => {
+          const weightKg = toKg(row.unit_weight, row.weight_unit);
+          return quantity && weightKg ? quantity * weightKg : null;
+        })();
+
+  const totalVolumeM3 =
+    kind === "volume"
+      ? quantity || null
+      : (() => {
+          const lengthCm = toCm(row.unit_length, row.dimension_unit);
+          const widthCm = toCm(row.unit_width, row.dimension_unit);
+          const heightCm = toCm(row.unit_height, row.dimension_unit);
+          return quantity && lengthCm && widthCm && heightCm
+            ? quantity * (lengthCm / 100) * (widthCm / 100) * (heightCm / 100)
+            : null;
+        })();
+
+  return { totalCost, totalVolumeM3, totalWeightKg, kind };
 }
 
 export default function CostQuoteBoard() {
@@ -111,13 +150,20 @@ export default function CostQuoteBoard() {
   }
 
   function prefillForm(item) {
-    // Chỉ lấy sẵn tên Mặt hàng — KHÔNG lấy Số lượng/ĐVT của Yêu cầu giá gốc (đó là số khách hỏi
-    // lúc đầu, đã hiện sẵn ở cột "SL / ĐVT" ngoài bảng). Số lượng ở đây là số thực mua (vd theo
-    // kiện/thùng) — chỉ có sau khi Cung ứng kiểm tra nguồn hàng, và dùng để nhân ra Tổng giá vốn/
-    // Tổng kích thước/Tổng trọng lượng, nên không thể lấy trùng số của khách để tránh sai lệch.
+    // Mặt hàng/Số lượng/ĐVT lấy sẵn từ Yêu cầu giá gốc — Cung ứng sửa lại thành số thực mua sau khi
+    // kiểm tra nguồn hàng (số ban đầu chỉ là số khách hỏi). Khi ĐVT đã tự là đơn vị khối lượng/thể
+    // tích (tấn, kg, khối/m3...) thì Tổng trọng lượng/Tổng kích thước lấy thẳng từ SL này luôn, xem
+    // unitKind().
     setForm({
       ...emptyQuoteForm(),
-      items: [{ ...emptyItemRow(), item_name: item.product_name || item.item_name || "" }],
+      items: [
+        {
+          ...emptyItemRow(),
+          item_name: item.product_name || item.item_name || "",
+          quantity: item.quantity ?? "",
+          unit: item.unit || "",
+        },
+      ],
     });
   }
 
@@ -161,16 +207,23 @@ export default function CostQuoteBoard() {
           street_address: form.street_address,
           shipping_cost: form.shipping_cost || null,
           note: form.note,
-          items: form.items.map((it) => ({
-            item_name: it.item_name,
-            quantity: it.quantity || null,
-            unit: it.unit,
-            unit_cost: it.unit_cost || null,
-            unit_length_cm: toCm(it.unit_length, it.dimension_unit),
-            unit_width_cm: toCm(it.unit_width, it.dimension_unit),
-            unit_height_cm: toCm(it.unit_height, it.dimension_unit),
-            unit_weight_kg: toKg(it.unit_weight, it.weight_unit),
-          })),
+          items: form.items.map((it) => {
+            const kind = unitKind(it.unit);
+            return {
+              item_name: it.item_name,
+              quantity: it.quantity || null,
+              unit: it.unit,
+              unit_cost: it.unit_cost || null,
+              // ĐVT đã là khối (m3) thì 1 đơn vị = đúng 1 m3 (100x100x100cm) để Tổng kích thước ở
+              // backend (SL × Dài×Rộng×Cao quy m3) ra thẳng bằng SL, khỏi bắt nhập lại kích thước.
+              unit_length_cm: kind === "volume" ? 100 : toCm(it.unit_length, it.dimension_unit),
+              unit_width_cm: kind === "volume" ? 100 : toCm(it.unit_width, it.dimension_unit),
+              unit_height_cm: kind === "volume" ? 100 : toCm(it.unit_height, it.dimension_unit),
+              // ĐVT đã là khối lượng (kg/tấn) thì "trọng lượng/đv" chính là quy đổi của 1 đơn vị đó
+              // ra kg, để Tổng trọng lượng ở backend (SL × trọng lượng/đv) ra thẳng bằng SL.
+              unit_weight_kg: kind === "weight" ? weightPerUnitKg(it.unit) : toKg(it.unit_weight, it.weight_unit),
+            };
+          }),
         }),
       });
       prefillForm(item);
@@ -255,6 +308,7 @@ export default function CostQuoteBoard() {
                               return (
                                 <div key={q.id} className="panel" style={{ marginBottom: 10, padding: "10px 14px" }}>
                                   {(q.items || []).map((it) => {
+                                    const kind = unitKind(it.unit);
                                     const dims = [it.unit_length_cm, it.unit_width_cm, it.unit_height_cm]
                                       .filter((v) => v !== null && v !== undefined)
                                       .join(" × ");
@@ -263,8 +317,8 @@ export default function CostQuoteBoard() {
                                         <b>{it.item_name || "—"}</b>
                                         <span>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</span>
                                         {it.unit_cost && <span>Giá vốn/đv: {formatMoney(it.unit_cost)}</span>}
-                                        {dims && <span>KT/đv: {dims} cm</span>}
-                                        {it.unit_weight_kg && <span>TL/đv: {it.unit_weight_kg} kg</span>}
+                                        {kind !== "volume" && dims && <span>KT/đv: {dims} cm</span>}
+                                        {kind !== "weight" && it.unit_weight_kg && <span>TL/đv: {it.unit_weight_kg} kg</span>}
                                         {it.total_cost && (
                                           <span style={{ fontWeight: 600 }}>
                                             Tổng giá vốn: {formatMoney(it.total_cost)}
@@ -275,7 +329,9 @@ export default function CostQuoteBoard() {
                                             Tổng KT: {Number(it.total_volume_m3).toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3
                                           </span>
                                         )}
-                                        {it.total_weight_kg && <span>Tổng TL: {formatWeight(Number(it.total_weight_kg))}</span>}
+                                        {it.total_weight_kg && (
+                                          <span>Tổng TL: {formatWeightDisplay(it.unit, it.quantity, Number(it.total_weight_kg))}</span>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -297,7 +353,7 @@ export default function CostQuoteBoard() {
                               style={{ marginTop: 12 }}
                             >
                               {form.items.map((row, i) => {
-                                const { totalCost, totalVolumeM3, totalWeightKg } = previewTotals(row);
+                                const { totalCost, totalVolumeM3, totalWeightKg, kind } = previewTotals(row);
                                 return (
                                   <div className="wrap-row" key={i}>
                                     <label style={{ minWidth: 160, flex: "1 1 160px" }}>
@@ -332,59 +388,67 @@ export default function CostQuoteBoard() {
                                       />
                                     </label>
 
-                                    <label style={{ width: 70 }}>
-                                      Dài
-                                      <input
-                                        type="number" step="0.01"
-                                        value={row.unit_length}
-                                        onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 70 }}>
-                                      Rộng
-                                      <input
-                                        type="number" step="0.01"
-                                        value={row.unit_width}
-                                        onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 70 }}>
-                                      Cao
-                                      <input
-                                        type="number" step="0.01"
-                                        value={row.unit_height}
-                                        onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 68 }}>
-                                      Đơn vị
-                                      <select
-                                        value={row.dimension_unit}
-                                        onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
-                                      >
-                                        <option value="cm">cm</option>
-                                        <option value="m">m</option>
-                                      </select>
-                                    </label>
+                                    {kind !== "volume" && (
+                                      <>
+                                        <label style={{ width: 70 }}>
+                                          Dài
+                                          <input
+                                            type="number" step="0.01"
+                                            value={row.unit_length}
+                                            onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
+                                          />
+                                        </label>
+                                        <label style={{ width: 70 }}>
+                                          Rộng
+                                          <input
+                                            type="number" step="0.01"
+                                            value={row.unit_width}
+                                            onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
+                                          />
+                                        </label>
+                                        <label style={{ width: 70 }}>
+                                          Cao
+                                          <input
+                                            type="number" step="0.01"
+                                            value={row.unit_height}
+                                            onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
+                                          />
+                                        </label>
+                                        <label style={{ width: 68 }}>
+                                          Đơn vị
+                                          <select
+                                            value={row.dimension_unit}
+                                            onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
+                                          >
+                                            <option value="cm">cm</option>
+                                            <option value="m">m</option>
+                                          </select>
+                                        </label>
+                                      </>
+                                    )}
 
-                                    <label style={{ width: 90 }}>
-                                      Trọng lượng/đv
-                                      <input
-                                        type="number" step="0.01"
-                                        value={row.unit_weight}
-                                        onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 68 }}>
-                                      Đơn vị
-                                      <select
-                                        value={row.weight_unit}
-                                        onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
-                                      >
-                                        <option value="kg">kg</option>
-                                        <option value="tấn">tấn</option>
-                                      </select>
-                                    </label>
+                                    {kind !== "weight" && (
+                                      <>
+                                        <label style={{ width: 90 }}>
+                                          Trọng lượng/đv
+                                          <input
+                                            type="number" step="0.01"
+                                            value={row.unit_weight}
+                                            onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
+                                          />
+                                        </label>
+                                        <label style={{ width: 68 }}>
+                                          Đơn vị
+                                          <select
+                                            value={row.weight_unit}
+                                            onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
+                                          >
+                                            <option value="kg">kg</option>
+                                            <option value="tấn">tấn</option>
+                                          </select>
+                                        </label>
+                                      </>
+                                    )}
 
                                     {form.items.length > 1 && (
                                       <button
@@ -400,7 +464,7 @@ export default function CostQuoteBoard() {
                                     <div className="muted" style={{ flexBasis: "100%", fontSize: 12 }}>
                                       Tự động — Tổng giá vốn: {totalCost !== null ? formatMoney(totalCost) : "—"} · Tổng
                                       kích thước: {totalVolumeM3 !== null ? `${totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3` : "—"} · Tổng
-                                      trọng lượng: {totalWeightKg !== null ? formatWeight(totalWeightKg) : "—"}
+                                      trọng lượng: {formatWeightDisplay(row.unit, row.quantity, totalWeightKg)}
                                     </div>
                                   </div>
                                 );
