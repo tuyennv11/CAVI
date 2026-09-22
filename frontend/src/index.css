@@ -679,21 +679,56 @@ a:hover { text-decoration: underline; }
 .field-grid { display: flex; flex-direction: column; gap: 12px; }
 .field-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
 
-/* Biến thể nhiều cột cho form dài (vd Trả lời yêu cầu giá) — gọn hơn hẳn so với xếp 1 cột dài dằng
-   dặc. .span-all cho field cần chiếm hết chiều ngang (địa chỉ, ghi chú). */
-.field-grid-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 14px; }
-.field-grid-cols label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
-.field-grid-cols .span-all { grid-column: 1 / -1; }
-@media (max-width: 640px) { .field-grid-cols { grid-template-columns: 1fr; } }
+/* ---------- Trả lời yêu cầu giá (CostQuoteBoard) ---------- */
+/* Nhãn nhỏ mở đầu 1 khối — cùng ngôn ngữ hình ảnh với tiêu đề cột .data-table (uppercase, giãn
+   chữ, màu muted) để cả trang thấy nhất quán thay vì chữ thường lẫn vào nội dung. */
+.cost-section-label {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700;
+  color: var(--muted); margin: 18px 0 9px;
+}
+.cost-section-label:first-child { margin-top: 0; }
 
-/* Dòng mặt hàng tự xuống dòng theo bề ngang màn hình thay vì ép vào 1 bảng rộng phải kéo ngang —
-   chỉ kéo lên/xuống là thấy hết (vd Trả lời yêu cầu giá, nhiều mặt hàng mỗi câu trả lời). */
-.wrap-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
-.wrap-row + .wrap-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
-.wrap-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); font-weight: 600; }
-.wrap-row input, .wrap-row select { width: 100%; }
-.wrap-row-view { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; font-size: 13px; }
-.wrap-row-view + .wrap-row-view { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+/* 1 thẻ = 1 dòng mặt hàng đang nhập — tách hẳn khỏi nền chung bằng viền/bóng nhẹ như .panel, thay
+   vì các ô nhập trôi nổi rời rạc trên nền muted. */
+.cost-item-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 14px 16px; box-shadow: var(--shadow-sm);
+}
+.cost-item-card + .cost-item-card { margin-top: 10px; }
+.cost-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.cost-item-head .index { font-size: 12px; font-weight: 700; color: var(--muted); }
+.cost-item-fields { display: flex; flex-wrap: wrap; gap: 12px 14px; }
+.cost-item-fields label {
+  display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); font-weight: 600;
+}
+.cost-item-fields input, .cost-item-fields select { width: 100%; }
+
+/* Dải kết quả tính tự động — nổi bật hẳn ra khỏi form nhập bằng nền muted riêng + số liệu tô đậm,
+   để phân biệt rõ "đây là số hệ thống tính ra" chứ không phải ô nhập. */
+.cost-item-result {
+  display: flex; flex-wrap: wrap; gap: 5px 18px; align-items: baseline;
+  margin-top: 12px; padding: 9px 13px; background: var(--surface-muted); border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--muted);
+}
+.cost-item-result b { color: var(--ink); font-weight: 700; }
+
+/* Thẻ hiện 1 câu trả lời đã lưu — cùng bộ khung .cost-item-card nhưng có thêm badge/footer riêng. */
+.cost-quote-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  padding: 14px 16px; box-shadow: var(--shadow-sm);
+}
+.cost-quote-card + .cost-quote-card { margin-top: 10px; }
+.cost-quote-item {
+  display: flex; flex-wrap: wrap; gap: 5px 18px; align-items: baseline; font-size: 13px;
+  padding: 7px 0; border-bottom: 1px dashed var(--line);
+}
+.cost-quote-item:last-of-type { border-bottom: none; }
+.cost-quote-item b { font-size: 13.5px; }
+.cost-quote-meta {
+  display: flex; flex-wrap: wrap; gap: 5px 18px; margin-top: 8px; padding-top: 9px;
+  border-top: 1px solid var(--line); font-size: 12px; color: var(--muted);
+}
+.highlight { color: var(--ink); font-weight: 700; }
 
 /* ---------- Tabs ---------- */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }

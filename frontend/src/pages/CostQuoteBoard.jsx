@@ -309,9 +309,10 @@ export default function CostQuoteBoard() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "14px 16px" }}>
+                        <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "18px 20px" }}>
+                          <div className="cost-section-label">Câu trả lời đã có</div>
                           {quotes.length === 0 ? (
-                            <p className="muted" style={{ margin: "0 0 10px" }}>
+                            <p className="muted" style={{ margin: 0 }}>
                               Chưa có câu trả lời nào.
                             </p>
                           ) : (
@@ -322,23 +323,21 @@ export default function CostQuoteBoard() {
                                 .filter(Boolean)
                                 .join(", ");
                               return (
-                                <div key={q.id} className="panel" style={{ marginBottom: 10, padding: "10px 14px" }}>
+                                <div key={q.id} className="cost-quote-card">
                                   {(q.items || []).map((it) => {
                                     const kind = unitKind(it.unit);
                                     const dims = [it.unit_length_cm, it.unit_width_cm, it.unit_height_cm]
                                       .filter((v) => v !== null && v !== undefined)
                                       .join(" × ");
                                     return (
-                                      <div key={it.id} className="wrap-row-view">
+                                      <div key={it.id} className="cost-quote-item">
                                         <b>{it.item_name || "—"}</b>
                                         <span>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</span>
                                         {it.unit_cost && <span>Giá vốn/đv: {formatMoney(it.unit_cost)}</span>}
                                         {kind !== "volume" && dims && <span>KT/đv: {dims} cm</span>}
                                         {kind !== "weight" && it.unit_weight_kg && <span>TL/đv: {it.unit_weight_kg} kg</span>}
                                         {it.total_cost && (
-                                          <span style={{ fontWeight: 600 }}>
-                                            Tổng giá vốn: {formatMoney(it.total_cost)}
-                                          </span>
+                                          <span className="highlight">Tổng giá vốn: {formatMoney(it.total_cost)}</span>
                                         )}
                                         {it.total_volume_m3 && (
                                           <span>
@@ -351,14 +350,14 @@ export default function CostQuoteBoard() {
                                       </div>
                                     );
                                   })}
-                                  <div className="muted wrap-row-view" style={{ fontSize: 12 }}>
+                                  <div className="cost-quote-meta">
                                     <span>Điểm nhận hàng: {address || "—"}</span>
                                     {q.shipping_rate && q.shipping_rate_basis !== "total" && (
                                       <span>
                                         Giá cước: {formatMoney(q.shipping_rate)}/{q.shipping_rate_basis}
                                       </span>
                                     )}
-                                    <span style={{ fontWeight: 600 }}>
+                                    <span className="highlight">
                                       Tổng giá vốn vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}
                                     </span>
                                     <span>Người trả lời: {q.created_by_name ?? "—"}</span>
@@ -370,178 +369,196 @@ export default function CostQuoteBoard() {
                           )}
 
                           {canSupply() && (
-                            <form
-                              onSubmit={(e) => handleAddQuote(e, item)}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ marginTop: 12 }}
-                            >
+                            <form onSubmit={(e) => handleAddQuote(e, item)} onClick={(e) => e.stopPropagation()}>
+                              <div className="cost-section-label">Trả lời mới — Mặt hàng</div>
                               {form.items.map((row, i) => {
                                 const { totalCost, totalVolumeM3, totalWeightKg, kind } = previewTotals(row);
                                 return (
-                                  <div className="wrap-row" key={i}>
-                                    <label style={{ minWidth: 160, flex: "1 1 160px" }}>
-                                      Mặt hàng
-                                      <input
-                                        value={row.item_name}
-                                        onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 70 }}>
-                                      SL thực mua
-                                      <input
-                                        type="number" step="0.01"
-                                        placeholder="vd: 5"
-                                        value={row.quantity}
-                                        onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 70 }}>
-                                      ĐVT
-                                      <input
-                                        placeholder="vd: thùng"
-                                        value={row.unit}
-                                        onChange={(e) => updateItemRow(i, "unit", e.target.value)}
-                                      />
-                                    </label>
-                                    <label style={{ width: 100 }}>
-                                      Giá vốn/đv
-                                      <MoneyInput
-                                        value={row.unit_cost}
-                                        onChange={(v) => updateItemRow(i, "unit_cost", v)}
-                                      />
-                                    </label>
+                                  <div className="cost-item-card" key={i}>
+                                    <div className="cost-item-head">
+                                      <span className="index">Mặt hàng {i + 1}</span>
+                                      {form.items.length > 1 && (
+                                        <button type="button" className="link-btn" onClick={() => removeItemRow(i)}>
+                                          Xoá
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="cost-item-fields">
+                                      <label style={{ minWidth: 160, flex: "1 1 160px" }}>
+                                        Mặt hàng
+                                        <input
+                                          value={row.item_name}
+                                          onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
+                                        />
+                                      </label>
+                                      <label style={{ width: 80 }}>
+                                        SL thực mua
+                                        <input
+                                          type="number" step="0.01"
+                                          placeholder="vd: 5"
+                                          value={row.quantity}
+                                          onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
+                                        />
+                                      </label>
+                                      <label style={{ width: 80 }}>
+                                        ĐVT
+                                        <input
+                                          placeholder="vd: thùng"
+                                          value={row.unit}
+                                          onChange={(e) => updateItemRow(i, "unit", e.target.value)}
+                                        />
+                                      </label>
+                                      <label style={{ width: 110 }}>
+                                        Giá vốn/đv
+                                        <MoneyInput
+                                          value={row.unit_cost}
+                                          onChange={(v) => updateItemRow(i, "unit_cost", v)}
+                                        />
+                                      </label>
 
-                                    {kind !== "volume" && (
-                                      <>
-                                        <label style={{ width: 70 }}>
-                                          Dài
-                                          <input
-                                            type="number" step="0.01"
-                                            value={row.unit_length}
-                                            onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
-                                          />
-                                        </label>
-                                        <label style={{ width: 70 }}>
-                                          Rộng
-                                          <input
-                                            type="number" step="0.01"
-                                            value={row.unit_width}
-                                            onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
-                                          />
-                                        </label>
-                                        <label style={{ width: 70 }}>
-                                          Cao
-                                          <input
-                                            type="number" step="0.01"
-                                            value={row.unit_height}
-                                            onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
-                                          />
-                                        </label>
-                                        <label style={{ width: 68 }}>
-                                          Đơn vị
-                                          <select
-                                            value={row.dimension_unit}
-                                            onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
-                                          >
-                                            <option value="cm">cm</option>
-                                            <option value="m">m</option>
-                                          </select>
-                                        </label>
-                                      </>
-                                    )}
+                                      {kind !== "volume" && (
+                                        <>
+                                          <label style={{ width: 70 }}>
+                                            Dài
+                                            <input
+                                              type="number" step="0.01"
+                                              value={row.unit_length}
+                                              onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
+                                            />
+                                          </label>
+                                          <label style={{ width: 70 }}>
+                                            Rộng
+                                            <input
+                                              type="number" step="0.01"
+                                              value={row.unit_width}
+                                              onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
+                                            />
+                                          </label>
+                                          <label style={{ width: 70 }}>
+                                            Cao
+                                            <input
+                                              type="number" step="0.01"
+                                              value={row.unit_height}
+                                              onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
+                                            />
+                                          </label>
+                                          <label style={{ width: 72 }}>
+                                            Đơn vị
+                                            <select
+                                              value={row.dimension_unit}
+                                              onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
+                                            >
+                                              <option value="cm">cm</option>
+                                              <option value="m">m</option>
+                                            </select>
+                                          </label>
+                                        </>
+                                      )}
 
-                                    {kind !== "weight" && (
-                                      <>
-                                        <label style={{ width: 90 }}>
-                                          Trọng lượng/đv
-                                          <input
-                                            type="number" step="0.01"
-                                            value={row.unit_weight}
-                                            onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
-                                          />
-                                        </label>
-                                        <label style={{ width: 68 }}>
-                                          Đơn vị
-                                          <select
-                                            value={row.weight_unit}
-                                            onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
-                                          >
-                                            <option value="kg">kg</option>
-                                            <option value="tấn">tấn</option>
-                                          </select>
-                                        </label>
-                                      </>
-                                    )}
+                                      {kind !== "weight" && (
+                                        <>
+                                          <label style={{ width: 95 }}>
+                                            Trọng lượng/đv
+                                            <input
+                                              type="number" step="0.01"
+                                              value={row.unit_weight}
+                                              onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
+                                            />
+                                          </label>
+                                          <label style={{ width: 72 }}>
+                                            Đơn vị
+                                            <select
+                                              value={row.weight_unit}
+                                              onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
+                                            >
+                                              <option value="kg">kg</option>
+                                              <option value="tấn">tấn</option>
+                                            </select>
+                                          </label>
+                                        </>
+                                      )}
+                                    </div>
 
-                                    {form.items.length > 1 && (
-                                      <button
-                                        type="button"
-                                        className="link-btn"
-                                        style={{ marginBottom: 8 }}
-                                        onClick={() => removeItemRow(i)}
-                                      >
-                                        Xoá
-                                      </button>
-                                    )}
-
-                                    <div className="muted" style={{ flexBasis: "100%", fontSize: 12 }}>
-                                      Tự động — Tổng giá vốn: {totalCost !== null ? formatMoney(totalCost) : "—"} · Tổng
-                                      kích thước: {totalVolumeM3 !== null ? `${totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3` : "—"} · Tổng
-                                      trọng lượng: {formatWeightDisplay(row.unit, row.quantity, totalWeightKg)}
+                                    <div className="cost-item-result">
+                                      <span>
+                                        Tổng giá vốn: <b>{totalCost !== null ? formatMoney(totalCost) : "—"}</b>
+                                      </span>
+                                      <span>
+                                        Tổng kích thước:{" "}
+                                        <b>
+                                          {totalVolumeM3 !== null
+                                            ? `${totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
+                                            : "—"}
+                                        </b>
+                                      </span>
+                                      <span>
+                                        Tổng trọng lượng: <b>{formatWeightDisplay(row.unit, row.quantity, totalWeightKg)}</b>
+                                      </span>
                                     </div>
                                   </div>
                                 );
                               })}
-                              <button type="button" className="link-btn" style={{ marginTop: 8 }} onClick={addItemRow}>
+                              <button type="button" className="link-btn" style={{ marginTop: 4 }} onClick={addItemRow}>
                                 + Thêm mặt hàng
                               </button>
 
+                              <div className="cost-section-label">Vận chuyển &amp; điểm nhận hàng</div>
                               {item.price_request_delivery_address && (
-                                <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+                                <p className="muted" style={{ fontSize: 12, marginTop: -3, marginBottom: 10 }}>
                                   Giao tới khách hàng (theo Yêu cầu giá): {item.price_request_delivery_address}
                                 </p>
                               )}
-                              <div className="field-grid-cols" style={{ marginTop: 12 }}>
-                                <label className="span-all">
-                                  Điểm nhận hàng (nơi NCC giao tới)
-                                  <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
-                                </label>
-                                <label style={{ width: 130 }}>
-                                  {form.shipping_rate_basis === "total" ? "Tổng giá vốn vận chuyển" : "Giá cước vận chuyển"}
-                                  <MoneyInput
-                                    placeholder="Tự tra, nhập tay"
-                                    value={form.shipping_rate}
-                                    onChange={(v) => setForm({ ...form, shipping_rate: v })}
-                                  />
-                                </label>
-                                <label style={{ width: 110 }}>
-                                  Tính theo
-                                  <select
-                                    value={form.shipping_rate_basis}
-                                    onChange={(e) => setForm({ ...form, shipping_rate_basis: e.target.value })}
-                                  >
-                                    <option value="kg">Đơn giá/kg</option>
-                                    <option value="m3">Đơn giá/m3</option>
-                                    <option value="total">Tổng cố định</option>
-                                  </select>
-                                </label>
+                              <div className="cost-item-card">
+                                <div className="cost-item-fields">
+                                  <label style={{ flexBasis: "100%" }}>
+                                    Điểm nhận hàng (nơi NCC giao tới)
+                                    <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
+                                  </label>
+                                  <label style={{ width: 150 }}>
+                                    {form.shipping_rate_basis === "total" ? "Tổng giá vốn vận chuyển" : "Giá cước vận chuyển"}
+                                    <MoneyInput
+                                      placeholder="Tự tra, nhập tay"
+                                      value={form.shipping_rate}
+                                      onChange={(v) => setForm({ ...form, shipping_rate: v })}
+                                    />
+                                  </label>
+                                  <label style={{ width: 130 }}>
+                                    Tính theo
+                                    <select
+                                      value={form.shipping_rate_basis}
+                                      onChange={(e) => setForm({ ...form, shipping_rate_basis: e.target.value })}
+                                    >
+                                      <option value="kg">Đơn giá/kg</option>
+                                      <option value="m3">Đơn giá/m3</option>
+                                      <option value="total">Tổng cố định</option>
+                                    </select>
+                                  </label>
+                                </div>
                                 {form.shipping_rate_basis !== "total" && (
-                                  <div className="muted span-all" style={{ fontSize: 12 }}>
-                                    Tự động — Tổng giá vốn vận chuyển:{" "}
-                                    {previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}
-                                    {" "}(= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"} mọi mặt hàng)
+                                  <div className="cost-item-result">
+                                    <span>
+                                      Tổng giá vốn vận chuyển:{" "}
+                                      <b>{previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}</b>
+                                    </span>
+                                    <span>
+                                      (= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"} mọi mặt hàng)
+                                    </span>
                                   </div>
                                 )}
-                                <label className="span-all">
-                                  Mô tả thêm
-                                  <textarea
-                                    rows={2}
-                                    value={form.note}
-                                    onChange={(e) => setForm({ ...form, note: e.target.value })}
-                                  />
-                                </label>
                               </div>
-                              <div className="modal-actions">
+
+                              <label style={{ display: "block", marginTop: 16 }}>
+                                <div className="cost-section-label" style={{ margin: "0 0 6px" }}>
+                                  Mô tả thêm
+                                </div>
+                                <textarea
+                                  rows={2}
+                                  value={form.note}
+                                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                                />
+                              </label>
+
+                              <div className="modal-actions" style={{ marginTop: 14 }}>
                                 <button type="submit" disabled={saving}>
                                   {saving ? "Đang lưu..." : "Lưu trả lời"}
                                 </button>
