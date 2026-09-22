@@ -680,45 +680,33 @@ a:hover { text-decoration: underline; }
 .field-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
 
 /* ---------- Trả lời yêu cầu giá (CostQuoteBoard) ---------- */
-.cq-editor { container-type: inline-size; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px 8px; }
-.cq-line { display: grid; grid-template-columns: minmax(140px, 1.2fr) 160px minmax(235px, 1.4fr) 150px minmax(180px, 1fr); gap: 12px; align-items: start; }
-.cq-line-weight { grid-template-columns: minmax(150px, 1.2fr) 170px minmax(250px, 1.5fr) minmax(190px, 1fr); }
-.cq-line-volume { grid-template-columns: minmax(150px, 1.5fr) 170px 160px minmax(190px, 1fr); }
-.cq-line + .cq-line { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
-.cq-line > *, .cq-line label { min-width: 0; }
-.cq-line label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; font-weight: 600; color: var(--muted); }
-.cq-line input, .cq-line select { width: 100%; min-width: 0; }
-.cq-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.cq-dimension-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 65px; gap: 8px; }
-.cq-metric { display: flex; flex-direction: column; gap: 2px; margin-top: 7px; padding: 6px 9px; border-radius: 6px; background: var(--surface-muted); min-width: 0; }
-.cq-metric span { font-size: 10.5px; font-weight: 500; color: var(--muted); }
-.cq-metric output { font-size: 13px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; white-space: normal; }
-.cq-metric-money { background: var(--primary-soft); }
-.cq-metric-money output { color: var(--primary-dark); font-size: 16px; }
-.cq-price input { text-align: right; font-variant-numeric: tabular-nums; }
-.cq-items-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-.cq-items-footer > button { flex-shrink: 0; }
-.cq-summary { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.cq-summary .cq-metric { margin: 0; min-width: 145px; }
-.cq-remove { margin-top: 6px; font-size: 11px; }
-.cq-add-inline { display: flex; align-items: center; min-height: 50px; margin-top: 7px; }
-@container (max-width: 1000px) {
-  .cq-line { grid-template-columns: minmax(140px, 1fr) 170px minmax(190px, 1fr); }
-  .cq-product { grid-column: 1; grid-row: 1; }
-  .cq-quantity { grid-column: 2; grid-row: 1; }
-  .cq-price { grid-column: 3; grid-row: 1; }
-  .cq-dimensions { grid-column: 1 / 3; }
-}
-@container (max-width: 600px) {
-  .cq-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cq-product { grid-column: 1 / -1; grid-row: auto; }
-  .cq-quantity { grid-column: 1; grid-row: auto; }
-  .cq-price { grid-column: 2; grid-row: 2; }
-  .cq-dimensions { grid-column: 1 / -1; }
-  .cq-items-footer { align-items: flex-start; flex-direction: column; }
-  .cq-summary { width: 100%; justify-content: flex-start; }
-  .cq-summary .cq-metric { flex: 1; }
-}
+.cq-editor { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 8px; overflow-x: auto; }
+.cq-table { width: 100%; min-width: 860px; border-collapse: collapse; table-layout: fixed; }
+.cq-col-product { width: auto; }
+.cq-col-quantity { width: 80px; }
+.cq-col-unit { width: 64px; }
+.cq-col-dimension { width: 58px; }
+.cq-col-weight { width: 88px; }
+.cq-col-price { width: 128px; }
+.cq-col-amount { width: 130px; }
+.cq-col-remove { width: 30px; }
+.cq-table > thead > tr > th { padding: 4px 4px 7px; background: transparent; text-align: left; font-size: 10.5px; font-weight: 600; color: var(--muted); letter-spacing: 0; text-transform: none; border: 0; }
+.cq-table > tbody > tr > td { padding: 5px 4px; border: 0; vertical-align: middle; }
+.cq-table > tbody > tr + tr > td { border-top: 1px solid var(--line); }
+.cq-table input, .cq-table select { width: 100%; min-width: 0; padding: 8px 7px; font-size: 12px; }
+.cq-table .money-input input { padding-right: 23px; text-align: right; }
+.cq-table .cq-amount { text-align: right; font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; white-space: normal; }
+.cq-table .cq-not-needed { text-align: center; color: var(--muted); }
+.cq-table > tfoot > tr > td { padding: 8px 4px 2px; border-top: 1px solid var(--line); vertical-align: middle; }
+.cq-total { display: flex; flex-direction: column; gap: 3px; padding: 7px 8px; background: var(--surface-muted); border-radius: 6px; }
+.cq-total span { font-size: 10.5px; color: var(--muted); }
+.cq-total output { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; white-space: normal; }
+.cq-total-money { background: var(--primary-soft); text-align: right; }
+.cq-total-money output { color: var(--primary-dark); font-size: 16px; }
+.cq-table .cq-remove { background: transparent; border: 0; box-shadow: none; color: var(--muted); padding: 4px; min-width: 24px; font-size: 20px; line-height: 1; }
+.cq-table .cq-remove:hover { background: var(--primary-soft); color: var(--primary-dark); }
+.cq-table .link-btn { font-size: 12px; white-space: nowrap; padding: 4px; }
+.cq-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 /* Nhãn nhỏ mở đầu 1 khối — cùng ngôn ngữ hình ảnh với tiêu đề cột .data-table (uppercase, giãn
    chữ, màu muted) để cả trang thấy nhất quán thay vì chữ thường lẫn vào nội dung. */
 .cost-section-label {
