@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ActivityViewSet,
+    CostQuoteViewSet,
     DashboardStatsView,
     NoticeViewSet,
     OrderViewSet,
@@ -26,6 +27,7 @@ router.register("activities", ActivityViewSet, basename="activity")
 router.register("tasks", TaskViewSet, basename="task")
 router.register("price-inquiries", PriceRequestViewSet, basename="price-inquiry")
 router.register("price-inquiry-items", PriceRequestItemViewSet, basename="price-inquiry-item")
+router.register("cost-quotes", CostQuoteViewSet, basename="cost-quote")
 router.register("purchase-request-items", PurchaseRequestItemViewSet, basename="purchase-request-item")
 router.register("supplier-quotes", SupplierQuoteViewSet, basename="supplier-quote")
 router.register("quote-lines", PriceInquiryQuoteLineViewSet, basename="quote-line")

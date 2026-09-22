@@ -31,6 +31,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from .models import (
     Activity,
+    CostQuote,
     Notice,
     Order,
     OrderItem,
@@ -50,6 +51,7 @@ from .models import (
 from .permissions import IsAssignedOrCreatorOrManager, IsManagerOrAssignedSales, IsManagerOrSupply
 from .serializers import (
     ActivitySerializer,
+    CostQuoteSerializer,
     NoticeSerializer,
     OrderSerializer,
     PartnerSerializer,
@@ -319,19 +321,25 @@ class PriceRequestViewSet(CompanyScopedMixin, viewsets.ModelViewSet):
 
 class PriceRequestItemViewSet(
     CompanyScopedMixin,
-    mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet,
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet,
 ):
-    """Chỉ cho sửa 1 dòng sản phẩm đã có sẵn (dùng để đính/thay Hình ảnh sau khi tạo Yêu cầu giá) —
-    tạo/xoá dòng vẫn qua PriceRequestSerializer (nested write) trong PriceRequestViewSet."""
+    """List dùng cho tab "Trả lời yêu cầu giá" (xem CostQuoteViewSet) — tạo/xoá dòng vẫn qua
+    PriceRequestSerializer (nested write) trong PriceRequestViewSet, ở đây chỉ cho sửa 1 dòng đã có
+    sẵn (đính/thay Hình ảnh, Giá vốn tạm tính, trả lời báo giá vốn)."""
 
     serializer_class = PriceRequestItemSerializer
     permission_classes = [IsAuthenticated]
     company_field = "price_request__company"
+    filterset_fields = ["id", "price_request"]
 
     def get_queryset(self):
-        qs = self.scope_by_company(PriceRequestItem.objects.select_related("price_request", "product"))
-        # Cung ứng cần thấy mọi dòng (không chỉ khách mình phụ trách) để tạo Đề nghị mua từ bất kỳ
-        # Yêu cầu giá nào đang chờ — giống quyền "thấy hết" đã cho Cung ứng ở Sàn báo giá cạnh tranh cũ.
+        qs = self.scope_by_company(
+            PriceRequestItem.objects.select_related("price_request__customer", "price_request__assigned_to", "product")
+            .prefetch_related("cost_quotes__created_by", "cost_quotes__country", "cost_quotes__province")
+        )
+        # Cung ứng cần thấy mọi dòng (không chỉ khách mình phụ trách) để tạo Đề nghị mua/trả lời báo
+        # giá vốn từ bất kỳ Yêu cầu giá nào đang chờ — giống quyền "thấy hết" đã cho Cung ứng ở Sàn
+        # báo giá cạnh tranh cũ.
         if is_manager(self.request.user) or is_supply(self.request.user):
             return qs
         return qs.filter(price_request__customer__assigned_to=self.request.user.profile)
@@ -367,6 +375,43 @@ class PriceRequestItemViewSet(
                 purchase_request_item=purchase_item, price_request_item=item, quantity_allocated=item.quantity,
             )
         return Response(PurchaseRequestItemSerializer(purchase_item).data, status=201)
+
+
+class CostQuoteViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
+):
+    """Tab "Trả lời yêu cầu giá" — Cung ứng/Quản lý nhập báo giá vốn nội bộ trả lời 1 dòng Yêu cầu
+    giá (khác Sàn báo giá NCC — đây là bước sớm hơn, trước khi có báo giá NCC thật). Nhiều dòng lịch
+    sử cho 1 dòng Yêu cầu giá, không ghi đè (xem CostQuote model)."""
+
+    serializer_class = CostQuoteSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["price_request_item"]
+
+    def get_queryset(self):
+        qs = CostQuote.objects.select_related(
+            "price_request_item__price_request", "created_by", "country", "province", "district", "ward"
+        )
+        if is_manager(self.request.user) or is_supply(self.request.user):
+            return qs
+        return qs.filter(price_request_item__price_request__assigned_to=self.request.user.profile)
+
+    def perform_create(self, serializer):
+        if not (is_manager(self.request.user) or is_supply(self.request.user)):
+            raise PermissionDenied("Chỉ Cung ứng/Quản lý mới trả lời được Yêu cầu giá.")
+        serializer.save(created_by=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        if not is_manager(self.request.user) and instance.created_by_id != self.request.user.id:
+            raise PermissionDenied("Chỉ sửa được câu trả lời của chính mình.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not is_manager(self.request.user) and instance.created_by_id != self.request.user.id:
+            raise PermissionDenied("Chỉ xoá được câu trả lời của chính mình.")
+        instance.delete()
 
 
 class PurchaseRequestItemViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):

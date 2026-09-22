@@ -324,6 +324,10 @@ class PriceRequest(models.Model):
         DANG_THUONG_LUONG = "dang_thuong_luong", "Đang thương lượng"
         HUY = "huy", "Huỷ"
 
+    # Khai tường minh để đổi verbose_name cột "id" mặc định ("ID") — export Excel/Admin list chỉ
+    # hiện đúng 1 cột id là số nội bộ này, nhãn "Id yêu cầu giá" (không hiện cột "code" nữa, xem
+    # PriceRequestResource.Meta.exclude).
+    id = models.AutoField("Id yêu cầu giá", primary_key=True)
     # Mã yêu cầu giá tự sinh 1 lần lúc tạo (xem save()) — không cho sửa tay.
     code = models.CharField("Id yêu cầu giá", max_length=20, unique=True, blank=True, editable=False)
     customer = models.ForeignKey(
@@ -420,14 +424,41 @@ class PriceRequestItem(models.Model):
 
 class CostQuote(models.Model):
     """Báo giá vốn — nằm giữa Yêu cầu giá và Sàn báo giá NCC (khác estimated_cost_price ở trên, vốn
-    chỉ là 1 con số ước lượng nhanh). Đây là 1 bảng riêng để sau này bổ sung thêm các trường dữ liệu
-    cụ thể (anh sẽ cung cấp) — nhiều dòng lịch sử cho 1 dòng Yêu cầu giá, không ghi đè, giống cách
-    SupplierQuote/PriceCalculation đang làm."""
+    chỉ là 1 con số ước lượng nhanh). Nhiều dòng lịch sử cho 1 dòng Yêu cầu giá, không ghi đè, giống
+    cách SupplierQuote/PriceCalculation đang làm."""
 
+    # Khai tường minh để đổi verbose_name cột "id" mặc định — cùng cách làm với PriceRequest.id.
+    id = models.AutoField("Id trả lời yêu cầu giá", primary_key=True)
     price_request_item = models.ForeignKey(
         PriceRequestItem, verbose_name="Dòng yêu cầu giá", on_delete=models.CASCADE, related_name="cost_quotes"
     )
-    note = models.TextField("Ghi chú", blank=True)
+    # Điểm nhận hàng cho báo giá vốn này — cùng cấu trúc Quốc gia/Tỉnh/Quận/Phường/Số nhà với
+    # PriceRequest, KHÔNG nhất thiết trùng địa chỉ giao hàng cho khách (đây là nơi Cung ứng dự tính
+    # nhận hàng về trước khi giao tiếp).
+    country = models.ForeignKey(
+        Country, verbose_name="Quốc gia", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    province = models.ForeignKey(
+        Province, verbose_name="Tỉnh/Thành phố", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    district = models.ForeignKey(
+        District, verbose_name="Quận/Huyện", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    ward = models.ForeignKey(
+        Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
+    note = models.TextField("Mô tả thêm", blank=True)
+    item_name = models.CharField("Mặt hàng", max_length=255, blank=True)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
+    unit = models.CharField("ĐVT", max_length=50, blank=True)
+    unit_cost = models.DecimalField("Giá vốn đơn vị", max_digits=14, decimal_places=2, null=True, blank=True)
+    unit_dimensions = models.CharField("Kích thước đơn vị", max_length=255, blank=True)
+    unit_weight_kg = models.DecimalField("Trọng lượng đơn vị", max_digits=10, decimal_places=2, null=True, blank=True)
+    total_cost = models.DecimalField("Tổng giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
+    total_dimensions = models.CharField("Tổng kích thước", max_length=255, blank=True)
+    total_weight_kg = models.DecimalField("Tổng trọng lượng", max_digits=10, decimal_places=2, null=True, blank=True)
+    shipping_cost = models.DecimalField("Giá vốn vận chuyển", max_digits=14, decimal_places=2, null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )

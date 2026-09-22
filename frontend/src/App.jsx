@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
 import ProtectedLayout from "./components/ProtectedLayout";
 import ApprovalsPage from "./pages/ApprovalsPage";
+import CostQuoteBoard from "./pages/CostQuoteBoard";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetail from "./pages/EmployeeDetail";
 import Employees from "./pages/Employees";
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/partners" element={<PartnerList />} />
           <Route path="/partners/:id" element={<PartnerDetail />} />
           <Route path="/price-requests" element={<PriceRequestBoard />} />
+          <Route path="/cost-quotes" element={<CostQuoteBoard />} />
           <Route path="/supplier-quotes" element={<SupplierQuoteBoard />} />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/approvals" element={<ApprovalsPage />} />

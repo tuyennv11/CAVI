@@ -1,5 +1,6 @@
 from django.contrib import admin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
+from import_export.fields import Field as ExportField
 
 from config.admin_import_export import ExcelModelResource
 from config.admin_utils import linked_fk
@@ -79,7 +80,9 @@ class PriceRequestResource(ExcelModelResource):
     class Meta:
         model = PriceRequest
         # Bỏ "Công ty" khỏi sheet — chỉ còn đúng 1 công ty (LIVI), không còn tác dụng lọc/phân biệt.
-        exclude = ("company",)
+        # Bỏ "code" — trùng vai trò với "id" (đã đổi verbose_name thành "Id yêu cầu giá" trên model),
+        # chỉ giữ đúng 1 cột id để đỡ dư thừa.
+        exclude = ("company", "code")
 
 
 class PriceRequestItemResource(ExcelModelResource):
@@ -312,7 +315,7 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
     # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau). Sản phẩm/số lượng giờ nằm ở inline
     # PriceRequestItem (1 Yêu cầu giá có nhiều sản phẩm), không còn là cột trực tiếp ở đây.
     list_display = (
-        "code", "customer_link", "assigned_to", "country", "province",
+        "id", "customer_link", "assigned_to", "country", "province",
         "district", "ward", "street_address", "description", "status", "created_by",
         "created_at", "updated_at",
     )
@@ -330,8 +333,22 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
 
 
 class CostQuoteResource(ExcelModelResource):
+    # Cột "Id yêu cầu giá" không phải trường lưu trực tiếp trên CostQuote — suy ra từ FK
+    # price_request_item để khỏi lưu trùng dữ liệu (giống lý do bỏ cột "code" ở PriceRequestResource).
+    price_request_code = ExportField(column_name="Id yêu cầu giá")
+
     class Meta:
         model = CostQuote
+        exclude = ("price_request_item",)
+        export_order = (
+            "id", "price_request_code", "country", "province", "district", "ward", "street_address",
+            "note", "item_name", "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg",
+            "total_cost", "total_dimensions", "total_weight_kg", "shipping_cost",
+            "created_by", "created_at", "updated_at",
+        )
+
+    def dehydrate_price_request_code(self, obj):
+        return obj.price_request_item.price_request.code
 
 
 class CostQuoteInline(admin.TabularInline):
@@ -358,10 +375,21 @@ class PriceRequestItemAdmin(ImportExportModelAdmin):
 @admin.register(CostQuote)
 class CostQuoteAdmin(ImportExportModelAdmin):
     resource_classes = [CostQuoteResource]
-    list_display = ("price_request_item", "note", "created_by", "created_at", "updated_at")
+    # Khớp đúng cột + thứ tự với CostQuoteResource (xem quy tắc: trang Admin luôn là bản xem trực
+    # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau).
+    list_display = (
+        "price_request_code", "country", "province", "district", "ward", "street_address",
+        "note", "item_name", "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg",
+        "total_cost", "total_dimensions", "total_weight_kg", "shipping_cost",
+        "created_by", "created_at", "updated_at",
+    )
     search_fields = ("price_request_item__item_name", "price_request_item__price_request__code")
-    autocomplete_fields = ["price_request_item"]
+    autocomplete_fields = ["price_request_item", "country", "province", "district", "ward"]
     readonly_fields = ("created_by", "created_at", "updated_at")
+
+    @admin.display(description="Id yêu cầu giá")
+    def price_request_code(self, obj):
+        return obj.price_request_item.price_request.code
 
 
 class PurchaseRequestResource(ExcelModelResource):

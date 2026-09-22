@@ -11,6 +11,7 @@ from hr.models import Profile
 
 from .models import (
     Activity,
+    CostQuote,
     Notice,
     Order,
     OrderItem,
@@ -352,23 +353,52 @@ class QuotationSerializer(serializers.ModelSerializer):
         return instance
 
 
+class CostQuoteSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True, default=None)
+    country_name = serializers.CharField(source="country.name", read_only=True, default=None)
+    province_name = serializers.CharField(source="province.name", read_only=True, default=None)
+    district_name = serializers.CharField(source="district.name", read_only=True, default=None)
+    ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
+
+    class Meta:
+        model = CostQuote
+        fields = [
+            "id", "price_request_item", "country", "country_name", "province", "province_name",
+            "district", "district_name", "ward", "ward_name", "street_address", "note", "item_name",
+            "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg", "total_cost",
+            "total_dimensions", "total_weight_kg", "shipping_cost", "created_by", "created_by_name",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["created_by", "created_at", "updated_at"]
+
+
 class PriceRequestItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True, default=None)
     purchase_request_item_id = serializers.SerializerMethodField()
+    price_request_code = serializers.CharField(source="price_request.code", read_only=True, default=None)
+    customer_name = serializers.CharField(source="price_request.customer.name", read_only=True, default=None)
+    assigned_to_id = serializers.IntegerField(source="price_request.assigned_to_id", read_only=True, default=None)
+    assigned_to_name = serializers.SerializerMethodField()
+    cost_quotes = CostQuoteSerializer(many=True, read_only=True)
 
     class Meta:
         model = PriceRequestItem
         fields = [
-            "id", "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
-            "estimated_cost_price", "purchase_request_item_id",
+            "id", "price_request", "price_request_code", "customer_name", "assigned_to_id", "assigned_to_name",
+            "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
+            "estimated_cost_price", "purchase_request_item_id", "cost_quotes",
         ]
-        read_only_fields = ["source_status"]
+        read_only_fields = ["source_status", "price_request"]
 
     def get_purchase_request_item_id(self, obj):
         # Đã tạo Đề nghị mua từ dòng này chưa — frontend dựa vào đây để hiện nút "Tạo đề nghị mua"
         # hay link "Xem trên Sàn báo giá NCC" (xem PriceRequestItemViewSet.create_purchase_request).
         allocation = obj.purchase_allocations.first()
         return allocation.purchase_request_item_id if allocation else None
+
+    def get_assigned_to_name(self, obj):
+        assigned_to = obj.price_request.assigned_to
+        return AssignedProfileSerializer(assigned_to).data["full_name"] if assigned_to else None
 
 
 class SupplierQuoteSerializer(serializers.ModelSerializer):

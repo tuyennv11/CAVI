@@ -188,6 +188,9 @@ export default function Sidebar({ user, open, onClose }) {
         <NavItem to="/price-requests" icon={ICONS.priceRequest}>
           Yêu cầu giá
         </NavItem>
+        <NavItem to="/cost-quotes" icon={ICONS.biddingBoard}>
+          Trả lời yêu cầu giá
+        </NavItem>
         <NavItem to="/supplier-quotes" icon={ICONS.biddingBoard}>
           Sàn báo giá NCC
         </NavItem>
