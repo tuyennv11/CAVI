@@ -528,10 +528,6 @@ export default function CostQuoteBoard() {
                                   );
                                 })}
                               </div>
-                              <button type="button" className="link-btn" style={{ marginTop: 8 }} onClick={addItemRow}>
-                                + Thêm mặt hàng
-                              </button>
-
                               {(() => {
                                 const grand = sumItemTotals(form.items.map(previewTotals));
                                 return (
@@ -550,20 +546,30 @@ export default function CostQuoteBoard() {
                                     <span>
                                       Tổng trọng lượng: <b>{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</b>
                                     </span>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      style={{ marginLeft: "auto" }}
+                                      onClick={addItemRow}
+                                    >
+                                      + Thêm mặt hàng
+                                    </button>
                                   </div>
                                 );
                               })()}
 
-                              <div className="cost-section-label">Vận chuyển &amp; điểm nhận hàng</div>
-                              {item.price_request_delivery_address && (
-                                <p className="muted" style={{ fontSize: 12, marginTop: -3, marginBottom: 10 }}>
-                                  Giao tới khách hàng (theo Yêu cầu giá): {item.price_request_delivery_address}
-                                </p>
-                              )}
-                              <div className="cost-item-card">
+                              <div className="cost-item-card" style={{ marginTop: 6 }}>
                                 <div className="cost-item-fields">
                                   <label style={{ flexBasis: "100%" }}>
-                                    Điểm nhận hàng (nơi NCC giao tới)
+                                    <span>
+                                      Điểm nhận hàng (nơi NCC giao tới)
+                                      {item.price_request_delivery_address && (
+                                        <span className="muted" style={{ fontWeight: 400, fontSize: 11 }}>
+                                          {" "}
+                                          — giao tới khách (theo Yêu cầu giá): {item.price_request_delivery_address}
+                                        </span>
+                                      )}
+                                    </span>
                                     <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
                                   </label>
                                   <label style={{ width: 150 }}>
@@ -599,18 +605,15 @@ export default function CostQuoteBoard() {
                                 )}
                               </div>
 
-                              <label style={{ display: "block", marginTop: 16 }}>
-                                <div className="cost-section-label" style={{ margin: "0 0 6px" }}>
-                                  Mô tả thêm
-                                </div>
-                                <textarea
-                                  rows={2}
-                                  value={form.note}
-                                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                                />
-                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="Mô tả thêm (không bắt buộc)"
+                                style={{ display: "block", width: "100%", marginTop: 8 }}
+                                value={form.note}
+                                onChange={(e) => setForm({ ...form, note: e.target.value })}
+                              />
 
-                              <div className="modal-actions" style={{ marginTop: 14 }}>
+                              <div className="modal-actions" style={{ marginTop: 10 }}>
                                 <button type="submit" disabled={saving}>
                                   {saving ? "Đang lưu..." : "Lưu trả lời"}
                                 </button>
