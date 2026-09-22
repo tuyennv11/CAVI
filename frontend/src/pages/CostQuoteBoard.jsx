@@ -412,19 +412,11 @@ export default function CostQuoteBoard() {
                           {canSupply() && (
                             <form onSubmit={(e) => handleAddQuote(e, item)} onClick={(e) => e.stopPropagation()}>
                               <div className="cost-section-label">Trả lời mới — Mặt hàng</div>
-                              {form.items.map((row, i) => {
-                                const { totalCost, totalVolumeM3, totalWeightKg, kind } = previewTotals(row);
-                                return (
-                                  <div className="cost-item-card" key={i}>
-                                    <div className="cost-item-head">
-                                      <span className="index">Mặt hàng {i + 1}</span>
-                                      {form.items.length > 1 && (
-                                        <button type="button" className="link-btn" onClick={() => removeItemRow(i)}>
-                                          Xoá
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="cost-item-fields">
+                              <div className="cost-item-card">
+                                {form.items.map((row, i) => {
+                                  const { kind } = previewTotals(row);
+                                  return (
+                                    <div className="cost-item-fields" key={i}>
                                       <label style={{ minWidth: 160, flex: "1 1 160px" }}>
                                         Mặt hàng
                                         <input
@@ -518,32 +510,26 @@ export default function CostQuoteBoard() {
                                           </label>
                                         </>
                                       )}
-                                    </div>
 
-                                    <div className="cost-item-result">
-                                      <span>
-                                        Tổng giá vốn: <b>{totalCost !== null ? formatMoney(totalCost) : "—"}</b>
-                                      </span>
-                                      <span>
-                                        Tổng kích thước:{" "}
-                                        <b>
-                                          {totalVolumeM3 !== null
-                                            ? `${totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
-                                            : "—"}
-                                        </b>
-                                      </span>
-                                      <span>
-                                        Tổng trọng lượng: <b>{formatWeightDisplay(row.unit, row.quantity, totalWeightKg)}</b>
-                                      </span>
+                                      {form.items.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="link-btn"
+                                          style={{ alignSelf: "center" }}
+                                          onClick={() => removeItemRow(i)}
+                                        >
+                                          Xoá
+                                        </button>
+                                      )}
                                     </div>
-                                  </div>
-                                );
-                              })}
-                              <button type="button" className="link-btn" style={{ marginTop: 4 }} onClick={addItemRow}>
+                                  );
+                                })}
+                              </div>
+                              <button type="button" className="link-btn" style={{ marginTop: 8 }} onClick={addItemRow}>
                                 + Thêm mặt hàng
                               </button>
 
-                              {form.items.length > 1 && (() => {
+                              {(() => {
                                 const grand = sumItemTotals(form.items.map(previewTotals));
                                 return (
                                   <div className="cost-grand-total">
