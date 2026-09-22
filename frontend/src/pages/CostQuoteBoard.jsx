@@ -323,11 +323,7 @@ export default function CostQuoteBoard() {
                     {isExpanded && (
                       <tr>
                         <td colSpan={6} style={{ background: "var(--surface-muted)", padding: "12px 16px" }}>
-                          {quotes.length === 0 ? (
-                            <p className="muted" style={{ margin: "0 0 4px" }}>
-                              Chưa có câu trả lời nào.
-                            </p>
-                          ) : (
+                          {quotes.length === 0 ? null : (
                             <>
                               <div className="cost-section-label">Câu trả lời đã có</div>
                               {quotes.map((q) => {
@@ -591,29 +587,32 @@ export default function CostQuoteBoard() {
                                       <option value="total">Tổng cố định</option>
                                     </select>
                                   </label>
+                                  {form.shipping_rate_basis !== "total" && (
+                                    <label style={{ minWidth: 150, flex: "1 1 150px" }}>
+                                      Tổng giá vốn vận chuyển
+                                      <div style={{ padding: "7px 0", fontSize: 13, fontWeight: 700 }}>
+                                        {previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}
+                                        <span
+                                          className="muted"
+                                          style={{ fontWeight: 400, fontSize: 11, marginLeft: 6 }}
+                                        >
+                                          (= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"})
+                                        </span>
+                                      </div>
+                                    </label>
+                                  )}
                                 </div>
-                                {form.shipping_rate_basis !== "total" && (
-                                  <div className="cost-item-result">
-                                    <span>
-                                      Tổng giá vốn vận chuyển:{" "}
-                                      <b>{previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}</b>
-                                    </span>
-                                    <span>
-                                      (= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"} mọi mặt hàng)
-                                    </span>
-                                  </div>
-                                )}
                               </div>
 
                               <textarea
-                                rows={2}
+                                rows={1}
                                 placeholder="Mô tả thêm (không bắt buộc)"
-                                style={{ display: "block", width: "100%", marginTop: 8 }}
+                                style={{ display: "block", width: "100%", marginTop: 6, resize: "vertical" }}
                                 value={form.note}
                                 onChange={(e) => setForm({ ...form, note: e.target.value })}
                               />
 
-                              <div className="modal-actions" style={{ marginTop: 10 }}>
+                              <div className="modal-actions" style={{ marginTop: 8 }}>
                                 <button type="submit" disabled={saving}>
                                   {saving ? "Đang lưu..." : "Lưu trả lời"}
                                 </button>
