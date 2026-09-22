@@ -8,6 +8,9 @@ export default function SavedCostQuote({ quote, index, formatWeight, deliveryAdd
   const rows = quote.items || [];
   const sum = (field) => rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
   const total = (field, format) => rows.some((row) => hasValue(row[field])) ? format(sum(field)) : "—";
+  const goodsTotal = rows.some((row) => hasValue(row.total_cost)) ? sum("total_cost") : null;
+  const shippingTotal = hasValue(quote.shipping_cost) ? Number(quote.shipping_cost) : null;
+  const grandTotal = goodsTotal !== null && shippingTotal !== null ? goodsTotal + shippingTotal : null;
   const address = [quote.street_address, quote.ward_name, quote.district_name, quote.province_name, quote.country_name].filter(Boolean).join(", ");
   return <section className="cq-saved">
     <header className="cq-saved-head">
@@ -40,6 +43,7 @@ export default function SavedCostQuote({ quote, index, formatWeight, deliveryAdd
       </div>
       <div><span className="cq-saved-label">Giá cước</span><p>{hasValue(quote.shipping_rate) ? `${formatMoney(quote.shipping_rate)}${quote.shipping_rate_basis === "total" ? " · Trọn gói" : `/${quote.shipping_rate_basis === "m3" ? "m³" : "kg"}`}` : "—"}</p></div>
       <div className="cq-saved-freight"><span className="cq-saved-label">Tổng giá vốn vận chuyển</span><p>{hasValue(quote.shipping_cost) ? formatMoney(quote.shipping_cost) : "—"}</p></div>
+      <div className="cq-saved-grand-total"><span className="cq-saved-label">Tổng cộng</span><p>{grandTotal !== null ? formatMoney(grandTotal) : "—"}</p></div>
     </div>
     {quote.note && <p className="cq-saved-note"><span className="cq-saved-label">Ghi chú: </span>{quote.note}</p>}
     <details className="cq-packing">
