@@ -112,14 +112,11 @@ export default function CostQuoteBoard() {
 
   function prefillForm(item) {
     // Mặt hàng/Số lượng/ĐVT + Điểm nhận hàng lấy sẵn từ Yêu cầu giá gốc — Cung ứng vẫn sửa được,
-    // và có thể thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng).
+    // và có thể thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng). Điểm nhận
+    // hàng KHÔNG lấy từ địa chỉ giao khách của Yêu cầu giá — đó là 2 nơi khác nhau (xem
+    // price_request_delivery_address, chỉ hiện tham khảo).
     setForm({
       ...emptyQuoteForm(),
-      country: item.price_request_country ?? "",
-      province: item.price_request_province ?? "",
-      district: item.price_request_district ?? "",
-      ward: item.price_request_ward ?? "",
-      street_address: item.price_request_street_address || "",
       items: [
         {
           ...emptyItemRow(),
@@ -414,9 +411,14 @@ export default function CostQuoteBoard() {
                                 + Thêm mặt hàng
                               </button>
 
+                              {item.price_request_delivery_address && (
+                                <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+                                  Giao tới khách hàng (theo Yêu cầu giá): {item.price_request_delivery_address}
+                                </p>
+                              )}
                               <div className="field-grid-cols" style={{ marginTop: 12 }}>
                                 <label className="span-all">
-                                  Điểm nhận hàng
+                                  Điểm nhận hàng (nơi NCC giao tới)
                                   <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
                                 </label>
                                 <label>

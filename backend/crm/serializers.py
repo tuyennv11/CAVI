@@ -412,26 +412,29 @@ class PriceRequestItemSerializer(serializers.ModelSerializer):
     assigned_to_id = serializers.IntegerField(source="price_request.assigned_to_id", read_only=True, default=None)
     assigned_to_name = serializers.SerializerMethodField()
     cost_quotes = CostQuoteSerializer(many=True, read_only=True)
-    # Địa chỉ giao hàng đã nhập sẵn trên Yêu cầu giá gốc — để tab Trả lời yêu cầu giá điền sẵn luôn
-    # vào Điểm nhận hàng thay vì bắt Cung ứng gõ lại từ đầu (xem CostQuoteBoard.jsx prefillForm).
-    price_request_country = serializers.IntegerField(source="price_request.country_id", read_only=True, default=None)
-    price_request_province = serializers.IntegerField(source="price_request.province_id", read_only=True, default=None)
-    price_request_district = serializers.IntegerField(source="price_request.district_id", read_only=True, default=None)
-    price_request_ward = serializers.IntegerField(source="price_request.ward_id", read_only=True, default=None)
-    price_request_street_address = serializers.CharField(
-        source="price_request.street_address", read_only=True, default=None
-    )
+    # Địa chỉ giao hàng cho KHÁCH đã nhập sẵn trên Yêu cầu giá gốc (Sales hỏi lúc tạo) — chỉ để tab
+    # Trả lời yêu cầu giá hiện tham khảo, KHÔNG phải "Điểm nhận hàng" của CostQuote (đó là nơi NCC
+    # giao tới, Cung ứng tự nhập riêng, 2 địa điểm khác nhau — vd khách ở Campuchia nhưng NCC giao
+    # hàng về 1 kho ở Việt Nam trước).
+    price_request_delivery_address = serializers.SerializerMethodField()
 
     class Meta:
         model = PriceRequestItem
         fields = [
             "id", "price_request", "price_request_code", "customer_name", "assigned_to_id", "assigned_to_name",
             "product", "product_name", "item_name", "image", "quantity", "unit", "source_status",
-            "estimated_cost_price", "purchase_request_item_id", "cost_quotes",
-            "price_request_country", "price_request_province", "price_request_district", "price_request_ward",
-            "price_request_street_address",
+            "estimated_cost_price", "purchase_request_item_id", "cost_quotes", "price_request_delivery_address",
         ]
         read_only_fields = ["source_status", "price_request"]
+
+    def get_price_request_delivery_address(self, obj):
+        pr = obj.price_request
+        detail = ", ".join(filter(None, [pr.district.name if pr.district else None, pr.ward.name if pr.ward else None, pr.street_address]))
+        return " · ".join(filter(None, [
+            pr.country.name if pr.country else None,
+            pr.province.name if pr.province else None,
+            detail,
+        ])) or None
 
     def get_purchase_request_item_id(self, obj):
         # Đã tạo Đề nghị mua từ dòng này chưa — frontend dựa vào đây để hiện nút "Tạo đề nghị mua"
