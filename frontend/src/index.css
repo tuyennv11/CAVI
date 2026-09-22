@@ -686,6 +686,15 @@ a:hover { text-decoration: underline; }
 .field-grid-cols .span-all { grid-column: 1 / -1; }
 @media (max-width: 640px) { .field-grid-cols { grid-template-columns: 1fr; } }
 
+/* Dòng mặt hàng tự xuống dòng theo bề ngang màn hình thay vì ép vào 1 bảng rộng phải kéo ngang —
+   chỉ kéo lên/xuống là thấy hết (vd Trả lời yêu cầu giá, nhiều mặt hàng mỗi câu trả lời). */
+.wrap-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.wrap-row + .wrap-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.wrap-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); font-weight: 600; }
+.wrap-row input, .wrap-row select { width: 100%; }
+.wrap-row-view { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; font-size: 13px; }
+.wrap-row-view + .wrap-row-view { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+
 /* ---------- Tabs ---------- */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
 .tab-btn {

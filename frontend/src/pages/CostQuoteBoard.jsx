@@ -32,9 +32,6 @@ function emptyQuoteForm() {
   };
 }
 
-const NUM_INPUT_STYLE = { width: 78 };
-const TEXT_INPUT_STYLE = { width: 110 };
-
 export default function CostQuoteBoard() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -219,44 +216,26 @@ export default function CostQuoteBoard() {
                                 .filter(Boolean)
                                 .join(", ");
                               return (
-                                <div key={q.id} className="table-wrap" style={{ marginBottom: 10 }}>
-                                  <table className="data-table">
-                                    <thead>
-                                      <tr>
-                                        <th>Mặt hàng</th>
-                                        <th>SL / ĐVT</th>
-                                        <th>Giá vốn/đv</th>
-                                        <th>KT/đv</th>
-                                        <th>TL/đv (kg)</th>
-                                        <th>Tổng giá vốn</th>
-                                        <th>Tổng KT</th>
-                                        <th>Tổng TL (kg)</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {(q.items || []).map((it) => (
-                                        <tr key={it.id}>
-                                          <td>{it.item_name || "—"}</td>
-                                          <td>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</td>
-                                          <td>{it.unit_cost ? formatMoney(it.unit_cost) : "—"}</td>
-                                          <td>{it.unit_dimensions || "—"}</td>
-                                          <td>{it.unit_weight_kg ?? "—"}</td>
-                                          <td style={{ fontWeight: 600 }}>
-                                            {it.total_cost ? formatMoney(it.total_cost) : "—"}
-                                          </td>
-                                          <td>{it.total_dimensions || "—"}</td>
-                                          <td>{it.total_weight_kg ?? "—"}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                  <div
-                                    className="muted"
-                                    style={{ fontSize: 12, padding: "8px 16px", borderTop: "1px solid var(--line)" }}
-                                  >
-                                    Giá vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"} · Điểm nhận
-                                    hàng: {address || "—"} · Người trả lời: {q.created_by_name ?? "—"}
-                                    {q.note && <> · {q.note}</>}
+                                <div key={q.id} className="panel" style={{ marginBottom: 10, padding: "10px 14px" }}>
+                                  {(q.items || []).map((it) => (
+                                    <div key={it.id} className="wrap-row-view">
+                                      <b>{it.item_name || "—"}</b>
+                                      <span>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</span>
+                                      {it.unit_cost && <span>Giá vốn/đv: {formatMoney(it.unit_cost)}</span>}
+                                      {it.unit_dimensions && <span>KT/đv: {it.unit_dimensions}</span>}
+                                      {it.unit_weight_kg && <span>TL/đv: {it.unit_weight_kg} kg</span>}
+                                      {it.total_cost && (
+                                        <span style={{ fontWeight: 600 }}>Tổng giá vốn: {formatMoney(it.total_cost)}</span>
+                                      )}
+                                      {it.total_dimensions && <span>Tổng KT: {it.total_dimensions}</span>}
+                                      {it.total_weight_kg && <span>Tổng TL: {it.total_weight_kg} kg</span>}
+                                    </div>
+                                  ))}
+                                  <div className="muted wrap-row-view" style={{ fontSize: 12 }}>
+                                    <span>Giá vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}</span>
+                                    <span>Điểm nhận hàng: {address || "—"}</span>
+                                    <span>Người trả lời: {q.created_by_name ?? "—"}</span>
+                                    {q.note && <span>{q.note}</span>}
                                   </div>
                                 </div>
                               );
@@ -269,104 +248,86 @@ export default function CostQuoteBoard() {
                               onClick={(e) => e.stopPropagation()}
                               style={{ marginTop: 12 }}
                             >
-                              <div className="table-wrap">
-                                <table className="data-table">
-                                  <thead>
-                                    <tr>
-                                      <th>Mặt hàng</th>
-                                      <th>SL</th>
-                                      <th>ĐVT</th>
-                                      <th>Giá vốn/đv</th>
-                                      <th>KT/đv</th>
-                                      <th>TL/đv (kg)</th>
-                                      <th>Tổng giá vốn</th>
-                                      <th>Tổng KT</th>
-                                      <th>Tổng TL (kg)</th>
-                                      <th></th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {form.items.map((row, i) => (
-                                      <tr key={i}>
-                                        <td>
-                                          <input
-                                            value={row.item_name}
-                                            onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number" step="0.01" style={NUM_INPUT_STYLE}
-                                            value={row.quantity}
-                                            onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            style={NUM_INPUT_STYLE}
-                                            value={row.unit}
-                                            onChange={(e) => updateItemRow(i, "unit", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number" step="0.01" style={TEXT_INPUT_STYLE}
-                                            value={row.unit_cost}
-                                            onChange={(e) => updateItemRow(i, "unit_cost", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            style={TEXT_INPUT_STYLE}
-                                            value={row.unit_dimensions}
-                                            onChange={(e) => updateItemRow(i, "unit_dimensions", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number" step="0.01" style={NUM_INPUT_STYLE}
-                                            value={row.unit_weight_kg}
-                                            onChange={(e) => updateItemRow(i, "unit_weight_kg", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number" step="0.01" style={TEXT_INPUT_STYLE}
-                                            value={row.total_cost}
-                                            onChange={(e) => updateItemRow(i, "total_cost", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            style={TEXT_INPUT_STYLE}
-                                            value={row.total_dimensions}
-                                            onChange={(e) => updateItemRow(i, "total_dimensions", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number" step="0.01" style={NUM_INPUT_STYLE}
-                                            value={row.total_weight_kg}
-                                            onChange={(e) => updateItemRow(i, "total_weight_kg", e.target.value)}
-                                          />
-                                        </td>
-                                        <td>
-                                          {form.items.length > 1 && (
-                                            <button
-                                              type="button"
-                                              className="link-btn"
-                                              onClick={() => removeItemRow(i)}
-                                            >
-                                              Xoá
-                                            </button>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                              <button type="button" className="link-btn" style={{ marginTop: 6 }} onClick={addItemRow}>
+                              {form.items.map((row, i) => (
+                                <div className="wrap-row" key={i}>
+                                  <label style={{ minWidth: 160, flex: "1 1 160px" }}>
+                                    Mặt hàng
+                                    <input
+                                      value={row.item_name}
+                                      onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 70 }}>
+                                    SL
+                                    <input
+                                      type="number" step="0.01"
+                                      value={row.quantity}
+                                      onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 70 }}>
+                                    ĐVT
+                                    <input value={row.unit} onChange={(e) => updateItemRow(i, "unit", e.target.value)} />
+                                  </label>
+                                  <label style={{ width: 100 }}>
+                                    Giá vốn/đv
+                                    <input
+                                      type="number" step="0.01"
+                                      value={row.unit_cost}
+                                      onChange={(e) => updateItemRow(i, "unit_cost", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 100 }}>
+                                    KT/đv
+                                    <input
+                                      value={row.unit_dimensions}
+                                      onChange={(e) => updateItemRow(i, "unit_dimensions", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 90 }}>
+                                    TL/đv (kg)
+                                    <input
+                                      type="number" step="0.01"
+                                      value={row.unit_weight_kg}
+                                      onChange={(e) => updateItemRow(i, "unit_weight_kg", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 100 }}>
+                                    Tổng giá vốn
+                                    <input
+                                      type="number" step="0.01"
+                                      value={row.total_cost}
+                                      onChange={(e) => updateItemRow(i, "total_cost", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 100 }}>
+                                    Tổng KT
+                                    <input
+                                      value={row.total_dimensions}
+                                      onChange={(e) => updateItemRow(i, "total_dimensions", e.target.value)}
+                                    />
+                                  </label>
+                                  <label style={{ width: 90 }}>
+                                    Tổng TL (kg)
+                                    <input
+                                      type="number" step="0.01"
+                                      value={row.total_weight_kg}
+                                      onChange={(e) => updateItemRow(i, "total_weight_kg", e.target.value)}
+                                    />
+                                  </label>
+                                  {form.items.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      style={{ marginBottom: 8 }}
+                                      onClick={() => removeItemRow(i)}
+                                    >
+                                      Xoá
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              <button type="button" className="link-btn" style={{ marginTop: 8 }} onClick={addItemRow}>
                                 + Thêm mặt hàng
                               </button>
 
