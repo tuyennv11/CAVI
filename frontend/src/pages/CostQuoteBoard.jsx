@@ -540,8 +540,10 @@ export default function CostQuoteBoard() {
                                         + Thêm mặt hàng
                                       </button>
                                     </div>
-                                    <div style={{ width: 80 }} />
-                                    <div style={{ width: 80 }} />
+                                    {/* Thẳng cột với SL thực mua + ĐVT (80+80 + khoảng cách 12px). */}
+                                    <div className="cost-total-box" style={{ width: 172 }}>
+                                      Tổng trọng lượng: {grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}
+                                    </div>
                                     {/* Thẳng cột với Dài+Rộng+Cao+Đơn vị (70+70+70+72 + 3 khoảng cách 12px) */}
                                     <div className="cost-total-box" style={{ width: 318 }}>
                                       Tổng kích thước:{" "}
@@ -549,10 +551,7 @@ export default function CostQuoteBoard() {
                                         ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
                                         : "—"}
                                     </div>
-                                    {/* Thẳng cột với Trọng lượng/đv + Đơn vị (95+72 + 1 khoảng cách 12px) */}
-                                    <div className="cost-total-box" style={{ width: 179 }}>
-                                      Tổng trọng lượng: {grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}
-                                    </div>
+                                    <div style={{ width: 179 }} />
                                     {/* Thẳng cột với Giá vốn/đv */}
                                     <div className="cost-total-box" style={{ width: 110 }}>
                                       Tổng giá vốn: {grand.totalCost ? formatMoney(grand.totalCost) : "—"}
