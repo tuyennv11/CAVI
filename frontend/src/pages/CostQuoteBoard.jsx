@@ -415,17 +415,19 @@ export default function CostQuoteBoard() {
                               <div className="cost-item-card">
                                 {form.items.map((row, i) => {
                                   const { kind } = previewTotals(row);
+                                  const showLabel = i === 0;
                                   return (
                                     <div className="cost-item-fields" key={i}>
                                       <label style={{ minWidth: 160, flex: "1 1 160px" }}>
-                                        Mặt hàng
+                                        {showLabel && "Mặt hàng"}
                                         <input
+                                          placeholder="Tên mặt hàng"
                                           value={row.item_name}
                                           onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
                                         />
                                       </label>
                                       <label style={{ width: 80 }}>
-                                        SL thực mua
+                                        {showLabel && "SL thực mua"}
                                         <input
                                           type="number" step="0.01"
                                           placeholder="vd: 5"
@@ -434,7 +436,7 @@ export default function CostQuoteBoard() {
                                         />
                                       </label>
                                       <label style={{ width: 80 }}>
-                                        ĐVT
+                                        {showLabel && "ĐVT"}
                                         <input
                                           placeholder="vd: thùng"
                                           value={row.unit}
@@ -442,7 +444,7 @@ export default function CostQuoteBoard() {
                                         />
                                       </label>
                                       <label style={{ width: 110 }}>
-                                        Giá vốn/đv
+                                        {showLabel && "Giá vốn/đv"}
                                         <MoneyInput
                                           value={row.unit_cost}
                                           onChange={(v) => updateItemRow(i, "unit_cost", v)}
@@ -452,7 +454,7 @@ export default function CostQuoteBoard() {
                                       {kind !== "volume" && (
                                         <>
                                           <label style={{ width: 70 }}>
-                                            Dài
+                                            {showLabel && "Dài"}
                                             <input
                                               type="number" step="0.01"
                                               value={row.unit_length}
@@ -460,7 +462,7 @@ export default function CostQuoteBoard() {
                                             />
                                           </label>
                                           <label style={{ width: 70 }}>
-                                            Rộng
+                                            {showLabel && "Rộng"}
                                             <input
                                               type="number" step="0.01"
                                               value={row.unit_width}
@@ -468,7 +470,7 @@ export default function CostQuoteBoard() {
                                             />
                                           </label>
                                           <label style={{ width: 70 }}>
-                                            Cao
+                                            {showLabel && "Cao"}
                                             <input
                                               type="number" step="0.01"
                                               value={row.unit_height}
@@ -476,7 +478,7 @@ export default function CostQuoteBoard() {
                                             />
                                           </label>
                                           <label style={{ width: 72 }}>
-                                            Đơn vị
+                                            {showLabel && "Đơn vị"}
                                             <select
                                               value={row.dimension_unit}
                                               onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
@@ -491,7 +493,7 @@ export default function CostQuoteBoard() {
                                       {kind !== "weight" && (
                                         <>
                                           <label style={{ width: 95 }}>
-                                            Trọng lượng/đv
+                                            {showLabel && "Trọng lượng/đv"}
                                             <input
                                               type="number" step="0.01"
                                               value={row.unit_weight}
@@ -499,7 +501,7 @@ export default function CostQuoteBoard() {
                                             />
                                           </label>
                                           <label style={{ width: 72 }}>
-                                            Đơn vị
+                                            {showLabel && "Đơn vị"}
                                             <select
                                               value={row.weight_unit}
                                               onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
