@@ -701,6 +701,7 @@ a:hover { text-decoration: underline; }
 .cq-summary { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .cq-summary .cq-metric { margin: 0; min-width: 145px; }
 .cq-remove { margin-top: 6px; font-size: 11px; }
+.cq-add-inline { display: flex; align-items: center; min-height: 50px; margin-top: 7px; }
 @container (max-width: 1000px) {
   .cq-line { grid-template-columns: minmax(140px, 1fr) 170px minmax(190px, 1fr); }
   .cq-product { grid-column: 1; grid-row: 1; }

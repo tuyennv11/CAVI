@@ -17,6 +17,7 @@ export default function CostQuoteItems({ items, updateItemRow, addItemRow, remov
       return <div className={`cq-line cq-line-${total.kind}`} key={i}>
         <div className="cq-product">
           <label>Mặt hàng<input placeholder="Tên mặt hàng" value={row.item_name} onChange={(e) => updateItemRow(i, "item_name", e.target.value)} /></label>
+          {items.length === 1 && <button type="button" className="link-btn cq-add-inline" onClick={addItemRow}>+ Thêm mặt hàng</button>}
           {items.length > 1 && <button type="button" className="link-btn cq-remove" onClick={() => removeItemRow(i)}>Xoá mặt hàng {i + 1}</button>}
         </div>
         <div className="cq-quantity">
@@ -46,13 +47,13 @@ export default function CostQuoteItems({ items, updateItemRow, addItemRow, remov
         </div>
       </div>;
     })}
-    <div className="cq-items-footer">
+    {items.length > 1 && <div className="cq-items-footer">
       <button type="button" className="link-btn" onClick={addItemRow}>+ Thêm mặt hàng</button>
-      {items.length > 1 && <div className="cq-summary">
+      <div className="cq-summary">
         <Metric label="Tổng trọng lượng">{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</Metric>
         <Metric label="Tổng thể tích">{volume(grand.totalVolumeM3)}</Metric>
         <Metric label="Tổng giá vốn" money>{items.some((row) => previewTotals(row).totalCost !== null) ? formatMoney(grand.totalCost) : "—"}</Metric>
-      </div>}
-    </div>
+      </div>
+    </div>}
   </div>;
 }
