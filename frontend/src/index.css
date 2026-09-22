@@ -723,6 +723,7 @@ a:hover { text-decoration: underline; }
 .cq-saved-table .cq-saved-total { color: var(--primary-dark); font-size: 16px; }
 .cq-saved-shipping { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 16px 24px; padding: 14px; }
 .cq-saved-label { color: var(--muted); font-size: 11px; font-weight: 500; }
+.cq-saved-route { display: grid; gap: 10px; min-width: 0; }
 .cq-saved-shipping p { margin: 5px 0 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .cq-saved-freight { text-align: right; }
 .cq-saved-freight p { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }

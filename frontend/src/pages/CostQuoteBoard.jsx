@@ -319,7 +319,7 @@ export default function CostQuoteBoard() {
                           {quotes.length === 0 ? null : (
                             <>
                               <div className="cost-section-label">Câu trả lời đã có</div>
-                              {quotes.map((q, index) => <SavedCostQuote key={q.id} quote={q} index={index} formatWeight={formatWeight} />)}
+                              {quotes.map((q, index) => <SavedCostQuote key={q.id} quote={q} index={index} formatWeight={formatWeight} deliveryAddress={item.price_request_delivery_address} />)}
                             </>
                           )}
 
