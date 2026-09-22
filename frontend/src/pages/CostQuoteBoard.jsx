@@ -440,67 +440,74 @@ export default function CostQuoteBoard() {
                                           onChange={(e) => updateItemRow(i, "unit", e.target.value)}
                                         />
                                       </label>
-                                      {kind !== "volume" && (
-                                        <>
-                                          <label style={{ width: 70 }}>
-                                            {showLabel && "Dài"}
-                                            <input
-                                              type="number" step="0.01"
-                                              value={row.unit_length}
-                                              onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
-                                            />
-                                          </label>
-                                          <label style={{ width: 70 }}>
-                                            {showLabel && "Rộng"}
-                                            <input
-                                              type="number" step="0.01"
-                                              value={row.unit_width}
-                                              onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
-                                            />
-                                          </label>
-                                          <label style={{ width: 70 }}>
-                                            {showLabel && "Cao"}
-                                            <input
-                                              type="number" step="0.01"
-                                              value={row.unit_height}
-                                              onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
-                                            />
-                                          </label>
-                                          <label style={{ width: 72 }}>
-                                            {showLabel && "Đơn vị"}
-                                            <select
-                                              value={row.dimension_unit}
-                                              onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
-                                            >
-                                              <option value="cm">cm</option>
-                                              <option value="m">m</option>
-                                            </select>
-                                          </label>
-                                        </>
-                                      )}
+                                      {/* Rộng cố định 318px dù ẩn hay hiện — để hàng nào cũng thẳng cột với nhau
+                                          và với dòng Tổng kích thước bên dưới. */}
+                                      <div style={{ width: 318, display: "flex", gap: "8px 12px", flexWrap: "wrap" }}>
+                                        {kind !== "volume" && (
+                                          <>
+                                            <label style={{ width: 70 }}>
+                                              {showLabel && "Dài"}
+                                              <input
+                                                type="number" step="0.01"
+                                                value={row.unit_length}
+                                                onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
+                                              />
+                                            </label>
+                                            <label style={{ width: 70 }}>
+                                              {showLabel && "Rộng"}
+                                              <input
+                                                type="number" step="0.01"
+                                                value={row.unit_width}
+                                                onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
+                                              />
+                                            </label>
+                                            <label style={{ width: 70 }}>
+                                              {showLabel && "Cao"}
+                                              <input
+                                                type="number" step="0.01"
+                                                value={row.unit_height}
+                                                onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
+                                              />
+                                            </label>
+                                            <label style={{ width: 72 }}>
+                                              {showLabel && "Đơn vị"}
+                                              <select
+                                                value={row.dimension_unit}
+                                                onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
+                                              >
+                                                <option value="cm">cm</option>
+                                                <option value="m">m</option>
+                                              </select>
+                                            </label>
+                                          </>
+                                        )}
+                                      </div>
 
-                                      {kind !== "weight" && (
-                                        <>
-                                          <label style={{ width: 95 }}>
-                                            {showLabel && "Trọng lượng/đv"}
-                                            <input
-                                              type="number" step="0.01"
-                                              value={row.unit_weight}
-                                              onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
-                                            />
-                                          </label>
-                                          <label style={{ width: 72 }}>
-                                            {showLabel && "Đơn vị"}
-                                            <select
-                                              value={row.weight_unit}
-                                              onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
-                                            >
-                                              <option value="kg">kg</option>
-                                              <option value="tấn">tấn</option>
-                                            </select>
-                                          </label>
-                                        </>
-                                      )}
+                                      {/* Rộng cố định 179px dù ẩn hay hiện — cùng lý do như trên. */}
+                                      <div style={{ width: 179, display: "flex", gap: "8px 12px", flexWrap: "wrap" }}>
+                                        {kind !== "weight" && (
+                                          <>
+                                            <label style={{ width: 95 }}>
+                                              {showLabel && "Trọng lượng/đv"}
+                                              <input
+                                                type="number" step="0.01"
+                                                value={row.unit_weight}
+                                                onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
+                                              />
+                                            </label>
+                                            <label style={{ width: 72 }}>
+                                              {showLabel && "Đơn vị"}
+                                              <select
+                                                value={row.weight_unit}
+                                                onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
+                                              >
+                                                <option value="kg">kg</option>
+                                                <option value="tấn">tấn</option>
+                                              </select>
+                                            </label>
+                                          </>
+                                        )}
+                                      </div>
 
                                       <label style={{ width: 110 }}>
                                         {showLabel && "Giá vốn/đv"}
