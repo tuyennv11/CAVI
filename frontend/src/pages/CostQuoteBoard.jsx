@@ -4,6 +4,7 @@ import { apiFetch } from "../api";
 import { useAuth } from "../AuthContext";
 import AddressFields from "../components/AddressFields";
 import MoneyInput from "../components/MoneyInput";
+import CostQuoteItems from "../components/CostQuoteItems";
 import { formatMoney } from "../constants";
 
 const WEIGHT_DISPLAY_THRESHOLD_KG = 1000;
@@ -88,7 +89,8 @@ function previewTotals(row) {
   const unitCost = Number(row.unit_cost) || 0;
   const kind = unitKind(row.unit);
 
-  const totalCost = quantity && row.unit_cost ? quantity * unitCost : null;
+  const totalCost = row.quantity !== "" && row.quantity != null && row.unit_cost !== "" && row.unit_cost != null
+    ? quantity * unitCost : null;
 
   const totalWeightKg =
     kind === "weight"
@@ -409,156 +411,15 @@ export default function CostQuoteBoard() {
 
                           {canSupply() && (
                             <form onSubmit={(e) => handleAddQuote(e, item)} onClick={(e) => e.stopPropagation()}>
-                              <div className="cost-item-card">
-                                {form.items.map((row, i) => {
-                                  const { kind } = previewTotals(row);
-                                  const showLabel = i === 0;
-                                  return (
-                                    <div className="cost-item-fields" key={i}>
-                                      <label style={{ minWidth: 160, flex: "1 1 160px" }}>
-                                        {showLabel && "Mặt hàng"}
-                                        <input
-                                          placeholder="Tên mặt hàng"
-                                          value={row.item_name}
-                                          onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
-                                        />
-                                      </label>
-                                      <label style={{ width: 80 }}>
-                                        {showLabel && "SL thực mua"}
-                                        <input
-                                          type="number" step="0.01"
-                                          placeholder="vd: 5"
-                                          value={row.quantity}
-                                          onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
-                                        />
-                                      </label>
-                                      <label style={{ width: 80 }}>
-                                        {showLabel && "ĐVT"}
-                                        <input
-                                          placeholder="vd: thùng"
-                                          value={row.unit}
-                                          onChange={(e) => updateItemRow(i, "unit", e.target.value)}
-                                        />
-                                      </label>
-                                      {/* Rộng cố định 318px dù ẩn hay hiện — để hàng nào cũng thẳng cột với nhau
-                                          và với dòng Tổng kích thước bên dưới. */}
-                                      <div style={{ width: 318, display: "flex", gap: "8px 12px", flexWrap: "wrap" }}>
-                                        {kind !== "volume" && (
-                                          <>
-                                            <label style={{ width: 70 }}>
-                                              {showLabel && "Dài"}
-                                              <input
-                                                type="number" step="0.01"
-                                                value={row.unit_length}
-                                                onChange={(e) => updateItemRow(i, "unit_length", e.target.value)}
-                                              />
-                                            </label>
-                                            <label style={{ width: 70 }}>
-                                              {showLabel && "Rộng"}
-                                              <input
-                                                type="number" step="0.01"
-                                                value={row.unit_width}
-                                                onChange={(e) => updateItemRow(i, "unit_width", e.target.value)}
-                                              />
-                                            </label>
-                                            <label style={{ width: 70 }}>
-                                              {showLabel && "Cao"}
-                                              <input
-                                                type="number" step="0.01"
-                                                value={row.unit_height}
-                                                onChange={(e) => updateItemRow(i, "unit_height", e.target.value)}
-                                              />
-                                            </label>
-                                            <label style={{ width: 72 }}>
-                                              {showLabel && "Đơn vị"}
-                                              <select
-                                                value={row.dimension_unit}
-                                                onChange={(e) => updateItemRow(i, "dimension_unit", e.target.value)}
-                                              >
-                                                <option value="cm">cm</option>
-                                                <option value="m">m</option>
-                                              </select>
-                                            </label>
-                                          </>
-                                        )}
-                                      </div>
-
-                                      {/* Rộng cố định 179px dù ẩn hay hiện — cùng lý do như trên. */}
-                                      <div style={{ width: 179, display: "flex", gap: "8px 12px", flexWrap: "wrap" }}>
-                                        {kind !== "weight" && (
-                                          <>
-                                            <label style={{ width: 95 }}>
-                                              {showLabel && "Trọng lượng/đv"}
-                                              <input
-                                                type="number" step="0.01"
-                                                value={row.unit_weight}
-                                                onChange={(e) => updateItemRow(i, "unit_weight", e.target.value)}
-                                              />
-                                            </label>
-                                            <label style={{ width: 72 }}>
-                                              {showLabel && "Đơn vị"}
-                                              <select
-                                                value={row.weight_unit}
-                                                onChange={(e) => updateItemRow(i, "weight_unit", e.target.value)}
-                                              >
-                                                <option value="kg">kg</option>
-                                                <option value="tấn">tấn</option>
-                                              </select>
-                                            </label>
-                                          </>
-                                        )}
-                                      </div>
-
-                                      <label style={{ width: 110 }}>
-                                        {showLabel && "Giá vốn/đv"}
-                                        <MoneyInput
-                                          value={row.unit_cost}
-                                          onChange={(v) => updateItemRow(i, "unit_cost", v)}
-                                        />
-                                      </label>
-
-                                      {form.items.length > 1 && (
-                                        <button
-                                          type="button"
-                                          className="link-btn"
-                                          style={{ alignSelf: "center" }}
-                                          onClick={() => removeItemRow(i)}
-                                        >
-                                          Xoá
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              {(() => {
-                                const grand = sumItemTotals(form.items.map(previewTotals));
-                                return (
-                                  <div className="cost-item-fields cost-grand-total" style={{ gap: "8px 12px" }}>
-                                    <div style={{ minWidth: 160, flex: "1 1 160px" }}>
-                                      <button type="button" className="link-btn" onClick={addItemRow}>
-                                        + Thêm mặt hàng
-                                      </button>
-                                    </div>
-                                    {/* Thẳng cột với SL thực mua + ĐVT (80+80 + khoảng cách 12px). */}
-                                    <div className="cost-total-box" style={{ width: 172 }}>
-                                      Tổng trọng lượng: {grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}
-                                    </div>
-                                    {/* Thẳng cột với Dài+Rộng+Cao+Đơn vị (70+70+70+72 + 3 khoảng cách 12px) */}
-                                    <div className="cost-total-box" style={{ width: 318 }}>
-                                      Tổng kích thước:{" "}
-                                      {grand.totalVolumeM3
-                                        ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
-                                        : "—"}
-                                    </div>
-                                    <div style={{ width: 179 }} />
-                                    {/* Thẳng cột với Giá vốn/đv */}
-                                    <div className="cost-total-box" style={{ width: 110 }}>
-                                      Tổng giá vốn: {grand.totalCost ? formatMoney(grand.totalCost) : "—"}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
+                              <CostQuoteItems
+                                items={form.items}
+                                updateItemRow={updateItemRow}
+                                addItemRow={addItemRow}
+                                removeItemRow={removeItemRow}
+                                previewTotals={previewTotals}
+                                sumItemTotals={sumItemTotals}
+                                formatWeight={formatWeight}
+                              />
 
                               <div className="cost-item-card" style={{ marginTop: 6 }}>
                                 <div className="cost-item-fields">
