@@ -454,10 +454,13 @@ class CostQuote(models.Model):
     class ShippingRateBasis(models.TextChoices):
         KG = "kg", "kg"
         M3 = "m3", "m3"
+        # 1 số NCC báo thẳng 1 số tiền trọn gói cho cả chuyến thay vì theo đơn giá/kg hoặc /m3 — chọn
+        # basis này thì shipping_rate CHÍNH LÀ Tổng giá vốn vận chuyển luôn, không nhân với gì cả.
+        TOTAL = "total", "Tổng cố định"
 
     # Giá cước vận chuyển nhập theo ĐƠN GIÁ (Cung ứng tự tra bên ngoài) — Tổng giá vốn vận chuyển
     # (property shipping_cost bên dưới) tự nhân với tổng trọng lượng hoặc tổng thể tích cộng dồn từ
-    # mọi mặt hàng trong câu trả lời này, tuỳ chọn ở shipping_rate_basis.
+    # mọi mặt hàng trong câu trả lời này, tuỳ chọn ở shipping_rate_basis (trừ basis TOTAL).
     shipping_rate = models.DecimalField("Giá cước vận chuyển", max_digits=14, decimal_places=2, null=True, blank=True)
     shipping_rate_basis = models.CharField(
         "Tính cước theo", max_length=10, choices=ShippingRateBasis.choices, default=ShippingRateBasis.KG,
@@ -479,10 +482,14 @@ class CostQuote(models.Model):
 
     @property
     def shipping_cost(self):
-        """Tổng giá vốn vận chuyển — tính tự động (Giá cước × tổng trọng lượng/thể tích cộng dồn
-        mọi mặt hàng), không cho nhập tay trực tiếp (xem shipping_rate/shipping_rate_basis)."""
+        """Tổng giá vốn vận chuyển — tính tự động, không cho nhập tay trực tiếp (xem
+        shipping_rate/shipping_rate_basis). NCC báo trọn gói (basis TOTAL) thì lấy thẳng
+        shipping_rate; báo theo đơn giá/kg hoặc /m3 thì nhân với tổng trọng lượng/thể tích cộng dồn
+        mọi mặt hàng trong câu trả lời này."""
         if not self.shipping_rate:
             return None
+        if self.shipping_rate_basis == self.ShippingRateBasis.TOTAL:
+            return self.shipping_rate
         total = Decimal("0")
         for item in self.items.all():
             value = (

@@ -115,10 +115,12 @@ function previewTotals(row) {
   return { totalCost, totalVolumeM3, totalWeightKg, kind };
 }
 
-// Tổng giá vốn vận chuyển = Giá cước × tổng trọng lượng (hoặc tổng thể tích) cộng dồn mọi mặt hàng
-// trong câu trả lời — y hệt công thức CostQuote.shipping_cost tính lại ở backend sau khi lưu.
+// Tổng giá vốn vận chuyển: NCC báo trọn gói (basis "total") thì lấy thẳng Giá cước; báo theo đơn
+// giá/kg hoặc /m3 thì nhân với tổng trọng lượng/thể tích cộng dồn mọi mặt hàng — y hệt công thức
+// CostQuote.shipping_cost tính lại ở backend sau khi lưu.
 function previewShippingCost(form) {
   if (!form.shipping_rate) return null;
+  if (form.shipping_rate_basis === "total") return Number(form.shipping_rate);
   const total = form.items.reduce((sum, row) => {
     const { totalWeightKg, totalVolumeM3 } = previewTotals(row);
     const value = form.shipping_rate_basis === "m3" ? totalVolumeM3 : totalWeightKg;
@@ -351,7 +353,7 @@ export default function CostQuoteBoard() {
                                   })}
                                   <div className="muted wrap-row-view" style={{ fontSize: 12 }}>
                                     <span>Điểm nhận hàng: {address || "—"}</span>
-                                    {q.shipping_rate && (
+                                    {q.shipping_rate && q.shipping_rate_basis !== "total" && (
                                       <span>
                                         Giá cước: {formatMoney(q.shipping_rate)}/{q.shipping_rate_basis}
                                       </span>
@@ -505,28 +507,31 @@ export default function CostQuoteBoard() {
                                   <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />
                                 </label>
                                 <label style={{ width: 130 }}>
-                                  Giá cước vận chuyển
+                                  {form.shipping_rate_basis === "total" ? "Tổng giá vốn vận chuyển" : "Giá cước vận chuyển"}
                                   <MoneyInput
                                     placeholder="Tự tra, nhập tay"
                                     value={form.shipping_rate}
                                     onChange={(v) => setForm({ ...form, shipping_rate: v })}
                                   />
                                 </label>
-                                <label style={{ width: 100 }}>
+                                <label style={{ width: 110 }}>
                                   Tính theo
                                   <select
                                     value={form.shipping_rate_basis}
                                     onChange={(e) => setForm({ ...form, shipping_rate_basis: e.target.value })}
                                   >
-                                    <option value="kg">kg</option>
-                                    <option value="m3">m3</option>
+                                    <option value="kg">Đơn giá/kg</option>
+                                    <option value="m3">Đơn giá/m3</option>
+                                    <option value="total">Tổng cố định</option>
                                   </select>
                                 </label>
-                                <div className="muted span-all" style={{ fontSize: 12 }}>
-                                  Tự động — Tổng giá vốn vận chuyển:{" "}
-                                  {previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}
-                                  {" "}(= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"} mọi mặt hàng)
-                                </div>
+                                {form.shipping_rate_basis !== "total" && (
+                                  <div className="muted span-all" style={{ fontSize: 12 }}>
+                                    Tự động — Tổng giá vốn vận chuyển:{" "}
+                                    {previewShippingCost(form) !== null ? formatMoney(previewShippingCost(form)) : "—"}
+                                    {" "}(= Giá cước × tổng {form.shipping_rate_basis === "m3" ? "kích thước" : "trọng lượng"} mọi mặt hàng)
+                                  </div>
+                                )}
                                 <label className="span-all">
                                   Mô tả thêm
                                   <textarea
