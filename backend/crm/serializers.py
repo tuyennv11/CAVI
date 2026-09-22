@@ -12,6 +12,7 @@ from hr.models import Profile
 from .models import (
     Activity,
     CostQuote,
+    CostQuoteItem,
     Notice,
     Order,
     OrderItem,
@@ -353,23 +354,47 @@ class QuotationSerializer(serializers.ModelSerializer):
         return instance
 
 
+class CostQuoteItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CostQuoteItem
+        fields = [
+            "id", "item_name", "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg",
+            "total_cost", "total_dimensions", "total_weight_kg",
+        ]
+
+
 class CostQuoteSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True, default=None)
     country_name = serializers.CharField(source="country.name", read_only=True, default=None)
     province_name = serializers.CharField(source="province.name", read_only=True, default=None)
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
     ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
+    items = CostQuoteItemSerializer(many=True)
 
     class Meta:
         model = CostQuote
         fields = [
             "id", "price_request_item", "country", "country_name", "province", "province_name",
-            "district", "district_name", "ward", "ward_name", "street_address", "note", "item_name",
-            "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg", "total_cost",
-            "total_dimensions", "total_weight_kg", "shipping_cost", "created_by", "created_by_name",
-            "created_at", "updated_at",
+            "district", "district_name", "ward", "ward_name", "street_address", "shipping_cost",
+            "note", "items", "created_by", "created_by_name", "created_at", "updated_at",
         ]
         read_only_fields = ["created_by", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items")
+        cost_quote = CostQuote.objects.create(**validated_data)
+        CostQuoteItem.objects.bulk_create(CostQuoteItem(cost_quote=cost_quote, **item) for item in items_data)
+        return cost_quote
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("items", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if items_data is not None:
+            instance.items.all().delete()
+            CostQuoteItem.objects.bulk_create(CostQuoteItem(cost_quote=instance, **item) for item in items_data)
+        return instance
 
 
 class PriceRequestItemSerializer(serializers.ModelSerializer):

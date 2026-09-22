@@ -5,13 +5,8 @@ import { useAuth } from "../AuthContext";
 import AddressFields from "../components/AddressFields";
 import { formatMoney } from "../constants";
 
-function emptyQuoteForm() {
+function emptyItemRow() {
   return {
-    country: "",
-    province: "",
-    district: "",
-    ward: "",
-    street_address: "",
     item_name: "",
     quantity: "",
     unit: "",
@@ -21,10 +16,24 @@ function emptyQuoteForm() {
     total_cost: "",
     total_dimensions: "",
     total_weight_kg: "",
-    shipping_cost: "",
-    note: "",
   };
 }
+
+function emptyQuoteForm() {
+  return {
+    country: "",
+    province: "",
+    district: "",
+    ward: "",
+    street_address: "",
+    shipping_cost: "",
+    note: "",
+    items: [emptyItemRow()],
+  };
+}
+
+const NUM_INPUT_STYLE = { width: 78 };
+const TEXT_INPUT_STYLE = { width: 110 };
 
 export default function CostQuoteBoard() {
   const { user } = useAuth();
@@ -62,6 +71,42 @@ export default function CostQuoteBoard() {
     return user?.is_manager || user?.is_supply;
   }
 
+  function toggleForm(item) {
+    if (showFormFor === item.id) {
+      setShowFormFor(null);
+      return;
+    }
+    // Mặt hàng/Số lượng/ĐVT lấy sẵn từ dòng Yêu cầu giá gốc — Cung ứng vẫn sửa được, và có thể
+    // thêm mặt hàng khác vào cùng câu trả lời (vd gộp chung 1 chuyến hàng).
+    setForm({
+      ...emptyQuoteForm(),
+      items: [
+        {
+          ...emptyItemRow(),
+          item_name: item.product_name || item.item_name || "",
+          quantity: item.quantity ?? "",
+          unit: item.unit || "",
+        },
+      ],
+    });
+    setShowFormFor(item.id);
+  }
+
+  function updateItemRow(index, field, value) {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    }));
+  }
+
+  function addItemRow() {
+    setForm((prev) => ({ ...prev, items: [...prev.items, emptyItemRow()] }));
+  }
+
+  function removeItemRow(index) {
+    setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
+  }
+
   async function handleAddQuote(e, itemId) {
     e.preventDefault();
     setError("");
@@ -76,17 +121,19 @@ export default function CostQuoteBoard() {
           district: form.district || null,
           ward: form.ward || null,
           street_address: form.street_address,
-          item_name: form.item_name,
-          quantity: form.quantity || null,
-          unit: form.unit,
-          unit_cost: form.unit_cost || null,
-          unit_dimensions: form.unit_dimensions,
-          unit_weight_kg: form.unit_weight_kg || null,
-          total_cost: form.total_cost || null,
-          total_dimensions: form.total_dimensions,
-          total_weight_kg: form.total_weight_kg || null,
           shipping_cost: form.shipping_cost || null,
           note: form.note,
+          items: form.items.map((it) => ({
+            item_name: it.item_name,
+            quantity: it.quantity || null,
+            unit: it.unit,
+            unit_cost: it.unit_cost || null,
+            unit_dimensions: it.unit_dimensions,
+            unit_weight_kg: it.unit_weight_kg || null,
+            total_cost: it.total_cost || null,
+            total_dimensions: it.total_dimensions,
+            total_weight_kg: it.total_weight_kg || null,
+          })),
         }),
       });
       setForm(emptyQuoteForm());
@@ -163,54 +210,55 @@ export default function CostQuoteBoard() {
                               Chưa có câu trả lời nào.
                             </p>
                           ) : (
-                            <div className="table-wrap" style={{ marginBottom: 10 }}>
-                              <table className="data-table">
-                                <thead>
-                                  <tr>
-                                    <th>Mặt hàng</th>
-                                    <th>SL / ĐVT</th>
-                                    <th>Giá vốn đơn vị</th>
-                                    <th>Tổng giá vốn</th>
-                                    <th>Giá vận chuyển</th>
-                                    <th>Điểm nhận hàng</th>
-                                    <th>Người trả lời</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {quotes.map((q) => {
-                                    const address = [
-                                      q.street_address, q.ward_name, q.district_name, q.province_name, q.country_name,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(", ");
-                                    const detail = [
-                                      q.unit_dimensions && `KT/đv: ${q.unit_dimensions}`,
-                                      q.unit_weight_kg && `TL/đv: ${q.unit_weight_kg} kg`,
-                                      q.total_dimensions && `Tổng KT: ${q.total_dimensions}`,
-                                      q.total_weight_kg && `Tổng TL: ${q.total_weight_kg} kg`,
-                                      q.note,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ");
-                                    return (
-                                      <tr key={q.id}>
-                                        <td title={detail || undefined}>{q.item_name || "—"}</td>
-                                        <td>{q.quantity ? `${q.quantity} ${q.unit || ""}` : "—"}</td>
-                                        <td>{q.unit_cost ? formatMoney(q.unit_cost) : "—"}</td>
-                                        <td style={{ fontWeight: 600 }}>
-                                          {q.total_cost ? formatMoney(q.total_cost) : "—"}
-                                        </td>
-                                        <td>{q.shipping_cost ? formatMoney(q.shipping_cost) : "—"}</td>
-                                        <td className="ellipsis-cell" title={address}>
-                                          {address || "—"}
-                                        </td>
-                                        <td>{q.created_by_name ?? "—"}</td>
+                            quotes.map((q) => {
+                              const address = [
+                                q.street_address, q.ward_name, q.district_name, q.province_name, q.country_name,
+                              ]
+                                .filter(Boolean)
+                                .join(", ");
+                              return (
+                                <div key={q.id} className="table-wrap" style={{ marginBottom: 10 }}>
+                                  <table className="data-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Mặt hàng</th>
+                                        <th>SL / ĐVT</th>
+                                        <th>Giá vốn/đv</th>
+                                        <th>KT/đv</th>
+                                        <th>TL/đv (kg)</th>
+                                        <th>Tổng giá vốn</th>
+                                        <th>Tổng KT</th>
+                                        <th>Tổng TL (kg)</th>
                                       </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
+                                    </thead>
+                                    <tbody>
+                                      {(q.items || []).map((it) => (
+                                        <tr key={it.id}>
+                                          <td>{it.item_name || "—"}</td>
+                                          <td>{it.quantity ? `${it.quantity} ${it.unit || ""}` : "—"}</td>
+                                          <td>{it.unit_cost ? formatMoney(it.unit_cost) : "—"}</td>
+                                          <td>{it.unit_dimensions || "—"}</td>
+                                          <td>{it.unit_weight_kg ?? "—"}</td>
+                                          <td style={{ fontWeight: 600 }}>
+                                            {it.total_cost ? formatMoney(it.total_cost) : "—"}
+                                          </td>
+                                          <td>{it.total_dimensions || "—"}</td>
+                                          <td>{it.total_weight_kg ?? "—"}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                  <div
+                                    className="muted"
+                                    style={{ fontSize: 12, padding: "8px 16px", borderTop: "1px solid var(--line)" }}
+                                  >
+                                    Giá vận chuyển: {q.shipping_cost ? formatMoney(q.shipping_cost) : "—"} · Điểm nhận
+                                    hàng: {address || "—"} · Người trả lời: {q.created_by_name ?? "—"}
+                                    {q.note && <> · {q.note}</>}
+                                  </div>
+                                </div>
+                              );
+                            })
                           )}
 
                           {canSupply() && (
@@ -219,7 +267,7 @@ export default function CostQuoteBoard() {
                               className="secondary"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setShowFormFor(showFormFor === item.id ? null : item.id);
+                                toggleForm(item);
                               }}
                             >
                               {showFormFor === item.id ? "Đóng" : "+ Trả lời"}
@@ -232,84 +280,117 @@ export default function CostQuoteBoard() {
                               onClick={(e) => e.stopPropagation()}
                               style={{ marginTop: 12 }}
                             >
-                              <div className="field-grid-cols">
-                                <label>
-                                  Mặt hàng
-                                  <input
-                                    value={form.item_name}
-                                    onChange={(e) => setForm({ ...form, item_name: e.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Số lượng
-                                  <input
-                                    type="number" step="0.01"
-                                    value={form.quantity}
-                                    onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  ĐVT
-                                  <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-                                </label>
+                              <div className="table-wrap">
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Mặt hàng</th>
+                                      <th>SL</th>
+                                      <th>ĐVT</th>
+                                      <th>Giá vốn/đv</th>
+                                      <th>KT/đv</th>
+                                      <th>TL/đv (kg)</th>
+                                      <th>Tổng giá vốn</th>
+                                      <th>Tổng KT</th>
+                                      <th>Tổng TL (kg)</th>
+                                      <th></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {form.items.map((row, i) => (
+                                      <tr key={i}>
+                                        <td>
+                                          <input
+                                            value={row.item_name}
+                                            onChange={(e) => updateItemRow(i, "item_name", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number" step="0.01" style={NUM_INPUT_STYLE}
+                                            value={row.quantity}
+                                            onChange={(e) => updateItemRow(i, "quantity", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            style={NUM_INPUT_STYLE}
+                                            value={row.unit}
+                                            onChange={(e) => updateItemRow(i, "unit", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number" step="0.01" style={TEXT_INPUT_STYLE}
+                                            value={row.unit_cost}
+                                            onChange={(e) => updateItemRow(i, "unit_cost", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            style={TEXT_INPUT_STYLE}
+                                            value={row.unit_dimensions}
+                                            onChange={(e) => updateItemRow(i, "unit_dimensions", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number" step="0.01" style={NUM_INPUT_STYLE}
+                                            value={row.unit_weight_kg}
+                                            onChange={(e) => updateItemRow(i, "unit_weight_kg", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number" step="0.01" style={TEXT_INPUT_STYLE}
+                                            value={row.total_cost}
+                                            onChange={(e) => updateItemRow(i, "total_cost", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            style={TEXT_INPUT_STYLE}
+                                            value={row.total_dimensions}
+                                            onChange={(e) => updateItemRow(i, "total_dimensions", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number" step="0.01" style={NUM_INPUT_STYLE}
+                                            value={row.total_weight_kg}
+                                            onChange={(e) => updateItemRow(i, "total_weight_kg", e.target.value)}
+                                          />
+                                        </td>
+                                        <td>
+                                          {form.items.length > 1 && (
+                                            <button
+                                              type="button"
+                                              className="link-btn"
+                                              onClick={() => removeItemRow(i)}
+                                            >
+                                              Xoá
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <button type="button" className="link-btn" style={{ marginTop: 6 }} onClick={addItemRow}>
+                                + Thêm mặt hàng
+                              </button>
 
-                                <label>
-                                  Giá vốn đơn vị
-                                  <input
-                                    type="number" step="0.01"
-                                    value={form.unit_cost}
-                                    onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Tổng giá vốn
-                                  <input
-                                    type="number" step="0.01"
-                                    value={form.total_cost}
-                                    onChange={(e) => setForm({ ...form, total_cost: e.target.value })}
-                                  />
-                                </label>
+                              <div className="field-grid-cols" style={{ marginTop: 12 }}>
                                 <label>
                                   Giá vốn vận chuyển
                                   <input
                                     type="number" step="0.01"
-                                    placeholder="Tự tra, nhập tay"
+                                    placeholder="Tự tra, nhập tay — chung cho cả chuyến"
                                     value={form.shipping_cost}
                                     onChange={(e) => setForm({ ...form, shipping_cost: e.target.value })}
                                   />
                                 </label>
-
-                                <label>
-                                  Kích thước đơn vị
-                                  <input
-                                    value={form.unit_dimensions}
-                                    onChange={(e) => setForm({ ...form, unit_dimensions: e.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Trọng lượng đơn vị (kg)
-                                  <input
-                                    type="number" step="0.01"
-                                    value={form.unit_weight_kg}
-                                    onChange={(e) => setForm({ ...form, unit_weight_kg: e.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Tổng kích thước
-                                  <input
-                                    value={form.total_dimensions}
-                                    onChange={(e) => setForm({ ...form, total_dimensions: e.target.value })}
-                                  />
-                                </label>
-                                <label>
-                                  Tổng trọng lượng (kg)
-                                  <input
-                                    type="number" step="0.01"
-                                    value={form.total_weight_kg}
-                                    onChange={(e) => setForm({ ...form, total_weight_kg: e.target.value })}
-                                  />
-                                </label>
-
                                 <label className="span-all">
                                   Điểm nhận hàng
                                   <AddressFields value={form} onChange={(addr) => setForm({ ...form, ...addr })} />

@@ -425,7 +425,9 @@ class PriceRequestItem(models.Model):
 class CostQuote(models.Model):
     """Báo giá vốn — nằm giữa Yêu cầu giá và Sàn báo giá NCC (khác estimated_cost_price ở trên, vốn
     chỉ là 1 con số ước lượng nhanh). Nhiều dòng lịch sử cho 1 dòng Yêu cầu giá, không ghi đè, giống
-    cách SupplierQuote/PriceCalculation đang làm."""
+    cách SupplierQuote/PriceCalculation đang làm. 1 câu trả lời có thể gồm nhiều mặt hàng (xem
+    CostQuoteItem) — vd Cung ứng gộp chung 1 chuyến hàng cho nhiều sản phẩm cùng Yêu cầu giá, chỉ có
+    1 điểm nhận hàng + 1 giá vận chuyển chung."""
 
     # Khai tường minh để đổi verbose_name cột "id" mặc định — cùng cách làm với PriceRequest.id.
     id = models.AutoField("Id trả lời yêu cầu giá", primary_key=True)
@@ -448,17 +450,10 @@ class CostQuote(models.Model):
         Ward, verbose_name="Phường/Xã", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     street_address = models.CharField("Số nhà, đường", max_length=255, blank=True)
-    note = models.TextField("Mô tả thêm", blank=True)
-    item_name = models.CharField("Mặt hàng", max_length=255, blank=True)
-    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
-    unit = models.CharField("ĐVT", max_length=50, blank=True)
-    unit_cost = models.DecimalField("Giá vốn đơn vị", max_digits=14, decimal_places=2, null=True, blank=True)
-    unit_dimensions = models.CharField("Kích thước đơn vị", max_length=255, blank=True)
-    unit_weight_kg = models.DecimalField("Trọng lượng đơn vị", max_digits=10, decimal_places=2, null=True, blank=True)
-    total_cost = models.DecimalField("Tổng giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
-    total_dimensions = models.CharField("Tổng kích thước", max_length=255, blank=True)
-    total_weight_kg = models.DecimalField("Tổng trọng lượng", max_digits=10, decimal_places=2, null=True, blank=True)
+    # Giá vận chuyển chung cho cả câu trả lời (gộp mọi mặt hàng trong cùng 1 chuyến) — Cung ứng tự
+    # tra bên ngoài rồi nhập tay, giống shipping_cost của SupplierQuote.
     shipping_cost = models.DecimalField("Giá vốn vận chuyển", max_digits=14, decimal_places=2, null=True, blank=True)
+    note = models.TextField("Mô tả thêm", blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Người tạo", on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -472,6 +467,30 @@ class CostQuote(models.Model):
 
     def __str__(self):
         return f"Báo giá vốn — {self.price_request_item}"
+
+
+class CostQuoteItem(models.Model):
+    """1 dòng mặt hàng trong 1 câu Trả lời yêu cầu giá (CostQuote) — dòng đầu tiên thường lấy sẵn từ
+    Dòng yêu cầu giá gốc (item_name/quantity/unit), Cung ứng có thể sửa và thêm nhiều dòng khác."""
+
+    cost_quote = models.ForeignKey(CostQuote, verbose_name="Câu trả lời", on_delete=models.CASCADE, related_name="items")
+    item_name = models.CharField("Mặt hàng", max_length=255, blank=True)
+    quantity = models.DecimalField("Số lượng", max_digits=12, decimal_places=2, null=True, blank=True)
+    unit = models.CharField("ĐVT", max_length=50, blank=True)
+    unit_cost = models.DecimalField("Giá vốn đơn vị", max_digits=14, decimal_places=2, null=True, blank=True)
+    unit_dimensions = models.CharField("Kích thước đơn vị", max_length=255, blank=True)
+    unit_weight_kg = models.DecimalField("Trọng lượng đơn vị", max_digits=10, decimal_places=2, null=True, blank=True)
+    total_cost = models.DecimalField("Tổng giá vốn", max_digits=14, decimal_places=2, null=True, blank=True)
+    total_dimensions = models.CharField("Tổng kích thước", max_length=255, blank=True)
+    total_weight_kg = models.DecimalField("Tổng trọng lượng", max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "Dòng mặt hàng trả lời yêu cầu giá"
+        verbose_name_plural = "Dòng mặt hàng trả lời yêu cầu giá"
+
+    def __str__(self):
+        return f"{self.item_name} x{self.quantity}"
 
 
 class PurchaseRequest(models.Model):

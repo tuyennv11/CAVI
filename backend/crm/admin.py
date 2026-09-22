@@ -9,6 +9,7 @@ from ops.models import Shipment as OpsShipment
 from .models import (
     Activity,
     CostQuote,
+    CostQuoteItem,
     KPITarget,
     Notice,
     Order,
@@ -332,6 +333,11 @@ class PriceRequestAdmin(ImportExportMixin, CustomerFieldMixin, admin.ModelAdmin)
         return linked_fk(obj.customer)
 
 
+class CostQuoteItemInline(admin.TabularInline):
+    model = CostQuoteItem
+    extra = 1
+
+
 class CostQuoteResource(ExcelModelResource):
     # Cột "Id yêu cầu giá" không phải trường lưu trực tiếp trên CostQuote — suy ra từ FK
     # price_request_item để khỏi lưu trùng dữ liệu (giống lý do bỏ cột "code" ở PriceRequestResource).
@@ -342,9 +348,7 @@ class CostQuoteResource(ExcelModelResource):
         exclude = ("price_request_item",)
         export_order = (
             "id", "price_request_code", "country", "province", "district", "ward", "street_address",
-            "note", "item_name", "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg",
-            "total_cost", "total_dimensions", "total_weight_kg", "shipping_cost",
-            "created_by", "created_at", "updated_at",
+            "shipping_cost", "note", "created_by", "created_at", "updated_at",
         )
 
     def dehydrate_price_request_code(self, obj):
@@ -376,16 +380,16 @@ class PriceRequestItemAdmin(ImportExportModelAdmin):
 class CostQuoteAdmin(ImportExportModelAdmin):
     resource_classes = [CostQuoteResource]
     # Khớp đúng cột + thứ tự với CostQuoteResource (xem quy tắc: trang Admin luôn là bản xem trực
-    # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau).
+    # tiếp của cùng dữ liệu xuất ra Excel, không lệch nhau). Mặt hàng/số lượng/giá vốn giờ nằm ở
+    # inline CostQuoteItem (1 câu trả lời có thể gồm nhiều mặt hàng), không còn là cột trực tiếp.
     list_display = (
         "price_request_code", "country", "province", "district", "ward", "street_address",
-        "note", "item_name", "quantity", "unit", "unit_cost", "unit_dimensions", "unit_weight_kg",
-        "total_cost", "total_dimensions", "total_weight_kg", "shipping_cost",
-        "created_by", "created_at", "updated_at",
+        "shipping_cost", "note", "created_by", "created_at", "updated_at",
     )
     search_fields = ("price_request_item__item_name", "price_request_item__price_request__code")
     autocomplete_fields = ["price_request_item", "country", "province", "district", "ward"]
     readonly_fields = ("created_by", "created_at", "updated_at")
+    inlines = [CostQuoteItemInline]
 
     @admin.display(description="Id yêu cầu giá")
     def price_request_code(self, obj):
