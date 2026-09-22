@@ -527,29 +527,31 @@ export default function CostQuoteBoard() {
                               {(() => {
                                 const grand = sumItemTotals(form.items.map(previewTotals));
                                 return (
-                                  <div className="cost-grand-total">
-                                    <span>
-                                      Tổng giá vốn (mọi mặt hàng): <b>{grand.totalCost ? formatMoney(grand.totalCost) : "—"}</b>
-                                    </span>
-                                    <span>
+                                  <div className="cost-item-fields cost-grand-total" style={{ gap: "8px 12px", alignItems: "center" }}>
+                                    <div style={{ minWidth: 160, flex: "1 1 160px" }}>
+                                      <button type="button" className="link-btn" onClick={addItemRow}>
+                                        + Thêm mặt hàng
+                                      </button>
+                                    </div>
+                                    <div style={{ width: 80 }} />
+                                    <div style={{ width: 80 }} />
+                                    {/* Thẳng cột với Dài+Rộng+Cao+Đơn vị (70+70+70+72 + 3 khoảng cách 12px) */}
+                                    <div style={{ width: 318 }}>
                                       Tổng kích thước:{" "}
                                       <b>
                                         {grand.totalVolumeM3
                                           ? `${grand.totalVolumeM3.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} m3`
                                           : "—"}
                                       </b>
-                                    </span>
-                                    <span>
+                                    </div>
+                                    {/* Thẳng cột với Trọng lượng/đv + Đơn vị (95+72 + 1 khoảng cách 12px) */}
+                                    <div style={{ width: 179 }}>
                                       Tổng trọng lượng: <b>{grand.totalWeightKg ? formatWeight(grand.totalWeightKg) : "—"}</b>
-                                    </span>
-                                    <button
-                                      type="button"
-                                      className="link-btn"
-                                      style={{ marginLeft: "auto" }}
-                                      onClick={addItemRow}
-                                    >
-                                      + Thêm mặt hàng
-                                    </button>
+                                    </div>
+                                    {/* Thẳng cột với Giá vốn/đv */}
+                                    <div style={{ width: 110 }}>
+                                      Tổng giá vốn: <b>{grand.totalCost ? formatMoney(grand.totalCost) : "—"}</b>
+                                    </div>
                                   </div>
                                 );
                               })()}
